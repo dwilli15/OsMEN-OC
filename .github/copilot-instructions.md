@@ -10,14 +10,14 @@
 
 ## Architecture: Two-Plane Design
 
-| Plane     | Product                       | Runtime     | Owns                                                                     |
-| --------- | ----------------------------- | ----------- | ------------------------------------------------------------------------ |
-| Control   | OpenClaw (separate repo, npm) | Node.js     | Channel ingress, trust policy, session routing, operator interaction     |
-| Execution | OsMEN-OC (THIS repo)          | Python 3.13 | Pipeline execution, tools, bridge logic, memory, Podman services, timers |
+| Plane     | Product                              | Runtime     | Owns                                                                     |
+| --------- | ------------------------------------ | ----------- | ------------------------------------------------------------------------ |
+| Control   | OpenClaw (`npm install -g openclaw`) | Node.js     | Channel ingress, trust policy, session routing, operator interaction     |
+| Execution | OsMEN-OC (THIS repo)                 | Python 3.13 | Pipeline execution, tools, bridge logic, memory, Podman services, timers |
 
 Data flow: User → OpenClaw (Telegram/Discord) → WebSocket `ws://127.0.0.1:18789` → OsMEN-OC executes → results back.
 
-**OpenClaw is NOT in this repo.** This repo is the execution engine only. The `core/bridge/` module connects to OpenClaw via WebSocket.
+**OpenClaw is a dependency installed during bootstrap** (`npm install -g openclaw`). This repo owns the bridge (`core/bridge/`) and config (`config/openclaw.yaml`).
 
 ## Critical Rules (violations = reject PR)
 
