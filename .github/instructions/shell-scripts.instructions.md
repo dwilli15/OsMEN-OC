@@ -15,14 +15,15 @@ applyTo: "scripts/**/*.sh"
 
 `scripts/bootstrap.sh` is the master entry point. Must be idempotent. Steps:
 
-1. Install apt packages: python3-dev python3-venv podman podman-compose taskwarrior lm-sensors smartmontools restic age ffmpeg git curl
-2. Create Python venv + `pip install -e .[dev]`
-3. Verify Podman rootless (subuid/subgid), enable podman.socket
-4. Deploy quadlets + timers (via `scripts/deploy_quadlets.sh`)
-5. Check for age key → deploy SOPS secrets if present
-6. Start core services (PG, Redis, ChromaDB), wait for healthy
-7. Run SQL migrations
-8. Verify with `podman ps`
+1. Install apt packages: python3-dev python3-venv nodejs npm podman podman-compose taskwarrior lm-sensors smartmontools restic age ffmpeg git curl
+2. Install OpenClaw: `npm install -g openclaw` (control plane dependency)
+3. Create Python venv + `pip install -e .[dev]`
+4. Verify Podman rootless (subuid/subgid), enable podman.socket
+5. Deploy quadlets + timers (via `scripts/deploy_quadlets.sh`)
+6. Check for age key → deploy SOPS secrets if present
+7. Start core services (PG, Redis, ChromaDB), wait for healthy
+8. Run SQL migrations
+9. Verify with `podman ps` + `openclaw --version`
 
 ### Deploy Script
 
