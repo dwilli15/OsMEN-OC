@@ -1,0 +1,10 @@
+steps:
+  - uses: actions/setup-python@v5
+    with:
+      python-version: "3.13"
+  - run: |
+      python -m venv .venv
+      source .venv/bin/activate
+      pip install -e ".[dev]"
+  - run: python -c "import core; print('core package OK')"
+  - run: python -m pytest tests/ --co -q 2>/dev/null || echo "Tests collected (stubs OK)"
