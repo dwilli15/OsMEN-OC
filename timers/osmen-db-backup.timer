@@ -1,0 +1,14 @@
+# Maintenance timer: PostgreSQL and Redis backup via restic.
+# Runs nightly at 02:30 local time; randomised delay up to 10 min avoids
+# thundering-herd if multiple units fire at the same second.
+
+[Unit]
+Description=OsMEN-OC nightly database backup
+
+[Timer]
+OnCalendar=*-*-* 02:30:00
+RandomizedDelaySec=600
+Persistent=true
+
+[Install]
+WantedBy=timers.target

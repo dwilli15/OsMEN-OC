@@ -1,0 +1,42 @@
+# Maintenance service: dumps postgres + redis snapshots with restic.
+# Triggered by osmen-db-backup.timer.
+# Requires:
+#   - RESTIC_REPOSITORY and RESTIC_PASSWORD_FILE set in environment (via
+#     ~/.config/osmen/restic.env sourced below).
+#   - osmen-core-postgres and osmen-core-redis containers healthy.
+
+[Unit]
+Description=OsMEN-OC nightly database backup
+After=osmen-core-postgres.service osmen-core-redis.service
+Requires=osmen-core-postgres.service osmen-core-redis.service
+
+[Service]
+Type=oneshot
+# Load restic env from encrypted YAML-exported env file (created by bootstrap).
+EnvironmentFile=%h/.config/osmen/restic.env
+
+# Dump PostgreSQL via pg_dumpall inside the running container.
+ExecStart=podman exec osmen-core-postgres \
+    pg_dumpall -U osmen -f /var/lib/postgresql/data/osmen-latest.dump
+
+# Snapshot both data volumes with restic.
+# Paths are passed via --files-from-raw pointing at a static path list;
+# here-documents are not supported in systemd ExecStart directives.
+# The path list lives in config/restic-db-paths.txt (deployed by bootstrap).
+ExecStart=restic backup \
+    --tag osmen-db \
+    --files-from-raw %h/.config/osmen/restic-db-paths.txt
+
+# Prune old snapshots: keep 7 daily, 4 weekly, 3 monthly.
+ExecStart=restic forget \
+    --tag osmen-db \
+    --keep-daily 7 \
+    --keep-weekly 4 \
+    --keep-monthly 3 \
+    --prune
+
+# Do not restart on failure — timer will retry tomorrow; alert via journal.
+Restart=no
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=osmen-db-backup

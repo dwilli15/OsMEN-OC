@@ -1,0 +1,9 @@
+# Core services network — localhost-only bridge (initial phase).
+# All core containers (postgres, redis, chromadb) attach to this network.
+# No external exposure; access via Tailscale mesh only.
+
+[Network]
+NetworkName=osmen-core
+Driver=bridge
+# Restrict to loopback so nothing is reachable from LAN without Tailscale.
+Internal=true

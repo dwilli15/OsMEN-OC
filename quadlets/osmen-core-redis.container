@@ -1,0 +1,22 @@
+# Redis 7 — working-memory tier and event-bus transport (Redis Streams).
+# Stream keys follow pattern: events:{domain}:{category}
+# Working memory keys: mem:working:{agent}:{key}
+
+[Container]
+Image=docker.io/redis:7.2-alpine
+ContainerName=osmen-core-redis
+Network=osmen-core.network
+Volume=osmen-redis-data.volume:/data
+# Expose only on loopback so no LAN access in initial phase.
+PublishPort=127.0.0.1:6379:6379
+HealthCmd=redis-cli ping
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+
+[Service]
+Restart=always
+Slice=user-osmen-core.slice
+
+[Install]
+WantedBy=default.target

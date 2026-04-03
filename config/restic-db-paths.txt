@@ -1,0 +1,4 @@
+# restic-db-paths.txt — Volume paths backed up nightly by osmen-db-backup.service.
+# Adjust if your containers/storage root differs from the default.
+/var/lib/containers/storage/volumes/osmen-postgres-data/_data
+/var/lib/containers/storage/volumes/osmen-redis-data/_data

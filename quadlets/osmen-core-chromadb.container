@@ -1,0 +1,24 @@
+# ChromaDB — RAG / vector-search tier (third memory tier).
+# Receives promoted chunks from the knowledge_librarian agent.
+# Monitoring stack is omitted in the first-install pass; add later if needed.
+
+[Container]
+Image=docker.io/chromadb/chroma:0.5.23
+ContainerName=osmen-core-chromadb
+Network=osmen-core.network
+Volume=osmen-chromadb-data.volume:/chroma/chroma
+# Expose only on loopback so no LAN access in initial phase.
+PublishPort=127.0.0.1:8000:8000
+Environment=IS_PERSISTENT=TRUE
+Environment=ANONYMIZED_TELEMETRY=FALSE
+HealthCmd=/bin/sh -c "wget -qO- http://localhost:8000/api/v1/heartbeat || exit 1"
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+
+[Service]
+Restart=always
+Slice=user-osmen-core.slice
+
+[Install]
+WantedBy=default.target

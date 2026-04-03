@@ -1,0 +1,25 @@
+# PostgreSQL 17 with pgvector extension.
+# Serves as the structured-memory tier (long-term storage + vector search).
+# Data persisted in named volume; credentials supplied via Podman secret.
+
+[Container]
+Image=docker.io/pgvector/pgvector:pg17
+ContainerName=osmen-core-postgres
+Network=osmen-core.network
+Volume=osmen-postgres-data.volume:/var/lib/postgresql/data
+# Expose only on loopback so no LAN access in initial phase.
+PublishPort=127.0.0.1:5432:5432
+Secret=osmen-pg-password,type=env,target=POSTGRES_PASSWORD
+Environment=POSTGRES_USER=osmen
+Environment=POSTGRES_DB=osmen
+HealthCmd=pg_isready -U osmen -d osmen
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+
+[Service]
+Restart=always
+Slice=user-osmen-core.slice
+
+[Install]
+WantedBy=default.target
