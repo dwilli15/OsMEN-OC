@@ -158,8 +158,11 @@ def test_register_tools_empty_list() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_agents_config_parses() -> None:
+def test_agents_config_parses(monkeypatch: pytest.MonkeyPatch) -> None:
     """config/agents.yaml must load without errors."""
+    monkeypatch.setenv("ZAI_API_KEY", "test-key")
+    monkeypatch.setenv("PLEX_LIBRARY_ROOT", "/tmp/plex")
+    monkeypatch.setenv("DOWNLOAD_STAGING_DIR", "/tmp/dl")
     config = load_config(CONFIG_DIR / "agents.yaml")
     assert "defaults" in config
 

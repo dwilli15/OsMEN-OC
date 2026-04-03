@@ -44,3 +44,4 @@ select = ["E", "F", "I", "UP"]
 [tool.mypy]
 python_version = "3.13"
 ignore_missing_imports = true
+disable_error_code = ["import-untyped"]

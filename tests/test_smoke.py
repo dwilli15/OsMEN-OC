@@ -16,7 +16,7 @@ def test_core_package_importable():
 async def test_mock_redis_fixture(mock_redis):
     """Redis mock fixture must support xadd and xread."""
     msg_id = await mock_redis.xadd("events:test:ping", {"data": "hello"})
-    assert msg_id == "msg-id"
+    assert msg_id == "1-0"
 
     result = await mock_redis.xread({"events:test:ping": "0"})
     assert result == []
@@ -25,8 +25,10 @@ async def test_mock_redis_fixture(mock_redis):
 @pytest.mark.anyio
 async def test_mock_pg_pool_fixture(mock_pg_pool):
     """PostgreSQL mock pool fixture must be callable."""
-    await mock_pg_pool.acquire()
-    mock_pg_pool.acquire.assert_awaited_once()
+    pool, conn = mock_pg_pool
+    async with pool.acquire() as acquired_conn:
+        assert acquired_conn is conn
+    pool.acquire.assert_called_once()
 
 
 @pytest.mark.anyio

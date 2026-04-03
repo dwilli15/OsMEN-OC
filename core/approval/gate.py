@@ -20,12 +20,12 @@ before execution.  The gate enforces a four-tier policy:
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
 
+import anyio
 from loguru import logger
 
 from core.utils.exceptions import ApprovalError
@@ -237,10 +237,8 @@ class ApprovalGate:
 
         try:
             if timeout is not None:
-                approved = await asyncio.wait_for(
-                    self._callback(request),
-                    timeout=timeout,
-                )
+                with anyio.fail_after(timeout):
+                    approved = await self._callback(request)
             else:
                 approved = await self._callback(request)
         except TimeoutError:
