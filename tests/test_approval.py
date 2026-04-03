@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
-
+import anyio
 import pytest
 
 from core.approval.gate import (
@@ -83,7 +82,7 @@ async def test_high_risk_denied_by_callback():
 async def test_high_risk_denied_on_timeout():
     """High-risk requests are denied when the callback times out."""
     async def slow(_req):
-        await asyncio.sleep(999)
+        await anyio.sleep(999)
         return True
 
     gate = ApprovalGate(approval_callback=slow)
