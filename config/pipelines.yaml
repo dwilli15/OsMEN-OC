@@ -1,0 +1,46 @@
+# Pipeline routing configuration
+# Defines which agents handle each event type on the Redis Streams event bus.
+# Stream key format: events:{domain}:{category}
+
+pipelines:
+  - id: morning_brief
+    trigger:
+      type: cron
+      schedule: "0 7 * * *"
+    steps:
+      - agent: daily_brief
+        tool: fetch_task_summary
+      - agent: daily_brief
+        tool: generate_brief
+        parameters:
+          period: morning
+
+  - id: evening_brief
+    trigger:
+      type: cron
+      schedule: "0 19 * * *"
+    steps:
+      - agent: daily_brief
+        tool: generate_brief
+        parameters:
+          period: evening
+
+  - id: knowledge_ingest
+    trigger:
+      type: event
+      stream: "events:knowledge:ingest_requested"
+    steps:
+      - agent: knowledge_librarian
+        tool: ingest_url
+
+  - id: media_transfer
+    trigger:
+      type: event
+      stream: "events:media:download_complete"
+    steps:
+      - agent: media_organization
+        tool: audit_vpn
+      - agent: media_organization
+        tool: transfer_to_plex
+      - agent: media_organization
+        tool: purge_completed

@@ -1,0 +1,31 @@
+agent_id: daily_brief
+name: Daily Brief
+model_tier: cloud-primary
+capabilities:
+  - briefing
+  - summarization
+  - check-in
+description: Generates AM/PM check-in messages and daily briefings from calendar, tasks, and news.
+tools:
+  - name: generate_brief
+    description: Produce a morning or evening briefing for the operator.
+    parameters:
+      period:
+        type: string
+        required: true
+        description: Which briefing to generate.
+        enum: [morning, evening]
+      date:
+        type: string
+        required: false
+        description: ISO-8601 date (defaults to today).
+    risk_level: low
+
+  - name: fetch_task_summary
+    description: Retrieve open Taskwarrior tasks grouped by project.
+    parameters:
+      limit:
+        type: integer
+        required: false
+        description: Maximum number of tasks to return (default 20).
+    risk_level: low
