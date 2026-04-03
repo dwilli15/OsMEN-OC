@@ -1,0 +1,43 @@
+# osmen-core-redis.container
+# Rootless Podman Quadlet — Redis 7 (persistent AOF + RDB).
+# Exposure: 127.0.0.1:6379 only (localhost-only initial policy).
+# Used for EventBus streams and working memory tier.
+
+[Unit]
+Description=OsMEN-OC Core — Redis 7
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-core-network.service
+Requires=osmen-core-network.service
+
+[Container]
+Image=docker.io/library/redis:7.2.5-alpine
+ContainerName=osmen-core-redis
+
+# Internal-only: bind to loopback so no LAN exposure in initial phase.
+PublishPort=127.0.0.1:6379:6379
+
+Network=osmen-core.network
+
+# Persistent data volume for AOF + RDB snapshots.
+Volume=osmen-redis-data.volume:/data
+
+# Enable both AOF (durability) and RDB snapshots (backup-friendliness).
+# REDIS_PASSWORD is injected as a container env var via the Secret directive
+# below; passing --requirepass ensures authentication is enforced at startup.
+Exec=redis-server --appendonly yes --save 60 1 --save 300 10 --save 900 100 --requirepass "${REDIS_PASSWORD}"
+
+Secret=osmen-redis-password,type=env,target=REDIS_PASSWORD
+
+HealthCmd=/bin/sh -c "redis-cli -a \"${REDIS_PASSWORD}\" ping | grep -q PONG"
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=15s
+
+[Service]
+Restart=always
+RestartSec=5s
+Slice=user-osmen-core.slice
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,45 @@
+# osmen-core-postgres.container
+# Rootless Podman Quadlet — PostgreSQL 17 with pgvector extension.
+# Exposure: 127.0.0.1:5432 only (localhost-only initial policy).
+# Secrets managed via Podman secrets (SOPS-decrypted at deploy time).
+
+[Unit]
+Description=OsMEN-OC Core — PostgreSQL 17 + pgvector
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-core-network.service
+Requires=osmen-core-network.service
+
+[Container]
+# pgvector/pgvector bundles pg17 + the pgvector extension in one image.
+Image=docker.io/pgvector/pgvector:pg17
+ContainerName=osmen-core-postgres
+
+# Internal-only: bind to loopback so no LAN exposure in initial phase.
+PublishPort=127.0.0.1:5432:5432
+
+Network=osmen-core.network
+
+# Persistent data volume — created automatically by Podman if absent.
+Volume=osmen-postgres-data.volume:/var/lib/postgresql/data
+
+# Credentials via Podman secrets (never plaintext env vars).
+Secret=osmen-postgres-password,type=env,target=POSTGRES_PASSWORD
+Secret=osmen-postgres-user,type=env,target=POSTGRES_USER
+Secret=osmen-postgres-db,type=env,target=POSTGRES_DB
+
+# Enable WAL-level logical replication for future CDC use.
+Exec=postgres -c wal_level=logical -c max_connections=200
+
+HealthCmd=/bin/sh -c "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=30s
+
+[Service]
+Restart=always
+RestartSec=5s
+Slice=user-osmen-core.slice
+
+[Install]
+WantedBy=default.target

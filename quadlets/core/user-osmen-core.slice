@@ -1,0 +1,17 @@
+# user-osmen-core.slice
+# cgroup v2 resource slice for all OsMEN-OC core services.
+# Applied to every core container via Slice= in their [Service] section.
+
+[Unit]
+Description=OsMEN-OC Core Services Slice
+Documentation=https://github.com/dwilli15/OsMEN-OC
+
+[Slice]
+# Cap combined memory for core data services at 4 GiB.
+MemoryMax=4G
+# Soft limit; kernel will prefer to reclaim from here first.
+MemoryHigh=3G
+# Allow core services up to 4 full CPU cores worth of time.
+CPUQuota=400%
+# Ensure I/O weight keeps data services responsive.
+IOWeight=100

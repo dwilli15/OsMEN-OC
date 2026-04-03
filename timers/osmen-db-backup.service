@@ -1,0 +1,57 @@
+# osmen-db-backup.service
+# One-shot service invoked by osmen-db-backup.timer.
+# Dumps PostgreSQL (pg_dump) and Redis (BGSAVE) to a restic repository.
+# Restic repo location and credentials are read from environment files that are
+# SOPS-decrypted at deploy time — never hardcoded here.
+
+[Unit]
+Description=OsMEN-OC — Nightly database backup
+Documentation=https://github.com/dwilli15/OsMEN-OC
+# Require core containers to be healthy before attempting a dump.
+After=osmen-core-postgres.service osmen-core-redis.service
+Wants=osmen-core-postgres.service osmen-core-redis.service
+
+[Service]
+Type=oneshot
+# Decrypted env file written by scripts/deploy_quadlets.sh (SOPS → plain env).
+EnvironmentFile=%h/.config/osmen/secrets/db-backup.env
+
+# Step 1: pg_dump via podman exec into the running postgres container.
+# The entire pipeline must be wrapped in sh -c because systemd does not
+# support shell pipes natively in ExecStart directives.
+ExecStart=/usr/bin/sh -c '/usr/bin/podman exec osmen-core-postgres \
+    pg_dump -U "${POSTGRES_USER}" "${POSTGRES_DB}" \
+    | /usr/bin/restic backup --stdin \
+        --stdin-filename "postgres-${POSTGRES_DB}.sql" \
+        --tag osmen,postgres,nightly'
+
+# Step 2: trigger a Redis BGSAVE and poll until it completes by comparing
+# the LASTSAVE timestamp before and after the BGSAVE call.
+ExecStart=/usr/bin/sh -c '\
+    before=$(/usr/bin/podman exec osmen-core-redis redis-cli LASTSAVE); \
+    /usr/bin/podman exec osmen-core-redis redis-cli BGSAVE; \
+    for i in $(seq 1 30); do \
+      after=$(/usr/bin/podman exec osmen-core-redis redis-cli LASTSAVE); \
+      [ "$after" -gt "$before" ] && break; \
+      sleep 2; \
+    done'
+
+# Forget snapshots older than 7 daily / 4 weekly / 3 monthly.
+ExecStartPost=/usr/bin/restic forget \
+    --keep-daily 7 \
+    --keep-weekly 4 \
+    --keep-monthly 3 \
+    --prune \
+    --tag osmen,nightly
+
+# Verify the latest snapshot to detect silent corruption.
+ExecStartPost=/usr/bin/restic check --read-data-subset=5%
+
+# Cap backup job so it never blocks core services more than 30 minutes.
+TimeoutStartSec=1800
+# Avoid starving foreground I/O during the backup window.
+IOSchedulingClass=idle
+CPUSchedulingPolicy=idle
+
+[Install]
+WantedBy=multi-user.target
