@@ -1,0 +1,14 @@
+# osmen-core.network
+# Internal-only bridge network for core services (PostgreSQL, Redis, ChromaDB).
+# Exposure policy: localhost-only — no ports are published to LAN interfaces.
+# All inter-service communication uses this network; the gateway binds to
+# 127.0.0.1 exclusively for the initial deployment phase.
+
+[Network]
+NetworkName=osmen-core
+Driver=bridge
+# RFC-1918 subnet dedicated to core services; avoids collisions with LAN ranges.
+Subnet=10.88.0.0/24
+Gateway=10.88.0.1
+# Disable IPv6 for initial phase; re-enable when address plan is finalised.
+IPv6=false
