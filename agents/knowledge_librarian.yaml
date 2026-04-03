@@ -1,0 +1,52 @@
+agent_id: knowledge_librarian
+name: Knowledge Librarian
+model_tier: cloud-primary
+capabilities:
+  - web-scraping
+  - transcription
+  - chunking
+  - rag-ingest
+description: Ingests knowledge from web pages, YouTube transcripts, and documents into the RAG memory tier.
+tools:
+  - name: ingest_url
+    description: Scrape a web page and store chunked text in ChromaDB.
+    parameters:
+      url:
+        type: string
+        required: true
+        description: URL to scrape and ingest.
+      collection:
+        type: string
+        required: false
+        description: ChromaDB collection name (defaults to "general").
+    risk_level: low
+
+  - name: transcribe_audio
+    description: Transcribe a local audio/video file and ingest the transcript.
+    parameters:
+      file_path:
+        type: string
+        required: true
+        description: Absolute path to the audio or video file.
+      language:
+        type: string
+        required: false
+        description: BCP-47 language code (defaults to "en").
+    risk_level: low
+
+  - name: search_knowledge
+    description: Semantic search across the RAG knowledge base.
+    parameters:
+      query:
+        type: string
+        required: true
+        description: Natural-language query string.
+      collection:
+        type: string
+        required: false
+        description: ChromaDB collection to search (defaults to all).
+      top_k:
+        type: integer
+        required: false
+        description: Number of results to return (default 5).
+    risk_level: low

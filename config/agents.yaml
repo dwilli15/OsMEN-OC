@@ -1,0 +1,27 @@
+# Agent runtime configuration
+# Values loaded by core/utils/config.py; ${ENV_VAR} tokens resolved from environment.
+
+defaults:
+  # Maximum wall-clock seconds a single tool invocation may run before timeout.
+  tool_timeout_seconds: 30
+  # Directory containing agent YAML manifests (relative to project root).
+  agents_dir: agents
+
+# Per-agent overrides — keys must match agent_id values in agents/*.yaml
+daily_brief:
+  schedule: "0 7 * * *"  # cron: 07:00 daily
+  model_tier: cloud-primary
+  # LLM provider API key reference (resolved from SOPS secrets at runtime)
+  llm_api_key: "${ZAI_API_KEY}"
+
+knowledge_librarian:
+  schedule: event-driven
+  model_tier: cloud-primary
+  llm_api_key: "${ZAI_API_KEY}"
+  chromadb_collection: knowledge
+
+media_organization:
+  schedule: event-driven
+  model_tier: local-medium
+  plex_library_root: "${PLEX_LIBRARY_ROOT}"
+  download_staging: "${DOWNLOAD_STAGING_DIR}"
