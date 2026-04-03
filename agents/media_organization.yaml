@@ -1,0 +1,46 @@
+agent_id: media_organization
+name: Media Organization
+model_tier: local-medium
+capabilities:
+  - plex-transfer
+  - vpn-audit
+  - download-monitoring
+description: Manages Plex media transfers, audits VPN connectivity, and monitors the download stack.
+tools:
+  - name: transfer_to_plex
+    description: Move completed downloads into the Plex library directory and trigger a library scan.
+    parameters:
+      source_path:
+        type: string
+        required: true
+        description: Absolute path of the completed download.
+      media_type:
+        type: string
+        required: true
+        description: Media category for library routing.
+        enum: [movies, tv, music, audiobooks]
+    risk_level: medium
+
+  - name: audit_vpn
+    description: Verify that the gluetun VPN container is connected and the public IP is not the host IP.
+    parameters: {}
+    risk_level: low
+
+  - name: list_downloads
+    description: List active and completed downloads from qBittorrent and SABnzbd.
+    parameters:
+      status:
+        type: string
+        required: false
+        description: Filter by download status.
+        enum: [active, completed, paused, all]
+    risk_level: low
+
+  - name: purge_completed
+    description: Delete completed download files from the staging area after Plex transfer.
+    parameters:
+      older_than_days:
+        type: integer
+        required: false
+        description: Only purge files older than this many days (default 7).
+    risk_level: medium
