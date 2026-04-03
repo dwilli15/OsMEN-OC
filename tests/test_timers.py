@@ -128,8 +128,10 @@ def test_deploy_script_uses_systemctl_user() -> None:
         stripped = line.lstrip()
         if stripped.startswith("#"):
             continue
-        # Only match lines where systemctl is invoked directly (starts the
-        # command position), not when it appears inside a quoted log message.
+        # Only match lines where systemctl starts the command position after
+        # stripping leading whitespace. This intentionally targets direct
+        # invocations (the only pattern used in this script); invocations
+        # after shell conditionals like `&&` are not present in this script.
         if re.match(r"systemctl\b", stripped):
             assert "--user" in stripped, (
                 f"deploy_timers.sh: bare systemctl invocation without --user: {line!r}"
@@ -151,14 +153,15 @@ def test_deploy_script_uses_systemd_analyze_user() -> None:
 def test_deploy_script_dry_run_validates_source() -> None:
     """deploy_timers.sh must validate source unit files in --dry-run mode."""
     content = DEPLOY_SCRIPT.read_text(encoding="utf-8")
-    # Verify that dry-run mode has a path to run systemd-analyze (not just
-    # when DRY_RUN==false).
-    assert 'DRY_RUN.*false.*verify' not in content or "dry" in content.lower(), (
-        "deploy_timers.sh should not gate all verification behind DRY_RUN==false"
+    # Positive check: the script must assign verify_target to the source
+    # unit_file variable (used in dry-run mode before symlinks exist).
+    assert 'verify_target="${unit_file}"' in content, (
+        "deploy_timers.sh must set verify_target to the source unit_file in "
+        "dry-run mode so systemd-analyze runs against the source directly"
     )
-    # Positive check: the script must reference the source unit_file for verify.
-    assert "unit_file" in content, (
-        "deploy_timers.sh must reference unit_file variable (for dry-run verification)"
+    # And must also have a live-mode path that uses the deployed link target.
+    assert 'verify_target="${link_target}"' in content, (
+        "deploy_timers.sh must set verify_target to link_target in live mode"
     )
 
 
