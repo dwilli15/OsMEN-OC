@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "osmen-oc"
+version = "0.1.0"
+description = "OsMEN-OC: OS Management and Engagement Network — OpenClaw edition"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "httpx>=0.27",
+    "loguru>=0.7",
+    "pydantic>=2.7",
+    "pyyaml>=6.0",
+    "uvicorn[standard]>=0.30",
+]
+
+[project.optional-dependencies]
+dev = [
+    "anyio[trio]>=4.4",
+    "mypy>=1.10",
+    "pytest>=8.2",
+    "pytest-timeout>=2.3",
+    "ruff>=0.4",
+    "types-pyyaml>=6.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["core*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+timeout = 15
