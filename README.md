@@ -45,6 +45,8 @@ exist, using `python -m pip` throughout (no bare `pip` executable assumed).
 `scripts/bootstrap.sh --dry-run` echoes every command without executing it,
 allowing you to audit the bootstrap sequence before running on a new machine.
 
+See [docs/GITHUB_AGENT_OPERATIONS.md](docs/GITHUB_AGENT_OPERATIONS.md) for issue shaping rules, approval requirements, and merge order when working with the GitHub Copilot coding agent.
+
 ## License
 
 Apache 2.0
