@@ -1,0 +1,43 @@
+# osmen-core-chromadb.container
+# Rootless Podman Quadlet — ChromaDB (RAG / vector store tier).
+# Exposure: 127.0.0.1:8000 only (localhost-only initial policy).
+# Used as the long-term memory / RAG retrieval backend.
+
+[Unit]
+Description=OsMEN-OC Core — ChromaDB
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-core-network.service
+Requires=osmen-core-network.service
+
+[Container]
+# Pin to a specific release; update only after testing upstream changes.
+Image=docker.io/chromadb/chroma:0.5.23
+ContainerName=osmen-core-chromadb
+
+# Internal-only: bind to loopback so no LAN exposure in initial phase.
+PublishPort=127.0.0.1:8000:8000
+
+Network=osmen-core.network
+
+# Persistent data volume — ChromaDB stores its SQLite + index files here.
+Volume=osmen-chromadb-data.volume:/chroma/chroma
+
+# ChromaDB auth token provided via Podman secret.
+Secret=osmen-chromadb-token,type=env,target=CHROMA_SERVER_AUTH_CREDENTIALS
+Environment=CHROMA_SERVER_AUTH_PROVIDER=chromadb.auth.token_authn.TokenAuthenticationServerProvider
+Environment=IS_PERSISTENT=TRUE
+Environment=ANONYMIZED_TELEMETRY=FALSE
+
+HealthCmd=/bin/sh -c "curl -sf http://127.0.0.1:8000/api/v1/heartbeat"
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=20s
+
+[Service]
+Restart=always
+RestartSec=5s
+Slice=user-osmen-core.slice
+
+[Install]
+WantedBy=default.target

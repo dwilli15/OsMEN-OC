@@ -1,0 +1,20 @@
+# osmen-db-backup.timer
+# Nightly maintenance timer — triggers osmen-db-backup.service at 02:30 local
+# time every day.  A RandomizedDelaySec jitter avoids thundering-herd if
+# multiple timers fire at the same wall-clock second.
+
+[Unit]
+Description=OsMEN-OC — Nightly database backup timer
+Documentation=https://github.com/dwilli15/OsMEN-OC
+
+[Timer]
+# Fire at 02:30 every night.
+OnCalendar=*-*-* 02:30:00
+# Spread load by up to 5 minutes to avoid disk contention with other jobs.
+RandomizedDelaySec=300
+# Run missed triggers immediately after a system sleep / power-cycle.
+Persistent=true
+Unit=osmen-db-backup.service
+
+[Install]
+WantedBy=timers.target
