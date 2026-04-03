@@ -3,20 +3,26 @@
 Covers:
 - GET /health returns 200 {"status": "ok"}.
 - GET /mcp/tools returns all tools from agent manifests.
-- POST /mcp/tools/{name}/invoke returns correct shape for low-risk tools.
-- POST /mcp/tools/{name}/invoke returns 202-style queued response for medium/high tools.
+- POST /mcp/tools/{name}/invoke — approved path (low risk → status="ok").
+- POST /mcp/tools/{name}/invoke — queued path (medium risk → status="queued").
+- POST /mcp/tools/{name}/invoke — denied path (high risk, no callback → 403).
+- POST /mcp/tools/{name}/invoke — audit failure → 500 structured error.
+- POST /mcp/tools/{name}/invoke — approval gate failure → 500 structured error.
 - POST /mcp/tools/unknown/invoke returns 404.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
 
 from core.gateway.app import app
+from core.gateway.deps import get_approval_gate, get_audit_trail
 from core.gateway.mcp import MCPTool
+from core.utils.exceptions import ApprovalError, AuditError
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -41,6 +47,16 @@ def _high_tool() -> MCPTool:
     return MCPTool(agent_id="test_agent", name="high_tool", risk_level="high")
 
 
+def _mock_trail(*, insert_side_effect=None) -> AsyncMock:
+    """Return an AsyncMock AuditTrail with a configurable insert side effect."""
+    trail = AsyncMock()
+    if insert_side_effect is not None:
+        trail.insert = AsyncMock(side_effect=insert_side_effect)
+    else:
+        trail.insert = AsyncMock(return_value="audit-id-123")
+    return trail
+
+
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -48,20 +64,33 @@ def _high_tool() -> MCPTool:
 
 @pytest.fixture
 def client_with_registry():
-    """TestClient with a pre-populated MCP registry (no filesystem I/O)."""
+    """TestClient with a pre-populated MCP registry and mocked AuditTrail.
+
+    The ApprovalGate is *not* overridden — the default (no callback) instance
+    is used, which auto-approves low/medium and denies high/critical.
+    """
     registry = _make_registry(_low_tool(), _medium_tool(), _high_tool())
+    trail = _mock_trail()
+    app.dependency_overrides[get_audit_trail] = lambda: trail
 
     with TestClient(app, raise_server_exceptions=True) as client:
         app.state.mcp_registry = registry
         yield client
+
+    app.dependency_overrides.pop(get_audit_trail, None)
 
 
 @pytest.fixture
 def client_real_manifests(monkeypatch: pytest.MonkeyPatch):
     """TestClient that scans real agent manifests from the ``agents/`` directory."""
     monkeypatch.setenv("OSMEN_AGENTS_DIR", str(AGENTS_DIR))
+    trail = _mock_trail()
+    app.dependency_overrides[get_audit_trail] = lambda: trail
+
     with TestClient(app, raise_server_exceptions=True) as client:
         yield client
+
+    app.dependency_overrides.pop(get_audit_trail, None)
 
 
 # ---------------------------------------------------------------------------
@@ -111,12 +140,12 @@ def test_list_tools_from_real_manifests(client_real_manifests: TestClient) -> No
 
 
 # ---------------------------------------------------------------------------
-# Tool invocation
+# Tool invocation — approved paths
 # ---------------------------------------------------------------------------
 
 
 def test_invoke_low_risk_tool_returns_ok(client_with_registry: TestClient) -> None:
-    """Invoking a low-risk tool must return status=ok."""
+    """Invoking a low-risk tool must return status=ok (auto-approved, not flagged)."""
     resp = client_with_registry.post("/mcp/tools/low_tool/invoke", json={"parameters": {}})
     assert resp.status_code == 200
     data = resp.json()
@@ -125,18 +154,69 @@ def test_invoke_low_risk_tool_returns_ok(client_with_registry: TestClient) -> No
 
 
 def test_invoke_medium_risk_tool_returns_queued(client_with_registry: TestClient) -> None:
-    """Invoking a medium-risk tool must return status=queued (approval pending)."""
+    """Invoking a medium-risk tool must return status=queued (approved, flagged for summary)."""
     resp = client_with_registry.post("/mcp/tools/medium_tool/invoke", json={"parameters": {}})
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "queued"
 
 
-def test_invoke_high_risk_tool_returns_queued(client_with_registry: TestClient) -> None:
-    """Invoking a high-risk tool must return status=queued."""
-    resp = client_with_registry.post("/mcp/tools/high_tool/invoke", json={"parameters": {}})
+def test_invoke_approved_calls_audit_trail(client_with_registry: TestClient) -> None:
+    """Invoking an approved tool must write exactly one AuditRecord via the trail."""
+    trail = _mock_trail()
+    app.dependency_overrides[get_audit_trail] = lambda: trail
+
+    resp = client_with_registry.post(
+        "/mcp/tools/low_tool/invoke",
+        json={"parameters": {"key": "val"}, "correlation_id": "cid-001"},
+    )
     assert resp.status_code == 200
-    assert resp.json()["status"] == "queued"
+    trail.insert.assert_called_once()
+    record = trail.insert.call_args[0][0]
+    assert record.tool_name == "low_tool"
+    assert record.outcome == "approved"
+    assert record.correlation_id == "cid-001"
+
+
+def test_invoke_with_correlation_id(client_with_registry: TestClient) -> None:
+    """Correlation ID is accepted and the response shape is correct."""
+    resp = client_with_registry.post(
+        "/mcp/tools/low_tool/invoke",
+        json={"parameters": {}, "correlation_id": "test-123"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["tool_name"] == "low_tool"
+
+
+# ---------------------------------------------------------------------------
+# Tool invocation — denied path
+# ---------------------------------------------------------------------------
+
+
+def test_invoke_high_risk_tool_returns_403(client_with_registry: TestClient) -> None:
+    """Invoking a high-risk tool without an approval callback must return 403."""
+    resp = client_with_registry.post("/mcp/tools/high_tool/invoke", json={"parameters": {}})
+    assert resp.status_code == 403
+    detail = resp.json()["detail"]
+    assert detail["error"] == "tool_denied"
+
+
+def test_invoke_denied_writes_audit_record(client_with_registry: TestClient) -> None:
+    """A denied invocation must still write an AuditRecord with outcome=denied."""
+    trail = _mock_trail()
+    app.dependency_overrides[get_audit_trail] = lambda: trail
+
+    resp = client_with_registry.post("/mcp/tools/high_tool/invoke", json={"parameters": {}})
+    assert resp.status_code == 403
+    trail.insert.assert_called_once()
+    record = trail.insert.call_args[0][0]
+    assert record.tool_name == "high_tool"
+    assert record.outcome == "denied"
+
+
+# ---------------------------------------------------------------------------
+# Tool invocation — 404
+# ---------------------------------------------------------------------------
 
 
 def test_invoke_unknown_tool_returns_404(client_with_registry: TestClient) -> None:
@@ -145,14 +225,36 @@ def test_invoke_unknown_tool_returns_404(client_with_registry: TestClient) -> No
     assert resp.status_code == 404
 
 
-def test_invoke_with_correlation_id(client_with_registry: TestClient) -> None:
-    """Correlation ID is accepted and echoed back in the response shape."""
-    resp = client_with_registry.post(
-        "/mcp/tools/low_tool/invoke",
-        json={"parameters": {}, "correlation_id": "test-123"},
-    )
-    assert resp.status_code == 200
-    assert resp.json()["tool_name"] == "low_tool"
+# ---------------------------------------------------------------------------
+# Tool invocation — dependency failure paths
+# ---------------------------------------------------------------------------
+
+
+def test_invoke_audit_failure_returns_500(client_with_registry: TestClient) -> None:
+    """An AuditError from trail.insert must return a structured 500 response."""
+    trail = _mock_trail(insert_side_effect=AuditError("db down"))
+    app.dependency_overrides[get_audit_trail] = lambda: trail
+
+    resp = client_with_registry.post("/mcp/tools/low_tool/invoke", json={"parameters": {}})
+    assert resp.status_code == 500
+    detail = resp.json()["detail"]
+    assert detail["error"] == "audit_error"
+    assert "db down" in detail["detail"]
+
+
+def test_invoke_approval_gate_failure_returns_500(client_with_registry: TestClient) -> None:
+    """An ApprovalError from gate.evaluate must return a structured 500 response."""
+    mock_gate = MagicMock()
+    mock_gate.evaluate = AsyncMock(side_effect=ApprovalError("gate exploded"))
+    app.dependency_overrides[get_approval_gate] = lambda: mock_gate
+
+    resp = client_with_registry.post("/mcp/tools/low_tool/invoke", json={"parameters": {}})
+    assert resp.status_code == 500
+    detail = resp.json()["detail"]
+    assert detail["error"] == "approval_error"
+    assert "gate exploded" in detail["detail"]
+
+    app.dependency_overrides.pop(get_approval_gate, None)
 
 
 # ---------------------------------------------------------------------------
@@ -164,7 +266,6 @@ def test_invoke_with_correlation_id(client_with_registry: TestClient) -> None:
 async def test_health_async() -> None:
     """Async variant of the health probe test using httpx AsyncClient."""
     from httpx import ASGITransport, AsyncClient
-
 
     registry = _make_registry(_low_tool())
     app.state.mcp_registry = registry
