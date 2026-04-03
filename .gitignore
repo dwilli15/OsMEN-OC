@@ -1,0 +1,21 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Secrets (SOPS-encrypted files committed; plaintext never)
+config/secrets/*.dec.yaml
+
+# Runtime data (created at startup, never committed)
+data/
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
