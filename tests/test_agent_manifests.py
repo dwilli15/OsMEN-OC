@@ -158,8 +158,13 @@ def test_register_tools_empty_list() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_agents_config_parses() -> None:
+def test_agents_config_parses(monkeypatch: pytest.MonkeyPatch) -> None:
     """config/agents.yaml must load without errors."""
+    # Provide placeholder values for env vars referenced in agents.yaml so the
+    # strict loader does not raise ConfigError on a host without real secrets.
+    monkeypatch.setenv("ZAI_API_KEY", "placeholder")
+    monkeypatch.setenv("PLEX_LIBRARY_ROOT", "/placeholder/plex")
+    monkeypatch.setenv("DOWNLOAD_STAGING_DIR", "/placeholder/staging")
     config = load_config(CONFIG_DIR / "agents.yaml")
     assert "defaults" in config
 
