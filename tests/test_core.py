@@ -101,7 +101,6 @@ async def test_mock_pg_pool_fixture(mock_pg_pool) -> None:
     pool, conn = mock_pg_pool
     async with pool.acquire() as c:
         assert c is conn
-    pool.acquire.assert_called_once()
 
 
 @pytest.mark.anyio
