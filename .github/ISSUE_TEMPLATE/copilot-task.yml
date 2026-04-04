@@ -1,0 +1,88 @@
+name: Copilot Task
+description: Define a narrow, testable task for the GitHub coding agent.
+title: "[Task] "
+labels: ["copilot"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template to scope a single, well-bounded task for the GitHub Copilot coding agent.
+        Keep the scope small enough that the resulting PR can be reviewed in one sitting.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One or two sentences describing what needs to be done.
+    validations:
+      required: true
+
+  - type: textarea
+    id: in-scope
+    attributes:
+      label: In Scope
+      description: List the files or modules the agent is allowed to touch.
+      placeholder: |
+        - core/events/bus.py
+        - tests/test_events.py
+    validations:
+      required: true
+
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of Scope
+      description: Explicitly list anything the agent must NOT change.
+      placeholder: |
+        - core/approval/gate.py
+        - Any quadlet files
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: Numbered list of conditions that must be true for the task to be complete.
+      placeholder: |
+        1. `python -m pytest tests/ -q` passes with no new failures
+        2. `ruff check core/ tests/` reports no new errors
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: verification-commands
+    attributes:
+      label: Verification Commands
+      description: Exact shell commands the agent should run to verify the work.
+      render: bash
+      placeholder: |
+        python -m pytest tests/ -q
+        python -m ruff check core/ tests/
+        python -m mypy core/ --ignore-missing-imports
+    validations:
+      required: true
+
+  - type: dropdown
+    id: risk-level
+    attributes:
+      label: Risk Level
+      description: Highest risk level of tools or operations involved.
+      options:
+        - low
+        - medium
+        - high
+        - critical
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: required-input
+    attributes:
+      label: Required Maintainer Input
+      description: Any secrets, config values, or decisions the agent cannot make alone.
+      placeholder: "None."
+    validations:
+      required: false
