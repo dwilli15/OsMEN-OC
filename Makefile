@@ -2,7 +2,6 @@
 
 VENV := .venv
 PYTHON := $(VENV)/bin/python
-PIP := $(VENV)/bin/pip
 
 # ---------------------------------------------------------------------------
 # bootstrap — first-install / idempotent setup
@@ -14,19 +13,19 @@ bootstrap:
 # test — run the pytest suite
 # ---------------------------------------------------------------------------
 test: $(VENV)/bin/pytest
-	$(VENV)/bin/pytest tests/ -q --timeout=15
+	$(PYTHON) -m pytest tests/ -q --timeout=15
 
 # ---------------------------------------------------------------------------
 # lint — ruff code style and import checks
 # ---------------------------------------------------------------------------
 lint: $(VENV)/bin/ruff
-	$(VENV)/bin/ruff check core/ tests/
+	$(PYTHON) -m ruff check core/ tests/
 
 # ---------------------------------------------------------------------------
 # typecheck — mypy static type analysis
 # ---------------------------------------------------------------------------
 typecheck: $(VENV)/bin/mypy
-	$(VENV)/bin/mypy core/ --ignore-missing-imports
+	$(PYTHON) -m mypy core/ --ignore-missing-imports
 
 # ---------------------------------------------------------------------------
 # status — show running Podman containers and OpenClaw version
@@ -47,4 +46,4 @@ status:
 # ---------------------------------------------------------------------------
 $(VENV)/bin/pytest $(VENV)/bin/ruff $(VENV)/bin/mypy: pyproject.toml
 	@[ -d $(VENV) ] || python3 -m venv $(VENV)
-	$(PIP) install --quiet -e ".[dev]"
+	$(PYTHON) -m pip install --quiet -e ".[dev]"

@@ -95,10 +95,22 @@ setup_python_venv() {
     log_info "Python venv already exists at ${VENV_DIR}."
   fi
 
+  # Verify pip is usable inside the venv.  On some Ubuntu 26.04 images the
+  # python3-venv package ships without ensurepip, leaving pip absent.
+  if [[ "${DRY_RUN}" == "false" ]]; then
+    if ! "${VENV_DIR}/bin/python" -m pip --version &>/dev/null; then
+      log_info "pip not found in venv; attempting to bootstrap via ensurepip..."
+      if ! "${VENV_DIR}/bin/python" -m ensurepip --upgrade 2>/dev/null; then
+        log_warn "Fix: sudo apt-get install -y python3-pip, then re-run bootstrap."
+        log_error "ensurepip is unavailable and pip is missing from the venv."
+      fi
+    fi
+    log_info "pip OK: $("${VENV_DIR}/bin/python" -m pip --version)"
+  fi
+
   log_info "Installing Python package in editable mode (with dev extras)..."
-  # shellcheck source=/dev/null
-  run "${VENV_DIR}/bin/pip" install --quiet --upgrade pip
-  run "${VENV_DIR}/bin/pip" install --quiet -e "${REPO_ROOT}[dev]"
+  run "${VENV_DIR}/bin/python" -m pip install --quiet --upgrade pip
+  run "${VENV_DIR}/bin/python" -m pip install --quiet -e "${REPO_ROOT}[dev]"
   log_info "Python environment ready."
 }
 

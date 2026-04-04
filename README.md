@@ -25,6 +25,26 @@ cd OsMEN-OC
 scripts/bootstrap.sh
 ```
 
+## Contributing / Development
+
+After cloning, the following commands must succeed on a fresh checkout:
+
+```bash
+# First-time setup (idempotent)
+scripts/bootstrap.sh --skip-apt --skip-openclaw
+
+# Validate the dev environment
+make test       # pytest suite
+make lint       # ruff code-style check
+make typecheck  # mypy static analysis
+```
+
+All three `make` targets create and populate `.venv` automatically if it does not
+exist, using `python -m pip` throughout (no bare `pip` executable assumed).
+
+`scripts/bootstrap.sh --dry-run` echoes every command without executing it,
+allowing you to audit the bootstrap sequence before running on a new machine.
+
 ## License
 
 Apache 2.0
