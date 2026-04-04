@@ -24,9 +24,10 @@ from pydantic import BaseModel
 
 from core.approval.gate import ApprovalOutcome, ApprovalRequest, RiskLevel
 from core.audit.trail import AuditRecord
-from core.gateway.deps import ApprovalGateDep, AuditTrailDep, MCPRegistry
+from core.events.envelope import EventEnvelope, EventPriority
+from core.gateway.deps import ApprovalGateDep, AuditTrailDep, EventBusDep, MCPRegistry
 from core.gateway.mcp import MCPTool, register_tools, scan_manifests
-from core.utils.exceptions import ApprovalError, AuditError
+from core.utils.exceptions import ApprovalError, AuditError, EventBusError
 
 # ---------------------------------------------------------------------------
 # Lifespan
@@ -126,12 +127,14 @@ async def invoke_tool(
     registry: MCPRegistry,
     gate: ApprovalGateDep,
     trail: AuditTrailDep,
+    event_bus: EventBusDep,
 ) -> InvokeResponse:
     """Invoke a registered MCP tool by name.
 
     Every invocation is evaluated through the :class:`~core.approval.gate.ApprovalGate`
-    before a result is returned, and an :class:`~core.audit.trail.AuditRecord` is
-    written via the injected :class:`~core.audit.trail.AuditTrail` dependency.
+    before a result is returned, an :class:`~core.audit.trail.AuditRecord` is
+    written via the injected :class:`~core.audit.trail.AuditTrail`, and approved
+    invocations emit an :class:`~core.events.envelope.EventEnvelope` onto the event bus.
 
     Returns:
         - ``200 OK`` with ``status="ok"`` for approved low-risk tools.
@@ -142,6 +145,7 @@ async def invoke_tool(
           callback, or explicit human denial).
         - ``500 Internal Server Error`` with a structured JSON error body when
           the approval gate or audit trail raise an unexpected error.
+        - ``500 Internal Server Error`` when event publication fails.
         - ``404 Not Found`` when the tool is not in the registry.
     """
     tool: MCPTool | None = registry.get(tool_name)
@@ -201,6 +205,41 @@ async def invoke_tool(
             detail={
                 "error": "tool_denied",
                 "detail": gate_result.reason,
+                "correlation_id": body.correlation_id,
+            },
+        )
+
+    priority_map = {
+        "low": EventPriority.LOW,
+        "medium": EventPriority.NORMAL,
+        "high": EventPriority.HIGH,
+        "critical": EventPriority.CRITICAL,
+    }
+    event = EventEnvelope(
+        domain="tools",
+        category="invocation",
+        source=tool.agent_id,
+        correlation_id=body.correlation_id,
+        priority=priority_map.get(tool.risk_level, EventPriority.NORMAL),
+        payload={
+            "tool_name": tool_name,
+            "agent_id": tool.agent_id,
+            "risk_level": tool.risk_level,
+            "outcome": gate_result.outcome.value,
+            "flagged_for_summary": gate_result.flagged_for_summary,
+            "parameters": body.parameters,
+            "correlation_id": body.correlation_id,
+        },
+    )
+    try:
+        await event_bus.publish(event)
+    except EventBusError as exc:
+        logger.error("Event bus publish failed for tool={}: {}", tool_name, exc)
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "event_bus_error",
+                "detail": str(exc),
                 "correlation_id": body.correlation_id,
             },
         )

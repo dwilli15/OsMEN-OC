@@ -13,6 +13,14 @@ from fastapi import Depends, Request
 
 from core.approval.gate import ApprovalGate
 from core.audit.trail import AuditTrail
+from core.events.bus import EventBus
+
+
+class _NoopEventBus:
+    """Fallback bus used during bootstrap/tests when Redis is not configured."""
+
+    async def publish(self, _envelope: Any) -> str:
+        return "noop"
 
 
 def get_mcp_registry(request: Request) -> dict[str, Any]:
@@ -43,6 +51,16 @@ def get_audit_trail(request: Request) -> AuditTrail:
     return AuditTrail(request.app.state.pg_pool)
 
 
+def get_event_bus(request: Request) -> EventBus | _NoopEventBus:
+    """Return an event bus instance from app state.
+
+    If ``app.state.event_bus`` is absent, return a no-op publisher so gateway
+    routes can run in early bootstrap and isolated tests.
+    """
+    return getattr(request.app.state, "event_bus", _NoopEventBus())
+
+
 MCPRegistry = Annotated[dict[str, Any], Depends(get_mcp_registry)]
 ApprovalGateDep = Annotated[ApprovalGate, Depends(get_approval_gate)]
 AuditTrailDep = Annotated[AuditTrail, Depends(get_audit_trail)]
+EventBusDep = Annotated[EventBus | _NoopEventBus, Depends(get_event_bus)]
