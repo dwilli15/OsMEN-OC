@@ -46,14 +46,11 @@ def _unit_files(suffix: str) -> list[Path]:
 def test_service_wanted_by_default_target(unit_path: Path) -> None:
     """Service units must declare WantedBy=default.target, not multi-user.target."""
     parser = _parse_unit(unit_path)
-    assert parser.has_section("Install"), (
-        f"{unit_path.name} must have an [Install] section"
-    )
+    assert parser.has_section("Install"), f"{unit_path.name} must have an [Install] section"
     wanted_by = parser.get("Install", "WantedBy", fallback="")
     # Must contain default.target (user-session target).
     assert "default.target" in wanted_by, (
-        f"{unit_path.name}: [Install] WantedBy must include 'default.target', "
-        f"got {wanted_by!r}"
+        f"{unit_path.name}: [Install] WantedBy must include 'default.target', got {wanted_by!r}"
     )
     # Must NOT reference system-only multi-user.target.
     assert "multi-user.target" not in wanted_by, (
@@ -66,13 +63,10 @@ def test_service_wanted_by_default_target(unit_path: Path) -> None:
 def test_timer_wanted_by_timers_target(unit_path: Path) -> None:
     """Timer units must declare WantedBy=timers.target (valid in user sessions)."""
     parser = _parse_unit(unit_path)
-    assert parser.has_section("Install"), (
-        f"{unit_path.name} must have an [Install] section"
-    )
+    assert parser.has_section("Install"), f"{unit_path.name} must have an [Install] section"
     wanted_by = parser.get("Install", "WantedBy", fallback="")
     assert "timers.target" in wanted_by, (
-        f"{unit_path.name}: [Install] WantedBy must include 'timers.target', "
-        f"got {wanted_by!r}"
+        f"{unit_path.name}: [Install] WantedBy must include 'timers.target', got {wanted_by!r}"
     )
 
 
@@ -81,9 +75,7 @@ def test_service_has_unit_section(unit_path: Path) -> None:
     """Service units must have [Unit], [Service], and [Install] sections."""
     parser = _parse_unit(unit_path)
     for section in ("Unit", "Service", "Install"):
-        assert parser.has_section(section), (
-            f"{unit_path.name} is missing [{section}] section"
-        )
+        assert parser.has_section(section), f"{unit_path.name} is missing [{section}] section"
 
 
 @pytest.mark.parametrize("unit_path", _unit_files(".timer"), ids=lambda p: p.name)
@@ -91,9 +83,7 @@ def test_timer_has_required_sections(unit_path: Path) -> None:
     """Timer units must have [Unit], [Timer], and [Install] sections."""
     parser = _parse_unit(unit_path)
     for section in ("Unit", "Timer", "Install"):
-        assert parser.has_section(section), (
-            f"{unit_path.name} is missing [{section}] section"
-        )
+        assert parser.has_section(section), f"{unit_path.name} is missing [{section}] section"
 
 
 @pytest.mark.parametrize("unit_path", _unit_files(".service"), ids=lambda p: p.name)

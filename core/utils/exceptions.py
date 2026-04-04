@@ -41,3 +41,7 @@ class ApprovalError(OsMENError):
 
 class AuditError(OsMENError):
     """Raised when an audit trail operation fails."""
+
+
+class PipelineError(OsMENError):
+    """Raised when pipeline loading or step execution fails."""

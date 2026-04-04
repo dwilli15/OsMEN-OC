@@ -86,9 +86,7 @@ def _parse_tool(agent_id: str, raw: dict[str, Any]) -> MCPTool:
             risk_level=raw.get("risk_level", "low"),
         )
     except (KeyError, ValueError) as exc:
-        raise ManifestError(
-            f"Invalid tool definition in agent {agent_id!r}: {exc}"
-        ) from exc
+        raise ManifestError(f"Invalid tool definition in agent {agent_id!r}: {exc}") from exc
 
 
 def scan_manifests(agents_dir: str | Path = "agents") -> list[MCPTool]:
@@ -127,9 +125,7 @@ def scan_manifests(agents_dir: str | Path = "agents") -> list[MCPTool]:
                 f"Manifest validation failed for {manifest_file.name}: {exc}"
             ) from exc
 
-        logger.info(
-            "Loaded agent manifest: {} ({} tools)", manifest.agent_id, len(manifest.tools)
-        )
+        logger.info("Loaded agent manifest: {} ({} tools)", manifest.agent_id, len(manifest.tools))
 
         for tool_raw in manifest.tools:
             tools.append(_parse_tool(manifest.agent_id, tool_raw))

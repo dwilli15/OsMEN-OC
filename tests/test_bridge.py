@@ -54,9 +54,9 @@ async def test_bridge_client_dispatches_messages() -> None:
     async def on_message(msg: BridgeInboundMessage) -> None:
         received.append(msg)
 
-    ws = _FakeWebSocket([
-        BridgeInboundMessage(type="task", correlation_id="a1", payload={"x": 1}).model_dump_json()
-    ])
+    ws = _FakeWebSocket(
+        [BridgeInboundMessage(type="task", correlation_id="a1", payload={"x": 1}).model_dump_json()]
+    )
 
     client = OpenClawBridgeClient(
         endpoint="ws://test",

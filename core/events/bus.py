@@ -124,9 +124,7 @@ class EventBus:
                     block=_BLOCK_MS,
                 )
             except Exception as exc:
-                raise EventBusError(
-                    f"XREADGROUP failed on {stream_key}: {exc}"
-                ) from exc
+                raise EventBusError(f"XREADGROUP failed on {stream_key}: {exc}") from exc
 
             if not results:
                 # No new messages; keep polling
@@ -182,9 +180,7 @@ class EventBus:
                 reason,
             )
         except Exception as exc:
-            logger.critical(
-                "FATAL: Could not write to dead-letter stream: {}", exc
-            )
+            logger.critical("FATAL: Could not write to dead-letter stream: {}", exc)
 
     # ------------------------------------------------------------------
     # Helpers
