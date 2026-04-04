@@ -59,6 +59,7 @@ async def test_medium_risk_auto_approved_and_flagged():
 @pytest.mark.anyio
 async def test_high_risk_approved_by_callback():
     """High-risk requests are approved when the callback returns True."""
+
     async def approve(_req):
         return True
 
@@ -70,6 +71,7 @@ async def test_high_risk_approved_by_callback():
 @pytest.mark.anyio
 async def test_high_risk_denied_by_callback():
     """High-risk requests are denied when the callback returns False."""
+
     async def deny(_req):
         return False
 
@@ -81,6 +83,7 @@ async def test_high_risk_denied_by_callback():
 @pytest.mark.anyio
 async def test_high_risk_denied_on_timeout():
     """High-risk requests are denied when the callback times out."""
+
     async def slow(_req):
         await anyio.sleep(999)
         return True
@@ -89,6 +92,7 @@ async def test_high_risk_denied_on_timeout():
     request = _make_request(RiskLevel.HIGH)
     # Patch timeout to 0.01s so the test runs fast
     from core.approval import gate as gate_module
+
     original_timeout = gate_module.HIGH_RISK_TIMEOUT_SECONDS
     gate_module.HIGH_RISK_TIMEOUT_SECONDS = 0.01
     try:
@@ -116,6 +120,7 @@ async def test_high_risk_denied_without_callback():
 @pytest.mark.anyio
 async def test_critical_risk_approved_by_callback():
     """Critical-risk requests are approved when the callback returns True."""
+
     async def approve(_req):
         return True
 
@@ -135,6 +140,7 @@ async def test_critical_risk_denied_without_callback():
 @pytest.mark.anyio
 async def test_callback_exception_raises_approval_error():
     """Callback exceptions are re-raised as ApprovalError."""
+
     async def boom(_req):
         raise RuntimeError("callback crashed")
 

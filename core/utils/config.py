@@ -25,6 +25,7 @@ _ENV_PATTERN = re.compile(r"\$\{([^}]+)\}")
 def _interpolate(value: Any) -> Any:
     """Recursively resolve ``${ENV_VAR}`` tokens in string values."""
     if isinstance(value, str):
+
         def _replace(match: re.Match[str]) -> str:
             var = match.group(1)
             resolved = os.environ.get(var)

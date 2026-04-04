@@ -265,6 +265,4 @@ class AuditTrail:
             )
             return archived
         except Exception as exc:
-            raise AuditError(
-                f"Failed to archive audit records: {exc}"
-            ) from exc
+            raise AuditError(f"Failed to archive audit records: {exc}") from exc

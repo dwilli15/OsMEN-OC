@@ -71,8 +71,7 @@ def test_manifest_tool_risk_levels_are_valid(manifest_path: Path) -> None:
     for tool in data.get("tools", []):
         risk = tool.get("risk_level", "low")
         assert risk in VALID_RISK_LEVELS, (
-            f"{manifest_path.name}: tool {tool.get('name')!r} has invalid "
-            f"risk_level {risk!r}"
+            f"{manifest_path.name}: tool {tool.get('name')!r} has invalid risk_level {risk!r}"
         )
 
 

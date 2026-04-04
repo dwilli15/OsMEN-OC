@@ -1,4 +1,5 @@
 """Smoke tests to verify project scaffolding is in place."""
+
 from __future__ import annotations
 
 import importlib
