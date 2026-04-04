@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -20,25 +21,29 @@ def mock_redis():
 def mock_pg_pool():
     """Mock PostgreSQL connection pool.
 
-    Returns a ``(pool, conn)`` tuple where ``pool.acquire()`` is an async
-    context manager that yields ``conn``, and ``conn.transaction()`` is an
-    async context manager suitable for use in ``async with`` blocks.
+    Returns:
+        Tuple of ``(pool, conn)`` where *pool* is a mock whose ``acquire()``
+        is an async context manager that yields *conn*, and *conn* is an
+        ``AsyncMock`` with ``execute``, ``fetch``, and ``transaction``
+        pre-configured so that :class:`~core.audit.trail.AuditTrail` works
+        without a real database.
     """
     conn = AsyncMock()
+    conn.execute = AsyncMock(return_value=None)
+    conn.fetch = AsyncMock(return_value=[])
 
-    # conn.transaction() must work as an async context manager
-    transaction_ctx = AsyncMock()
-    transaction_ctx.__aenter__ = AsyncMock(return_value=None)
-    transaction_ctx.__aexit__ = AsyncMock(return_value=False)
-    conn.transaction = MagicMock(return_value=transaction_ctx)
+    @asynccontextmanager
+    async def _transaction():
+        yield conn
 
-    # pool.acquire() must work as an async context manager yielding conn
-    acquire_ctx = AsyncMock()
-    acquire_ctx.__aenter__ = AsyncMock(return_value=conn)
-    acquire_ctx.__aexit__ = AsyncMock(return_value=False)
+    conn.transaction = _transaction
+
+    @asynccontextmanager
+    async def _acquire():
+        yield conn
 
     pool = MagicMock()
-    pool.acquire = MagicMock(return_value=acquire_ctx)
+    pool.acquire = _acquire
 
     return pool, conn
 
