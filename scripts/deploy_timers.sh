@@ -85,10 +85,17 @@ deploy_units() {
     fi
     (( deployed++ )) || true
 
-    # Syntax-check via systemd-analyze if available.
-    if command -v systemd-analyze &>/dev/null && [[ "${DRY_RUN}" == "false" ]]; then
-      if ! systemd-analyze verify "${link_target}" 2>/dev/null; then
-        log_warn "systemd-analyze verify reported issues for ${unit_name} (non-fatal)"
+    # Syntax-check via systemd-analyze --user if available.
+    # In dry-run mode verify the source file directly (no symlink exists yet).
+    if command -v systemd-analyze &>/dev/null; then
+      local verify_target
+      if [[ "${DRY_RUN}" == "false" ]]; then
+        verify_target="${link_target}"
+      else
+        verify_target="${unit_file}"
+      fi
+      if ! systemd-analyze verify --user "${verify_target}" 2>/dev/null; then
+        log_warn "systemd-analyze verify --user reported issues for ${unit_name} (non-fatal)"
       fi
     fi
   done < <(find "${TIMERS_SRC}" \( -name "*.timer" -o -name "*.service" \) -print0)
