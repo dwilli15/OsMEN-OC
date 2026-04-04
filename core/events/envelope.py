@@ -80,7 +80,9 @@ class EventEnvelope:
             "timestamp": self.timestamp.isoformat(),
             "priority": self.priority.value,
             "schema_version": str(self.schema_version),
-            "payload": json.dumps(self.payload) if not isinstance(self.payload, str) else self.payload,
+            "payload": (
+                json.dumps(self.payload) if not isinstance(self.payload, str) else self.payload
+            ),
         }
 
     @classmethod
@@ -104,5 +106,9 @@ class EventEnvelope:
             timestamp=datetime.fromisoformat(data["timestamp"]),
             priority=EventPriority(data.get("priority", EventPriority.NORMAL.value)),
             schema_version=int(data.get("schema_version", 1)),
-            payload=json.loads(data["payload"]) if isinstance(data.get("payload"), str) else data.get("payload"),
+            payload=(
+                json.loads(data["payload"])
+                if isinstance(data.get("payload"), str)
+                else data.get("payload")
+            ),
         )

@@ -90,16 +90,18 @@ def test_load_config_not_a_mapping(tmp_path: Path) -> None:
 async def test_mock_redis_fixture(mock_redis: AsyncMock) -> None:
     """mock_redis fixture provides an AsyncMock with xadd/xread."""
     result = await mock_redis.xadd("stream", {"key": "val"})
-    assert result == "msg-id"
+    assert result == "1-0"
     result = await mock_redis.xread(streams={"stream": "$"})
     assert result == []
 
 
 @pytest.mark.anyio
-async def test_mock_pg_pool_fixture(mock_pg_pool: AsyncMock) -> None:
-    """mock_pg_pool fixture provides an AsyncMock with acquire."""
-    await mock_pg_pool.acquire()
-    mock_pg_pool.acquire.assert_called_once()
+async def test_mock_pg_pool_fixture(mock_pg_pool) -> None:
+    """mock_pg_pool fixture provides a (pool, conn) tuple with async acquire."""
+    pool, conn = mock_pg_pool
+    async with pool.acquire() as c:
+        assert c is conn
+    pool.acquire.assert_called_once()
 
 
 @pytest.mark.anyio
