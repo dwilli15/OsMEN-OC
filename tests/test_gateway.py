@@ -20,9 +20,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from core.gateway.app import app
-from core.gateway.deps import get_approval_gate, get_audit_trail
+from core.gateway.deps import get_approval_gate, get_audit_trail, get_event_bus
 from core.gateway.mcp import MCPTool
-from core.utils.exceptions import ApprovalError, AuditError
+from core.utils.exceptions import ApprovalError, AuditError, EventBusError
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -57,6 +57,16 @@ def _mock_trail(*, insert_side_effect=None) -> AsyncMock:
     return trail
 
 
+def _mock_bus(*, publish_side_effect=None) -> AsyncMock:
+    """Return an AsyncMock EventBus with a configurable publish side effect."""
+    bus = AsyncMock()
+    if publish_side_effect is not None:
+        bus.publish = AsyncMock(side_effect=publish_side_effect)
+    else:
+        bus.publish = AsyncMock(return_value="1-0")
+    return bus
+
+
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -71,13 +81,16 @@ def client_with_registry():
     """
     registry = _make_registry(_low_tool(), _medium_tool(), _high_tool())
     trail = _mock_trail()
+    bus = _mock_bus()
     app.dependency_overrides[get_audit_trail] = lambda: trail
+    app.dependency_overrides[get_event_bus] = lambda: bus
 
     with TestClient(app, raise_server_exceptions=True) as client:
         app.state.mcp_registry = registry
         yield client
 
     app.dependency_overrides.pop(get_audit_trail, None)
+    app.dependency_overrides.pop(get_event_bus, None)
 
 
 @pytest.fixture
@@ -85,12 +98,15 @@ def client_real_manifests(monkeypatch: pytest.MonkeyPatch):
     """TestClient that scans real agent manifests from the ``agents/`` directory."""
     monkeypatch.setenv("OSMEN_AGENTS_DIR", str(AGENTS_DIR))
     trail = _mock_trail()
+    bus = _mock_bus()
     app.dependency_overrides[get_audit_trail] = lambda: trail
+    app.dependency_overrides[get_event_bus] = lambda: bus
 
     with TestClient(app, raise_server_exceptions=True) as client:
         yield client
 
     app.dependency_overrides.pop(get_audit_trail, None)
+    app.dependency_overrides.pop(get_event_bus, None)
 
 
 # ---------------------------------------------------------------------------
@@ -188,6 +204,27 @@ def test_invoke_with_correlation_id(client_with_registry: TestClient) -> None:
     assert resp.json()["tool_name"] == "low_tool"
 
 
+def test_invoke_approved_publishes_event(client_with_registry: TestClient) -> None:
+    """Approved invocations must publish one EventEnvelope to the event bus."""
+    bus = _mock_bus()
+    app.dependency_overrides[get_event_bus] = lambda: bus
+
+    resp = client_with_registry.post(
+        "/mcp/tools/low_tool/invoke",
+        json={"parameters": {"x": 1}, "correlation_id": "cid-evt"},
+    )
+    assert resp.status_code == 200
+    bus.publish.assert_called_once()
+    envelope = bus.publish.call_args[0][0]
+    assert envelope.domain == "tools"
+    assert envelope.category == "invocation"
+    assert envelope.payload["tool_name"] == "low_tool"
+    assert envelope.payload["agent_id"] == "test_agent"
+    assert envelope.payload["risk_level"] == "low"
+    assert envelope.payload["outcome"] == "approved"
+    assert envelope.payload["correlation_id"] == "cid-evt"
+
+
 # ---------------------------------------------------------------------------
 # Tool invocation — denied path
 # ---------------------------------------------------------------------------
@@ -212,6 +249,19 @@ def test_invoke_denied_writes_audit_record(client_with_registry: TestClient) -> 
     record = trail.insert.call_args[0][0]
     assert record.tool_name == "high_tool"
     assert record.outcome == "denied"
+
+
+def test_invoke_denied_does_not_publish_event(client_with_registry: TestClient) -> None:
+    """Denied invocations must not emit events onto the event bus."""
+    bus = _mock_bus()
+    app.dependency_overrides[get_event_bus] = lambda: bus
+
+    resp = client_with_registry.post(
+        "/mcp/tools/high_tool/invoke",
+        json={"parameters": {}, "correlation_id": "cid-denied"},
+    )
+    assert resp.status_code == 403
+    bus.publish.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -240,6 +290,21 @@ def test_invoke_audit_failure_returns_500(client_with_registry: TestClient) -> N
     detail = resp.json()["detail"]
     assert detail["error"] == "audit_error"
     assert "db down" in detail["detail"]
+
+
+def test_invoke_event_bus_failure_returns_500(client_with_registry: TestClient) -> None:
+    """An EventBusError from publish must return a structured 500 response."""
+    bus = _mock_bus(publish_side_effect=EventBusError("redis down"))
+    app.dependency_overrides[get_event_bus] = lambda: bus
+
+    resp = client_with_registry.post(
+        "/mcp/tools/low_tool/invoke",
+        json={"parameters": {}, "correlation_id": "cid-bus"},
+    )
+    assert resp.status_code == 500
+    detail = resp.json()["detail"]
+    assert detail["error"] == "event_bus_error"
+    assert "redis down" in detail["detail"]
 
 
 def test_invoke_approval_gate_failure_returns_500(client_with_registry: TestClient) -> None:
