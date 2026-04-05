@@ -39,6 +39,7 @@ This repo contains the execution engine; OpenClaw (Node.js, `npm install -g open
 | boot_hardening      | high   | cron weekly       | UFW, fail2ban, LUKS, Secure Boot               |
 | focus_guardrails    | low    | cron 09-22 hourly | ADHD focus management, break reminders         |
 | taskwarrior_sync    | low    | cron \*/15        | Taskwarrior ↔ Google Calendar sync             |
+| system_monitor      | medium | cron \*/5 + event | Hardware metrics, power/fan control, GPU routing, NPU status |
 
 ## Communication
 

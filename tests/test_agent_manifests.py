@@ -30,7 +30,7 @@ REPO_ROOT = Path(__file__).parent.parent
 AGENTS_DIR = REPO_ROOT / "agents"
 CONFIG_DIR = REPO_ROOT / "config"
 
-EXPECTED_AGENT_IDS = {"daily_brief", "knowledge_librarian", "media_organization"}
+EXPECTED_AGENT_IDS = {"daily_brief", "knowledge_librarian", "media_organization", "system_monitor"}
 
 # ---------------------------------------------------------------------------
 # Discover manifest files for parametrised tests

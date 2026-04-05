@@ -20,6 +20,15 @@ media_organization
 - ``list_downloads`` — aggregate qBittorrent + SABnzbd download lists.
 - ``purge_completed`` — delete old staged downloads from DOWNLOAD_STAGING_DIR.
 - ``assess_plex_readiness`` — check library root, disk space, subdirs, and container health.
+
+system_monitor
+- ``get_hardware_metrics`` — CPU/GPU/fan metrics via lm-sensors, nvidia-smi, rocm-smi.
+- ``set_power_profile`` — CPU/GPU TDP limits via ryzenadj / nvidia-smi.
+- ``set_fan_curve`` — laptop fan speed via nbfc-linux.
+- ``get_compute_routing`` — read compute-routing rules from config.
+- ``set_compute_routing`` — add/update a single compute-routing rule.
+- ``intake_compute_routing`` — 20-question interactive routing configuration interview.
+- ``get_npu_status`` — XDNA 2 NPU status/utilization via xrt-smi (experimental).
 """
 
 from __future__ import annotations
@@ -29,6 +38,7 @@ import ipaddress as _ipaddress
 import json as _json
 import os as _os
 import re as _re
+import secrets as _secrets
 import shutil as _shutil
 import socket as _socket
 from datetime import UTC as _UTC
@@ -39,6 +49,7 @@ from urllib.parse import urlparse as _urlparse
 
 import anyio as _anyio
 import httpx as _httpx
+import yaml as _yaml
 from loguru import logger
 
 from core.gateway.handlers import HandlerContext, register_handler
@@ -946,3 +957,1103 @@ async def handle_assess_plex_readiness(
         len(checks),
     )
     return {"status": "ok", "ready": ready, "checks": checks}
+
+
+# ---------------------------------------------------------------------------
+# system_monitor — constants
+# ---------------------------------------------------------------------------
+
+# Path to compute-routing config, relative to this file's package root.
+# Override via COMPUTE_ROUTING_CONFIG env var for testing.
+_COMPUTE_ROUTING_DEFAULT = _Path(__file__).parent.parent.parent / "config" / "compute-routing.yaml"
+
+# Named power profiles matching config/hardware.yaml.
+_POWER_PROFILES: dict[str, dict[str, int]] = {
+    "quiet": {
+        "amd_stapm_watts": 15,
+        "amd_fast_watts": 20,
+        "amd_slow_watts": 15,
+        "nvidia_power_limit_watts": 35,
+    },
+    "balanced": {
+        "amd_stapm_watts": 28,
+        "amd_fast_watts": 35,
+        "amd_slow_watts": 28,
+        "nvidia_power_limit_watts": 60,
+    },
+    "performance": {
+        "amd_stapm_watts": 45,
+        "amd_fast_watts": 54,
+        "amd_slow_watts": 45,
+        "nvidia_power_limit_watts": 80,
+    },
+}
+
+# Valid target_compute values for routing rules.
+_VALID_COMPUTE_TARGETS = frozenset({"nvidia", "amd_rocm", "amd_vulkan", "npu", "cpu"})
+
+# Valid task_type values for routing rule triggers.
+_VALID_TASK_TYPES = frozenset({"inference", "rendering", "gaming", "transcription", "embedding"})
+
+# Directory for intake interview session files.
+# Stored under the user's home cache directory with restricted permissions (0o700)
+# so other users on the same system cannot read configuration answers.
+_INTAKE_SESSION_DIR = _Path.home() / ".cache" / "osmen" / "intake_sessions"
+
+# 20-question intake interview definition.
+# Each entry: id, text, type ("yn" or "text"), help text.
+_INTAKE_QUESTIONS: list[dict[str, str]] = [
+    {
+        "id": "q01_gaming_primary",
+        "text": (
+            "Is gaming (e.g. FFXIV, Proton/Wine games) a primary workload"
+            " that needs dedicated NVIDIA GPU time?"
+        ),
+        "type": "yn",
+        "help": "Answering yes creates a rule that pins named game processes to the NVIDIA dGPU.",
+    },
+    {
+        "id": "q02_gaming_offload_inference",
+        "text": (
+            "When a game is running on NVIDIA, should inference workloads"
+            " automatically move off NVIDIA to avoid stuttering?"
+        ),
+        "type": "yn",
+        "help": (
+            "Answering yes creates a high-priority rule routing inference"
+            " away from NVIDIA during gaming sessions."
+        ),
+    },
+    {
+        "id": "q03_npu_first_inference",
+        "text": (
+            "Should the NPU be the first choice for LLM inference"
+            " when it is available and the model fits?"
+        ),
+        "type": "yn",
+        "help": "Requires amdxdna driver and AMD XRT. Falls back to amd_vulkan if NPU is busy.",
+    },
+    {
+        "id": "q04_nvidia_large_models",
+        "text": (
+            "Should NVIDIA CUDA be used for large model inference"
+            " (models requiring ≥ 8 GiB VRAM)?"
+        ),
+        "type": "yn",
+        "help": "Large models typically exceed NPU and iGPU capacity.",
+    },
+    {
+        "id": "q05_amd_vulkan_fallback",
+        "text": (
+            "Should the AMD iGPU (Radeon / Vulkan) serve as a fallback"
+            " when the NPU is busy or unavailable?"
+        ),
+        "type": "yn",
+        "help": "Answering yes enables amd_vulkan as the secondary compute target for inference.",
+    },
+    {
+        "id": "q06_transcription_nvidia",
+        "text": "Should audio transcription (Whisper) run on NVIDIA CUDA for maximum speed?",
+        "type": "yn",
+        "help": "Answering no will route transcription to the NPU or amd_vulkan instead.",
+    },
+    {
+        "id": "q07_embedding_npu",
+        "text": (
+            "Should embedding generation (ChromaDB ingest, sentence-transformers)"
+            " run on the NPU for power efficiency?"
+        ),
+        "type": "yn",
+        "help": "Embeddings are small and continuous — ideal for NPU's low-power profile.",
+    },
+    {
+        "id": "q08_cpu_fallback",
+        "text": (
+            "Should a CPU-only fallback be available for inference"
+            " when all GPUs/NPU are saturated?"
+        ),
+        "type": "yn",
+        "help": "Adds a lowest-priority fallback rule so inference never fails entirely.",
+    },
+    {
+        "id": "q09_igpu_display_only",
+        "text": (
+            "Should the AMD iGPU handle display rendering and compositing"
+            " exclusively (NVIDIA never used for display)?"
+        ),
+        "type": "yn",
+        "help": "Standard for hybrid GPU laptops where the iGPU drives all display outputs.",
+    },
+    {
+        "id": "q10_extra_game_processes",
+        "text": (
+            "Are there additional games or applications (other than FFXIV)"
+            " you want to pin to the NVIDIA GPU?"
+        ),
+        "type": "yn",
+        "help": "Answering yes will prompt you to list the process names in the next question.",
+    },
+    {
+        "id": "q11_extra_process_names",
+        "text": (
+            "Enter additional process names to pin to NVIDIA"
+            " (comma-separated, e.g. eldenring.exe,GenshinImpact.exe), or 'none'."
+        ),
+        "type": "text",
+        "help": (
+            "Exact executable names as they appear in 'ps aux'"
+            " or Task Manager (for Proton games)."
+        ),
+    },
+    {
+        "id": "q12_quiet_npu_preference",
+        "text": (
+            "Should the quiet/power-saving power profile automatically"
+            " shift inference to NPU instead of NVIDIA?"
+        ),
+        "type": "yn",
+        "help": "Improves battery life by avoiding the discrete GPU when in quiet mode.",
+    },
+    {
+        "id": "q13_image_gen_workload",
+        "text": "Do you run Stable Diffusion or other image generation workloads?",
+        "type": "yn",
+        "help": "Image generation workloads benefit from large VRAM and fast memory bandwidth.",
+    },
+    {
+        "id": "q14_image_gen_nvidia",
+        "text": "Should image generation (Stable Diffusion) use NVIDIA CUDA as the primary target?",
+        "type": "yn",
+        "help": (
+            "NVIDIA CUDA offers the widest compatibility for diffusion libraries"
+            " (torch, diffusers)."
+        ),
+    },
+    {
+        "id": "q15_vulkan_over_rocm",
+        "text": (
+            "For AMD GPU inference, prefer the Vulkan backend (llama.cpp)"
+            " over ROCm (torch/HIP)?"
+        ),
+        "type": "yn",
+        "help": (
+            "Vulkan backend has broader GPU support; ROCm offers better BLAS throughput"
+            " when properly installed."
+        ),
+    },
+    {
+        "id": "q16_power_efficiency_first",
+        "text": (
+            "Should power efficiency be the top priority, meaning NPU is preferred"
+            " over NVIDIA even for medium workloads?"
+        ),
+        "type": "yn",
+        "help": (
+            "Answering yes lowers NVIDIA's effective priority vs. NPU for most"
+            " non-gaming workloads."
+        ),
+    },
+    {
+        "id": "q17_route_away_when_gaming",
+        "text": (
+            "Should inference automatically route to CPU when NVIDIA 3D utilisation"
+            " is above 50% (active gaming)?"
+        ),
+        "type": "yn",
+        "help": "Prevents inference from stealing VRAM/memory bandwidth mid-game.",
+    },
+    {
+        "id": "q18_rag_npu",
+        "text": (
+            "For research and RAG query inference, prefer NPU (energy efficient)"
+            " over NVIDIA (maximum throughput)?"
+        ),
+        "type": "yn",
+        "help": "RAG queries are frequent and short — NPU provides lower latency at lower power.",
+    },
+    {
+        "id": "q19_medium_model_nvidia_fallback",
+        "text": (
+            "For medium models (2–8 GiB) that exceed NPU capacity,"
+            " fall back to NVIDIA CUDA (instead of amd_vulkan)?"
+        ),
+        "type": "yn",
+        "help": (
+            "Answering yes prioritises throughput; no prioritises"
+            " keeping NVIDIA free for gaming."
+        ),
+    },
+    {
+        "id": "q20_commit",
+        "text": (
+            "Commit these rules to config/compute-routing.yaml now?"
+            " (Existing rules will be replaced.)"
+        ),
+        "type": "yn",
+        "help": "Answering no saves the session so you can review, but does not write the file.",
+    },
+]
+
+
+def _compute_routing_path() -> _Path:
+    """Return the active compute-routing config path.
+
+    Respects ``COMPUTE_ROUTING_CONFIG`` env var for testing.
+    """
+    override = _os.environ.get("COMPUTE_ROUTING_CONFIG")
+    return _Path(override) if override else _COMPUTE_ROUTING_DEFAULT
+
+
+def _build_routing_rules(answers: dict[str, str]) -> list[dict[str, Any]]:
+    """Convert intake interview answers into compute-routing rule dicts.
+
+    Args:
+        answers: Mapping of question_id → answer string ("yes"/"no"/text).
+
+    Returns:
+        Ordered list of routing rule dicts ready for YAML serialisation.
+    """
+
+    def yes(qid: str) -> bool:
+        return answers.get(qid, "no").strip().lower() in ("yes", "y", "true", "1")
+
+    rules: list[dict[str, Any]] = []
+    priority_counter = [100]  # mutable so nested helpers can decrement
+
+    def next_priority() -> int:
+        p = priority_counter[0]
+        priority_counter[0] -= 5
+        return p
+
+    # Rule: pin extra game processes + FFXIV to NVIDIA.
+    game_processes: list[str] = []
+    if yes("q01_gaming_primary"):
+        game_processes.extend(["ffxiv_dx11.exe", "ffxiv_dx9.exe"])
+    extra_raw = answers.get("q11_extra_process_names", "none").strip()
+    if extra_raw.lower() != "none" and extra_raw:
+        game_processes.extend([p.strip() for p in extra_raw.split(",") if p.strip()])
+    if game_processes:
+        rules.append(
+            {
+                "id": "gaming_process_nvidia",
+                "description": "Pin known game processes to the NVIDIA dGPU.",
+                "trigger": {"process_names": game_processes},
+                "action": {"target_compute": "nvidia"},
+                "priority": next_priority(),
+            }
+        )
+
+    # Rule: when gaming, route inference away from NVIDIA.
+    if yes("q01_gaming_primary") and yes("q02_gaming_offload_inference"):
+        if yes("q03_npu_first_inference"):
+            fallback = "npu"
+        elif yes("q05_amd_vulkan_fallback"):
+            fallback = "amd_vulkan"
+        else:
+            fallback = "cpu"
+        rules.append(
+            {
+                "id": "inference_offload_when_gaming",
+                "description": "Route inference away from NVIDIA while a game process is running.",
+                "trigger": {"task_type": "inference", "condition": "gaming_process_active"},
+                "action": {"target_compute": fallback},
+                "priority": next_priority(),
+            }
+        )
+
+    # Rule: rendering → amd_vulkan (iGPU).
+    if yes("q09_igpu_display_only"):
+        rules.append(
+            {
+                "id": "rendering_amd_vulkan",
+                "description": "Desktop rendering and compositing use AMD iGPU via Vulkan.",
+                "trigger": {"task_type": "rendering"},
+                "action": {"target_compute": "amd_vulkan"},
+                "priority": next_priority(),
+            }
+        )
+
+    # Rule: image generation → NVIDIA.
+    if yes("q13_image_gen_workload") and yes("q14_image_gen_nvidia"):
+        rules.append(
+            {
+                "id": "image_generation_nvidia",
+                "description": "Stable Diffusion and image generation use NVIDIA CUDA.",
+                "trigger": {
+                    "task_type": "rendering",
+                    "process_names": ["sd_webui", "comfyui", "invokeai"],
+                },
+                "action": {"target_compute": "nvidia"},
+                "priority": next_priority(),
+            }
+        )
+
+    # Rule: transcription → NVIDIA or NPU/Vulkan.
+    if yes("q06_transcription_nvidia"):
+        transcription_target = "nvidia"
+        transcription_fallback = "npu" if yes("q03_npu_first_inference") else "amd_vulkan"
+    else:
+        transcription_target = "npu" if yes("q03_npu_first_inference") else "amd_vulkan"
+        transcription_fallback = "amd_vulkan" if transcription_target == "npu" else "cpu"
+    rules.append(
+        {
+            "id": "transcription_routing",
+            "description": "Audio transcription (Whisper) routing.",
+            "trigger": {"task_type": "transcription"},
+            "action": {"target_compute": transcription_target, "fallback": transcription_fallback},
+            "priority": next_priority(),
+        }
+    )
+
+    # Rule: large model inference (≥ 8 GiB) → NVIDIA.
+    if yes("q04_nvidia_large_models"):
+        rules.append(
+            {
+                "id": "inference_large_model_nvidia",
+                "description": "Large LLM inference (≥ 8 GiB VRAM) uses NVIDIA CUDA.",
+                "trigger": {"task_type": "inference", "model_size_gb_min": 8},
+                "action": {"target_compute": "nvidia"},
+                "priority": next_priority(),
+            }
+        )
+
+    # Rule: medium model inference (2–8 GiB) → NPU or NVIDIA fallback.
+    if yes("q03_npu_first_inference"):
+        med_fallback = "nvidia" if yes("q19_medium_model_nvidia_fallback") else "amd_vulkan"
+        rules.append(
+            {
+                "id": "inference_medium_model",
+                "description": "Medium LLM inference (2–8 GiB) uses NPU; falls back when busy.",
+                "trigger": {
+                    "task_type": "inference",
+                    "model_size_gb_min": 2,
+                    "model_size_gb_max": 8,
+                },
+                "action": {"target_compute": "npu", "fallback": med_fallback},
+                "priority": next_priority(),
+            }
+        )
+    elif yes("q04_nvidia_large_models"):
+        # NPU not preferred but medium models don't hit the large-model threshold
+        rules.append(
+            {
+                "id": "inference_medium_model",
+                "description": "Medium LLM inference (2–8 GiB) uses NVIDIA CUDA.",
+                "trigger": {
+                    "task_type": "inference",
+                    "model_size_gb_min": 2,
+                    "model_size_gb_max": 8,
+                },
+                "action": {"target_compute": "nvidia"},
+                "priority": next_priority(),
+            }
+        )
+
+    # Rule: small model inference (< 2 GiB) → NPU or amd_vulkan.
+    if yes("q03_npu_first_inference") or yes("q16_power_efficiency_first"):
+        small_target = "npu"
+        small_fallback = "amd_vulkan" if yes("q05_amd_vulkan_fallback") else "cpu"
+        rules.append(
+            {
+                "id": "inference_small_model",
+                "description": "Small LLM inference (< 2 GiB) uses NPU for power efficiency.",
+                "trigger": {"task_type": "inference", "model_size_gb_max": 2},
+                "action": {"target_compute": small_target, "fallback": small_fallback},
+                "priority": next_priority(),
+            }
+        )
+
+    # Rule: RAG / research queries.
+    if yes("q18_rag_npu"):
+        rag_target = "npu"
+        rag_fallback = "amd_vulkan" if yes("q05_amd_vulkan_fallback") else "cpu"
+    else:
+        rag_target = "nvidia" if yes("q04_nvidia_large_models") else "amd_vulkan"
+        rag_fallback = "cpu"
+    rules.append(
+        {
+            "id": "rag_inference",
+            "description": "Research and RAG query inference routing.",
+            "trigger": {"task_type": "inference", "context": "rag"},
+            "action": {"target_compute": rag_target, "fallback": rag_fallback},
+            "priority": next_priority(),
+        }
+    )
+
+    # Rule: embedding generation.
+    if yes("q07_embedding_npu"):
+        embed_target = "npu"
+        embed_fallback = "amd_vulkan" if yes("q05_amd_vulkan_fallback") else "cpu"
+        rules.append(
+            {
+                "id": "embedding_npu",
+                "description": "Embedding generation uses NPU for continuous low-power operation.",
+                "trigger": {"task_type": "embedding"},
+                "action": {"target_compute": embed_target, "fallback": embed_fallback},
+                "priority": next_priority(),
+            }
+        )
+
+    # Rule: route inference to CPU when gaming (NVIDIA utilisation > 50%).
+    if yes("q17_route_away_when_gaming"):
+        rules.append(
+            {
+                "id": "inference_cpu_during_gaming",
+                "description": "Route inference to CPU when NVIDIA GPU 3D utilisation > 50%.",
+                "trigger": {"task_type": "inference", "condition": "nvidia_3d_utilization_gt_50"},
+                "action": {"target_compute": "cpu"},
+                "priority": next_priority(),
+            }
+        )
+
+    # Rule: CPU fallback.
+    if yes("q08_cpu_fallback"):
+        rules.append(
+            {
+                "id": "cpu_fallback",
+                "description": "CPU-only fallback when all GPUs/NPU are saturated.",
+                "trigger": {"task_type": "inference", "condition": "all_gpu_busy"},
+                "action": {"target_compute": "cpu"},
+                "priority": 1,
+            }
+        )
+
+    return rules
+
+
+# ---------------------------------------------------------------------------
+# system_monitor handlers
+# ---------------------------------------------------------------------------
+
+
+@register_handler("get_hardware_metrics")
+async def handle_get_hardware_metrics(
+    parameters: dict[str, Any], context: HandlerContext
+) -> dict[str, Any]:
+    """Read CPU, GPU, fan, and thermal metrics.
+
+    Uses lm-sensors (``sensors -j``), ``nvidia-smi``, and ``rocm-smi``.
+    Each source degrades gracefully when the CLI tool is not installed.
+
+    Returns:
+        Dict with ``status``, and optional ``cpu``, ``nvidia``, ``amd``
+        sections, plus ``errors`` list for any unavailable tools.
+    """
+    result: dict[str, Any] = {"status": "ok", "errors": []}
+
+    # --- lm-sensors: CPU temps, fan RPMs, voltage rails ---
+    try:
+        with _anyio.fail_after(10):
+            sensors_proc = await _anyio.run_process(["sensors", "-j"], check=False)
+        if sensors_proc.returncode == 0:
+            try:
+                result["cpu"] = _json.loads(sensors_proc.stdout.decode())
+            except _json.JSONDecodeError as exc:
+                result["errors"].append(f"sensors JSON parse error: {exc}")
+        else:
+            result["errors"].append(
+                f"sensors exited {sensors_proc.returncode}: "
+                f"{sensors_proc.stderr.decode(errors='replace').strip()}"
+            )
+    except FileNotFoundError:
+        result["errors"].append("lm-sensors not installed (apt install lm-sensors)")
+    except TimeoutError:
+        result["errors"].append("sensors command timed out")
+
+    # --- nvidia-smi: GPU utilisation, power, temp, clocks ---
+    _nvidia_fields = (
+        "name,temperature.gpu,utilization.gpu,utilization.memory,"
+        "power.draw,power.limit,clocks.current.graphics,clocks.current.memory,"
+        "memory.used,memory.total"
+    )
+    try:
+        with _anyio.fail_after(10):
+            nv_proc = await _anyio.run_process(
+                ["nvidia-smi", f"--query-gpu={_nvidia_fields}", "--format=csv,noheader,nounits"],
+                check=False,
+            )
+        if nv_proc.returncode == 0:
+            lines = nv_proc.stdout.decode().strip().splitlines()
+            fields = [f.strip() for f in _nvidia_fields.split(",")]
+            gpus = []
+            for line in lines:
+                vals = [v.strip() for v in line.split(",")]
+                gpus.append(dict(zip(fields, vals)))
+            result["nvidia"] = gpus
+        else:
+            result["errors"].append(
+                f"nvidia-smi exited {nv_proc.returncode}: "
+                f"{nv_proc.stderr.decode(errors='replace').strip()}"
+            )
+    except FileNotFoundError:
+        result["errors"].append("nvidia-smi not available (NVIDIA driver not installed)")
+    except TimeoutError:
+        result["errors"].append("nvidia-smi timed out")
+
+    # --- rocm-smi: AMD GPU utilisation, power, temp ---
+    try:
+        with _anyio.fail_after(10):
+            amd_proc = await _anyio.run_process(
+                ["rocm-smi", "--showuse", "--showpower", "--showtemp", "--json"],
+                check=False,
+            )
+        if amd_proc.returncode == 0:
+            try:
+                result["amd"] = _json.loads(amd_proc.stdout.decode())
+            except _json.JSONDecodeError:
+                result["errors"].append("rocm-smi JSON parse error")
+        else:
+            result["errors"].append(
+                f"rocm-smi exited {amd_proc.returncode}: "
+                f"{amd_proc.stderr.decode(errors='replace').strip()}"
+            )
+    except FileNotFoundError:
+        result["errors"].append("rocm-smi not available (ROCm not installed)")
+    except TimeoutError:
+        result["errors"].append("rocm-smi timed out")
+
+    logger.debug("get_hardware_metrics: errors={}", result["errors"])
+    return result
+
+
+@register_handler("set_power_profile")
+async def handle_set_power_profile(
+    parameters: dict[str, Any], context: HandlerContext
+) -> dict[str, Any]:
+    """Set CPU and/or GPU power limits.
+
+    For AMD CPUs: uses ``ryzenadj`` (Zen2/3/4/5 mobile APUs).
+    For NVIDIA GPUs: uses ``nvidia-smi -pl``.
+
+    Accepts either a named profile (balanced/performance/quiet) or explicit
+    watt values.  Explicit values override the profile.
+
+    Returns:
+        Dict with ``status`` and ``applied`` list of changes made.
+    """
+    profile_name = parameters.get("profile")
+    profile_defaults: dict[str, int] = {}
+    if profile_name:
+        if profile_name not in _POWER_PROFILES:
+            return {
+                "status": "error",
+                "detail": f"Unknown profile '{profile_name}'. Valid: {sorted(_POWER_PROFILES)}",
+            }
+        profile_defaults = dict(_POWER_PROFILES[profile_name])
+
+    amd_stapm = parameters.get("amd_stapm_watts", profile_defaults.get("amd_stapm_watts"))
+    amd_fast = parameters.get("amd_fast_watts", profile_defaults.get("amd_fast_watts"))
+    amd_slow = parameters.get("amd_slow_watts", profile_defaults.get("amd_slow_watts"))
+    nvidia_pl = parameters.get(
+        "nvidia_power_limit_watts", profile_defaults.get("nvidia_power_limit_watts")
+    )
+
+    if all(v is None for v in (amd_stapm, amd_fast, amd_slow, nvidia_pl)):
+        return {
+            "status": "error",
+            "detail": "No power limits specified. Provide a profile or explicit watt values.",
+        }
+
+    applied: list[str] = []
+    errors: list[str] = []
+
+    # --- ryzenadj: AMD CPU power ---
+    if any(v is not None for v in (amd_stapm, amd_fast, amd_slow)):
+        ryzenadj_args = ["ryzenadj"]
+        if amd_stapm is not None:
+            ryzenadj_args += [f"--stapm-limit={int(amd_stapm) * 1000}"]  # ryzenadj uses milliwatts
+        if amd_fast is not None:
+            ryzenadj_args += [f"--fast-limit={int(amd_fast) * 1000}"]
+        if amd_slow is not None:
+            ryzenadj_args += [f"--slow-limit={int(amd_slow) * 1000}"]
+        try:
+            with _anyio.fail_after(10):
+                rj_proc = await _anyio.run_process(ryzenadj_args, check=False)
+            if rj_proc.returncode == 0:
+                applied.append(
+                    f"ryzenadj: stapm={amd_stapm}W fast={amd_fast}W slow={amd_slow}W"
+                )
+                logger.info("set_power_profile ryzenadj: {}", applied[-1])
+            else:
+                err = rj_proc.stderr.decode(errors="replace").strip()
+                errors.append(f"ryzenadj failed (rc={rj_proc.returncode}): {err}")
+                logger.warning("set_power_profile ryzenadj error: {}", err)
+        except FileNotFoundError:
+            errors.append(
+                "ryzenadj not installed. Compatible with Zen2/3/4/5 mobile CPUs. "
+                "Install from https://github.com/FlyGoat/RyzenAdj"
+            )
+        except TimeoutError:
+            errors.append("ryzenadj timed out")
+
+    # --- nvidia-smi: NVIDIA GPU power limit ---
+    if nvidia_pl is not None:
+        try:
+            with _anyio.fail_after(10):
+                nv_proc = await _anyio.run_process(
+                    ["nvidia-smi", "-pl", str(int(nvidia_pl))], check=False
+                )
+            if nv_proc.returncode == 0:
+                applied.append(f"nvidia-smi: power_limit={nvidia_pl}W")
+                logger.info("set_power_profile nvidia: {}", applied[-1])
+            else:
+                err = nv_proc.stderr.decode(errors="replace").strip()
+                errors.append(f"nvidia-smi -pl failed (rc={nv_proc.returncode}): {err}")
+                logger.warning("set_power_profile nvidia error: {}", err)
+        except FileNotFoundError:
+            errors.append("nvidia-smi not available (NVIDIA driver not installed)")
+        except TimeoutError:
+            errors.append("nvidia-smi timed out")
+
+    status = "ok" if applied else "error"
+    return {"status": status, "applied": applied, "errors": errors}
+
+
+@register_handler("set_fan_curve")
+async def handle_set_fan_curve(
+    parameters: dict[str, Any], context: HandlerContext
+) -> dict[str, Any]:
+    """Control laptop fan speed via nbfc-linux.
+
+    Args:
+        speed_percent: Fan speed 0–100 as a string, or ``"auto"`` for
+            automatic firmware control.
+        fan_index: Fan index for multi-fan systems (default: all fans).
+
+    Returns:
+        Dict with ``status``, ``detail``, and any ``error``.
+    """
+    speed_raw = parameters.get("speed_percent", "")
+    if not speed_raw:
+        return {"status": "error", "detail": "speed_percent is required"}
+
+    fan_index = parameters.get("fan_index")
+
+    if str(speed_raw).lower() == "auto":
+        # Auto mode: restore firmware control.
+        nbfc_args = ["nbfc", "set", "--auto"]
+        if fan_index is not None:
+            nbfc_args += ["--fan", str(int(fan_index))]
+        speed_label = "auto"
+    else:
+        try:
+            speed_val = int(speed_raw)
+        except (ValueError, TypeError):
+            return {
+                "status": "error",
+                "detail": (
+                    f"speed_percent must be an integer 0–100 or 'auto',"
+                    f" got: {speed_raw!r}"
+                ),
+            }
+        if not (0 <= speed_val <= 100):
+            return {"status": "error", "detail": "speed_percent must be between 0 and 100"}
+        nbfc_args = ["nbfc", "set", "--speed", str(speed_val)]
+        if fan_index is not None:
+            nbfc_args += ["--fan", str(int(fan_index))]
+        speed_label = f"{speed_val}%"
+
+    try:
+        with _anyio.fail_after(10):
+            proc = await _anyio.run_process(nbfc_args, check=False)
+        if proc.returncode == 0:
+            detail = (
+                f"Fan {'#' + str(fan_index) if fan_index is not None else 'all'} "
+                f"set to {speed_label}"
+            )
+            logger.info("set_fan_curve: {}", detail)
+            return {"status": "ok", "detail": detail}
+        err = (
+            proc.stderr.decode(errors="replace").strip()
+            or proc.stdout.decode(errors="replace").strip()
+        )
+        return {"status": "error", "detail": f"nbfc failed (rc={proc.returncode}): {err}"}
+    except FileNotFoundError:
+        return {
+            "status": "error",
+            "detail": (
+                "nbfc-linux not installed or not in PATH. "
+                "Install from https://github.com/nbfc-linux/nbfc-linux and "
+                "enable the service: systemctl --user enable --now nbfc"
+            ),
+        }
+    except TimeoutError:
+        return {"status": "error", "detail": "nbfc command timed out"}
+
+
+@register_handler("get_compute_routing")
+async def handle_get_compute_routing(
+    parameters: dict[str, Any], context: HandlerContext
+) -> dict[str, Any]:
+    """Read compute-routing rules from config/compute-routing.yaml.
+
+    Returns:
+        Dict with ``status``, ``default_compute``, ``rule_count``, and
+        ``rules`` list.
+    """
+    config_path = _compute_routing_path()
+
+    def _read() -> dict[str, Any]:
+        if not config_path.exists():
+            return {}
+        with config_path.open(encoding="utf-8") as fh:
+            return _yaml.safe_load(fh) or {}
+
+    try:
+        data = await _anyio.to_thread.run_sync(_read)
+    except OSError as exc:
+        return {"status": "error", "detail": f"Cannot read compute-routing config: {exc}"}
+
+    if not data:
+        return {
+            "status": "ok",
+            "default_compute": "cpu",
+            "rule_count": 0,
+            "rules": [],
+            "detail": "compute-routing.yaml not found; using built-in defaults",
+        }
+
+    rules = data.get("rules", [])
+    return {
+        "status": "ok",
+        "default_compute": data.get("default_compute", "cpu"),
+        "rule_count": len(rules),
+        "rules": rules,
+    }
+
+
+@register_handler("set_compute_routing")
+async def handle_set_compute_routing(
+    parameters: dict[str, Any], context: HandlerContext
+) -> dict[str, Any]:
+    """Add or update a single compute-routing rule.
+
+    The rule is upserted by ``rule_id`` — if a rule with the same id exists
+    it is replaced; otherwise it is appended.
+
+    Returns:
+        Dict with ``status``, ``action`` (``"created"`` or ``"updated"``),
+        and the ``rule`` that was written.
+    """
+    rule_id = parameters.get("rule_id", "").strip()
+    if not rule_id:
+        return {"status": "error", "detail": "rule_id is required"}
+
+    target_compute = parameters.get("target_compute", "").strip()
+    if target_compute not in _VALID_COMPUTE_TARGETS:
+        return {
+            "status": "error",
+            "detail": f"target_compute must be one of {sorted(_VALID_COMPUTE_TARGETS)}",
+        }
+
+    description = parameters.get("description", "").strip()
+    if not description:
+        return {"status": "error", "detail": "description is required"}
+
+    # Build trigger dict from optional parameters.
+    trigger: dict[str, Any] = {}
+    task_type = parameters.get("trigger_task_type", "").strip()
+    if task_type:
+        if task_type not in _VALID_TASK_TYPES:
+            return {
+                "status": "error",
+                "detail": f"trigger_task_type must be one of {sorted(_VALID_TASK_TYPES)}",
+            }
+        trigger["task_type"] = task_type
+    proc = parameters.get("trigger_process", "").strip()
+    if proc:
+        trigger["process_names"] = [p.strip() for p in proc.split(",") if p.strip()]
+    min_gb = parameters.get("trigger_model_size_gb_min")
+    if min_gb is not None:
+        trigger["model_size_gb_min"] = int(min_gb)
+
+    priority = int(parameters.get("priority", 5))
+
+    new_rule: dict[str, Any] = {
+        "id": rule_id,
+        "description": description,
+        "trigger": trigger,
+        "action": {"target_compute": target_compute},
+        "priority": priority,
+    }
+
+    config_path = _compute_routing_path()
+
+    def _upsert() -> str:
+        if config_path.exists():
+            with config_path.open(encoding="utf-8") as fh:
+                data = _yaml.safe_load(fh) or {}
+        else:
+            data = {"version": 1, "default_compute": "cpu", "rules": []}
+
+        rules: list[dict[str, Any]] = data.setdefault("rules", [])
+        existing_idx = next((i for i, r in enumerate(rules) if r.get("id") == rule_id), None)
+        if existing_idx is not None:
+            rules[existing_idx] = new_rule
+            action = "updated"
+        else:
+            rules.append(new_rule)
+            action = "created"
+        rules.sort(key=lambda r: r.get("priority", 0), reverse=True)
+
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        with config_path.open("w", encoding="utf-8") as fh:
+            _yaml.dump(data, fh, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        return action
+
+    try:
+        action = await _anyio.to_thread.run_sync(_upsert)
+    except OSError as exc:
+        return {"status": "error", "detail": f"Cannot write compute-routing config: {exc}"}
+
+    logger.info("set_compute_routing: {} rule '{}'", action, rule_id)
+    return {"status": "ok", "action": action, "rule": new_rule}
+
+
+@register_handler("intake_compute_routing")
+async def handle_intake_compute_routing(
+    parameters: dict[str, Any], context: HandlerContext
+) -> dict[str, Any]:
+    """Run a 20-question intake interview to configure compute-routing rules.
+
+    First call: ``{"start": true}`` — creates a new session, returns Q1.
+    Subsequent calls: ``{"session_id": "<id>", "answer": "<text>"}`` — stores
+    the answer for the current question and returns the next question.
+    After Q20 (if the operator answered "yes" to commit), the generated
+    rules are written to ``config/compute-routing.yaml``.
+
+    Returns:
+        Dict with ``status``, ``session_id``, ``question_index``,
+        ``question``, and optionally ``complete`` and ``rules_written``.
+    """
+    start = parameters.get("start", False)
+    session_id = parameters.get("session_id", "").strip()
+    answer = str(parameters.get("answer", "")).strip()
+
+    _INTAKE_SESSION_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
+    total = len(_INTAKE_QUESTIONS)
+
+    if start:
+        # Generate a fresh session.
+        session_id = _secrets.token_hex(16)
+        session_data: dict[str, Any] = {"answers": {}, "current_index": 0}
+        session_path = _INTAKE_SESSION_DIR / f"{session_id}.json"
+
+        def _create_session() -> None:
+            with session_path.open("w", encoding="utf-8") as fh:
+                _json.dump(session_data, fh)
+
+        await _anyio.to_thread.run_sync(_create_session)
+        q = _INTAKE_QUESTIONS[0]
+        return {
+            "status": "ok",
+            "session_id": session_id,
+            "question_index": 1,
+            "total_questions": total,
+            "question_id": q["id"],
+            "question": q["text"],
+            "help": q["help"],
+            "type": q["type"],
+        }
+
+    # --- Continuing an existing session ---
+    if not session_id:
+        return {
+            "status": "error",
+            "detail": "Provide session_id to continue, or start=true to begin.",
+        }
+    if not answer:
+        return {"status": "error", "detail": "answer is required when continuing a session"}
+
+    session_path = _INTAKE_SESSION_DIR / f"{session_id}.json"
+    if not session_path.exists():
+        return {
+            "status": "error",
+            "detail": f"Session '{session_id}' not found. Use start=true to begin.",
+        }
+
+    def _load_session() -> dict[str, Any]:
+        with session_path.open(encoding="utf-8") as fh:
+            return _json.load(fh)
+
+    session_data = await _anyio.to_thread.run_sync(_load_session)
+    current_index: int = session_data["current_index"]
+    answers: dict[str, str] = session_data["answers"]
+
+    if current_index >= total:
+        return {"status": "error", "detail": "Session already complete. Use start=true to restart."}
+
+    # Validate yes/no answers.
+    current_q = _INTAKE_QUESTIONS[current_index]
+    if current_q["type"] == "yn":
+        if answer.lower() not in ("yes", "y", "no", "n"):
+            return {
+                "status": "error",
+                "detail": f"Question {current_index + 1} requires a yes/no answer. Got: {answer!r}",
+                "question_id": current_q["id"],
+                "question": current_q["text"],
+            }
+        answer = "yes" if answer.lower() in ("yes", "y") else "no"
+
+    answers[current_q["id"]] = answer
+    current_index += 1
+    session_data["current_index"] = current_index
+    session_data["answers"] = answers
+
+    # If all questions are answered, generate and optionally commit rules.
+    if current_index >= total:
+        rules = _build_routing_rules(answers)
+        commit = answers.get("q20_commit", "no") == "yes"
+        committed = False
+
+        if commit:
+            config_path = _compute_routing_path()
+
+            def _write_rules() -> None:
+                prefer_power_efficiency = (
+                    answers.get("q16_power_efficiency_first") == "yes"
+                )
+                data = {
+                    "version": 1,
+                    "default_compute": "npu" if prefer_power_efficiency else "cpu",
+                    "rules": rules,
+                }
+                config_path.parent.mkdir(parents=True, exist_ok=True)
+                with config_path.open("w", encoding="utf-8") as fh:
+                    _yaml.dump(
+                        data, fh, default_flow_style=False,
+                        allow_unicode=True, sort_keys=False,
+                    )
+
+            try:
+                await _anyio.to_thread.run_sync(_write_rules)
+                committed = True
+                logger.info("intake_compute_routing: committed {} rules", len(rules))
+            except OSError as exc:
+                # Clean up session and surface error.
+                session_path.unlink(missing_ok=True)
+                return {
+                    "status": "error",
+                    "detail": f"Failed to write config: {exc}",
+                    "rules": rules,
+                }
+
+        # Clean up session file.
+        session_path.unlink(missing_ok=True)
+
+        if committed:
+            _detail = (
+                f"Interview complete. {len(rules)} rules written to compute-routing.yaml."
+            )
+        else:
+            _detail = (
+                f"Interview complete. {len(rules)} rules generated"
+                " but NOT written (answered 'no' to commit)."
+            )
+        return {
+            "status": "ok",
+            "complete": True,
+            "rules_written": committed,
+            "rule_count": len(rules),
+            "rules": rules,
+            "detail": _detail,
+        }
+
+    def _save_session() -> None:
+        with session_path.open("w", encoding="utf-8") as fh:
+            _json.dump(session_data, fh)
+
+    await _anyio.to_thread.run_sync(_save_session)
+
+    next_q = _INTAKE_QUESTIONS[current_index]
+    return {
+        "status": "ok",
+        "session_id": session_id,
+        "question_index": current_index + 1,
+        "total_questions": total,
+        "question_id": next_q["id"],
+        "question": next_q["text"],
+        "help": next_q["help"],
+        "type": next_q["type"],
+    }
+
+
+@register_handler("get_npu_status")
+async def handle_get_npu_status(
+    parameters: dict[str, Any], context: HandlerContext
+) -> dict[str, Any]:
+    """Report XDNA 2 NPU status and utilisation via xrt-smi.
+
+    This handler is **experimental**.  The amdxdna driver and AMD XRT runtime
+    must be installed for successful output.  Degrades gracefully with a
+    clear error message when the tool or driver is absent.
+
+    Compatible hardware: AMD Ryzen AI 9 300+ series (XDNA 2 architecture),
+    kernel ≥ 6.8 with amdxdna module, AMD XRT package installed.
+
+    Returns:
+        Dict with ``status``, ``experimental`` flag, and either ``npu``
+        data from xrt-smi or an ``error`` / ``dependency`` message.
+    """
+    base: dict[str, Any] = {"status": "ok", "experimental": True}
+
+    # Attempt 1: xrt-smi examine (AMD XRT runtime).
+    try:
+        with _anyio.fail_after(10):
+            proc = await _anyio.run_process(
+                ["xrt-smi", "examine", "--format", "JSON", "--report", "aie"],
+                check=False,
+            )
+        if proc.returncode == 0:
+            try:
+                npu_data = _json.loads(proc.stdout.decode())
+                base["npu"] = npu_data
+                base["source"] = "xrt-smi"
+                logger.debug("get_npu_status: xrt-smi OK")
+                return base
+            except _json.JSONDecodeError:
+                base["npu_raw"] = proc.stdout.decode(errors="replace").strip()
+                base["source"] = "xrt-smi"
+                return base
+        stderr = proc.stderr.decode(errors="replace").strip()
+        if "not found" in stderr.lower() or "no device" in stderr.lower():
+            base["error"] = (
+                "NPU device not found. Ensure the amdxdna kernel module is loaded: "
+                "modprobe amdxdna"
+            )
+            base["dependency"] = "amdxdna kernel module (kernel >= 6.8)"
+        else:
+            base["error"] = f"xrt-smi exited {proc.returncode}: {stderr}"
+        return base
+    except FileNotFoundError:
+        pass  # Fall through to sysfs check.
+    except TimeoutError:
+        base["error"] = "xrt-smi timed out"
+        return base
+
+    # Attempt 2: sysfs fallback — check if amdxdna driver is loaded.
+    amdxdna_sysfs = _Path("/sys/bus/platform/drivers/amdxdna")
+
+    def _check_sysfs() -> bool:
+        return amdxdna_sysfs.is_dir()
+
+    driver_loaded = await _anyio.to_thread.run_sync(_check_sysfs)
+    if driver_loaded:
+        base["error"] = (
+            "amdxdna driver is loaded but xrt-smi is not installed. "
+            "Install AMD XRT to read NPU metrics: "
+            "https://github.com/Xilinx/XRT"
+        )
+        base["dependency"] = "xrt package (provides xrt-smi)"
+        base["driver_loaded"] = True
+    else:
+        base["error"] = (
+            "NPU not available. Missing dependencies:\n"
+            "  1. amdxdna kernel module (kernel >= 6.8): modprobe amdxdna\n"
+            "  2. AMD XRT runtime: https://github.com/Xilinx/XRT\n"
+            "Compatible hardware: AMD Ryzen AI 9 300+ series (XDNA 2)"
+        )
+        base["dependency"] = "amdxdna kernel module + xrt package"
+        base["driver_loaded"] = False
+
+    return base

@@ -1,0 +1,116 @@
+# Compute routing rules for OsMEN-OC.
+# Defines which compute resource handles each workload type.
+# Managed by the system_monitor agent via get_compute_routing,
+# set_compute_routing, and intake_compute_routing tools.
+#
+# Rule evaluation order: highest priority first.
+# First matching rule wins. If no rule matches, the default_compute is used.
+#
+# target_compute values:
+#   nvidia     — NVIDIA dGPU via CUDA
+#   amd_rocm   — AMD GPU via ROCm
+#   amd_vulkan — AMD GPU via Vulkan (llama.cpp / compute shaders)
+#   npu        — AMD XDNA 2 NPU (experimental)
+#   cpu        — CPU-only (system RAM)
+
+version: 1
+
+# Fallback when no rule matches.
+default_compute: cpu
+
+rules:
+  - id: gaming_process_nvidia
+    description: >
+      Route GPU workloads to NVIDIA when a known Windows game process
+      (via Proton/Wine) is detected. Games typically perform best on the
+      discrete NVIDIA dGPU.
+    trigger:
+      process_names:
+        - ffxiv_dx11.exe
+        - ffxiv_dx9.exe
+        - GenshinImpact.exe
+        - eldenring.exe
+    action:
+      target_compute: nvidia
+    priority: 20
+
+  - id: inference_large_model_nvidia
+    description: >
+      Large LLM inference (model VRAM >= 8 GiB) is routed to the NVIDIA
+      dGPU via CUDA for maximum throughput.
+    trigger:
+      task_type: inference
+      model_size_gb_min: 8
+    action:
+      target_compute: nvidia
+    priority: 15
+
+  - id: inference_medium_model_npu
+    description: >
+      Medium LLM inference (model VRAM 2–8 GiB) is routed to the NPU
+      for power-efficient execution. Falls back to amd_vulkan if NPU is
+      unavailable. Requires amdxdna driver and XRT runtime.
+    trigger:
+      task_type: inference
+      model_size_gb_min: 2
+      model_size_gb_max: 8
+    action:
+      target_compute: npu
+      fallback: amd_vulkan
+    priority: 12
+
+  - id: inference_small_model_npu
+    description: >
+      Small LLM and embedding inference (< 2 GiB) runs on the NPU.
+      Falls back to amd_vulkan (Radeon iGPU) if NPU is unavailable.
+    trigger:
+      task_type: inference
+      model_size_gb_max: 2
+    action:
+      target_compute: npu
+      fallback: amd_vulkan
+    priority: 10
+
+  - id: embedding_npu
+    description: >
+      Embedding generation (e.g. ChromaDB ingest, sentence-transformers)
+      uses the NPU for continuous low-power operation.
+    trigger:
+      task_type: embedding
+    action:
+      target_compute: npu
+      fallback: amd_vulkan
+    priority: 8
+
+  - id: transcription_nvidia
+    description: >
+      Audio transcription (Whisper) is routed to NVIDIA CUDA for speed.
+      Falls back to amd_vulkan when NVIDIA is unavailable.
+    trigger:
+      task_type: transcription
+    action:
+      target_compute: nvidia
+      fallback: amd_vulkan
+    priority: 10
+
+  - id: rendering_amd_vulkan
+    description: >
+      Desktop rendering, screen capture, and display compositing use the
+      AMD Radeon iGPU via Vulkan. The iGPU is connected to all display
+      outputs on this hybrid GPU configuration.
+    trigger:
+      task_type: rendering
+    action:
+      target_compute: amd_vulkan
+    priority: 18
+
+  - id: cpu_fallback
+    description: >
+      When all GPU/NPU resources are at capacity or unavailable, fall back
+      to CPU-only inference via llama.cpp CPU backend.
+    trigger:
+      task_type: inference
+      condition: all_gpu_busy
+    action:
+      target_compute: cpu
+    priority: 1

@@ -44,3 +44,11 @@ pipelines:
         tool: transfer_to_plex
       - agent: media_organization
         tool: purge_completed
+
+  - id: hardware_metrics_poll
+    trigger:
+      type: cron
+      schedule: "*/5 * * * *"  # every 5 minutes
+    steps:
+      - agent: system_monitor
+        tool: get_hardware_metrics

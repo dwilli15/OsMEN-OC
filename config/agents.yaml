@@ -25,3 +25,11 @@ media_organization:
   model_tier: local-medium
   plex_library_root: "${PLEX_LIBRARY_ROOT}"
   download_staging: "${DOWNLOAD_STAGING_DIR}"
+
+system_monitor:
+  schedule: event-driven
+  model_tier: local-small
+  # Path to compute-routing rules config (optional override for testing).
+  compute_routing_config: "config/compute-routing.yaml"
+  # Path to hardware capability config.
+  hardware_config: "config/hardware.yaml"
