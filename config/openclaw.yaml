@@ -1,0 +1,18 @@
+# OpenClaw bridge configuration
+# Loaded by core/utils/config.py; ${ENV_VAR} tokens resolved from environment.
+#
+# OpenClaw is the Node.js control plane (installed via `npm install -g openclaw`).
+# OsMEN-OC connects to it over WebSocket for bidirectional message passing.
+
+bridge:
+  # WebSocket endpoint where the OpenClaw control plane listens.
+  # Override at runtime via OPENCLAW_WS_URL environment variable.
+  endpoint: "ws://127.0.0.1:18789"
+
+  # Reconnection behaviour (exponential backoff)
+  reconnect:
+    initial_backoff_seconds: 1.0
+    max_backoff_seconds: 60.0
+
+  # How long to wait (seconds) for a pong before treating the link as dead.
+  health_timeout_seconds: 5.0

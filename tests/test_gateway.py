@@ -134,6 +134,39 @@ def test_readiness_returns_status(client_with_registry: TestClient) -> None:
     assert "bridge" in body["checks"]
 
 
+def test_readiness_bridge_connected(client_with_registry: TestClient) -> None:
+    """GET /ready reports bridge=connected when bridge client has an active session."""
+    bridge = MagicMock()
+    bridge.is_connected = True
+    app.state.bridge_client = bridge
+
+    resp = client_with_registry.get("/ready")
+    body = resp.json()
+    assert body["checks"]["bridge"] == "connected"
+
+
+def test_readiness_bridge_disconnected_is_degraded(client_with_registry: TestClient) -> None:
+    """GET /ready reports degraded when bridge client exists but is not connected."""
+    bridge = MagicMock()
+    bridge.is_connected = False
+    app.state.bridge_client = bridge
+
+    resp = client_with_registry.get("/ready")
+    body = resp.json()
+    assert body["checks"]["bridge"] == "disconnected"
+    assert body["status"] == "degraded"
+
+
+def test_readiness_bridge_not_configured(client_with_registry: TestClient) -> None:
+    """GET /ready reports bridge=not_configured when no bridge client is present."""
+    if hasattr(app.state, "bridge_client"):
+        del app.state.bridge_client
+
+    resp = client_with_registry.get("/ready")
+    body = resp.json()
+    assert body["checks"]["bridge"] == "not_configured"
+
+
 # ---------------------------------------------------------------------------
 # MCP tool list
 # ---------------------------------------------------------------------------
