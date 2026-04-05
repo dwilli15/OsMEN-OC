@@ -1,4 +1,4 @@
-.PHONY: bootstrap test lint typecheck status
+.PHONY: bootstrap test lint typecheck status dev fmt check up down logs clean
 
 VENV := .venv
 PYTHON := $(VENV)/bin/python
@@ -47,3 +47,43 @@ status:
 $(VENV)/bin/pytest $(VENV)/bin/ruff $(VENV)/bin/mypy: pyproject.toml
 	@[ -d $(VENV) ] || python3 -m venv $(VENV)
 	$(PYTHON) -m pip install --quiet -e ".[dev]"
+
+# ---------------------------------------------------------------------------
+# dev — run gateway with auto-reload (uvicorn)
+# ---------------------------------------------------------------------------
+dev: $(VENV)/bin/pytest
+	$(PYTHON) -m uvicorn core.gateway.app:app --reload --host 127.0.0.1 --port 8000
+
+# ---------------------------------------------------------------------------
+# fmt — auto-fix lint issues
+# ---------------------------------------------------------------------------
+fmt: $(VENV)/bin/ruff
+	$(PYTHON) -m ruff check core/ tests/ --fix
+	$(PYTHON) -m ruff format core/ tests/
+
+# ---------------------------------------------------------------------------
+# check — run test + lint + typecheck in one pass
+# ---------------------------------------------------------------------------
+check: test lint typecheck
+
+# ---------------------------------------------------------------------------
+# up / down / logs — manage Podman quadlet services
+# ---------------------------------------------------------------------------
+up:
+	systemctl --user start osmen-core-redis osmen-core-postgres osmen-core-chromadb 2>/dev/null || \
+	    echo "(systemd user units not installed — see quadlets/)"
+
+down:
+	systemctl --user stop osmen-core-redis osmen-core-postgres osmen-core-chromadb 2>/dev/null || \
+	    echo "(systemd user units not installed)"
+
+logs:
+	@journalctl --user -u osmen-core-redis -u osmen-core-postgres -u osmen-core-chromadb \
+	    --no-pager -n 50 2>/dev/null || echo "(journalctl not available)"
+
+# ---------------------------------------------------------------------------
+# clean — remove build artifacts and caches
+# ---------------------------------------------------------------------------
+clean:
+	rm -rf .mypy_cache .pytest_cache .ruff_cache *.egg-info dist build
+	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
