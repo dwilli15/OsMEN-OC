@@ -122,6 +122,18 @@ def test_health_returns_ok(client_with_registry: TestClient) -> None:
     assert resp.json() == {"status": "ok"}
 
 
+def test_readiness_returns_status(client_with_registry: TestClient) -> None:
+    """GET /ready returns 200 with a status field and dependency checks."""
+    resp = client_with_registry.get("/ready")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] in ("ready", "degraded")
+    assert "checks" in body
+    assert "redis" in body["checks"]
+    assert "postgres" in body["checks"]
+    assert "bridge" in body["checks"]
+
+
 # ---------------------------------------------------------------------------
 # MCP tool list
 # ---------------------------------------------------------------------------
