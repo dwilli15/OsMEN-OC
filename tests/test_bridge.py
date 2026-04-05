@@ -37,6 +37,16 @@ class _FakeSession:
         return False
 
 
+class _SessionFactoryQueue:
+    def __init__(self, sessions: list[_FakeSession]):
+        self._sessions = sessions
+
+    def __call__(self, _endpoint: str) -> _FakeSession:
+        if not self._sessions:
+            raise RuntimeError("no sessions available")
+        return self._sessions.pop(0)
+
+
 def test_protocol_models_roundtrip() -> None:
     outbound = BridgeOutboundMessage(type="tool_result", correlation_id="cid", payload={"ok": True})
     encoded = outbound.model_dump_json()
@@ -110,3 +120,39 @@ async def test_bridge_client_reconnect_backoff_caps() -> None:
     await client.run_forever(max_cycles=4)
 
     assert sleeps == [1.0, 2.0, 3.0, 3.0]
+
+
+@pytest.mark.anyio
+async def test_bridge_client_skips_malformed_message_and_continues_same_session() -> None:
+    received: list[BridgeInboundMessage] = []
+    sleeps: list[float] = []
+
+    async def on_message(msg: BridgeInboundMessage) -> None:
+        received.append(msg)
+
+    async def fake_sleep(delay: float) -> None:
+        sleeps.append(delay)
+
+    ws = _FakeWebSocket(
+        [
+            '{"type":"task","payload":["bad"]}',
+            BridgeInboundMessage(
+                type="task", correlation_id="a1", payload={"x": 1},
+            ).model_dump_json(),
+        ]
+    )
+    factory = _SessionFactoryQueue([_FakeSession(ws)])
+
+    client = OpenClawBridgeClient(
+        endpoint="ws://test",
+        on_message=on_message,
+        session_factory=factory,
+        sleep_fn=fake_sleep,
+    )
+
+    await client.run_forever(max_cycles=1)
+
+    assert sleeps == []
+    assert len(received) == 1
+    assert received[0].correlation_id == "a1"
+    assert received[0].payload["x"] == 1

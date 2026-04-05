@@ -61,7 +61,14 @@ class OpenClawBridgeClient:
                     backoff = 1.0
                     logger.info("OpenClaw bridge connected to {}", self.endpoint)
                     async for raw in ws:
-                        message = BridgeInboundMessage.model_validate_json(raw)
+                        try:
+                            message = BridgeInboundMessage.model_validate_json(raw)
+                        except Exception as exc:
+                            logger.warning(
+                                "OpenClaw bridge dropped malformed inbound payload: {}",
+                                exc,
+                            )
+                            continue
                         await self._on_message(message)
             except Exception as exc:
                 logger.warning("OpenClaw bridge connection error: {}", exc)

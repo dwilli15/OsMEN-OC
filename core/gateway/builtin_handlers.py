@@ -11,14 +11,81 @@ Currently implemented:
 from __future__ import annotations
 
 import hashlib as _hashlib
+import ipaddress as _ipaddress
 import re as _re
+import socket as _socket
 from typing import Any
+from urllib.parse import urlparse as _urlparse
 
 import httpx as _httpx
 from loguru import logger
 
 from core.gateway.handlers import HandlerContext, register_handler
 from core.memory.chunking import chunk_text
+
+_MAX_FETCH_BYTES = 10 * 1024 * 1024  # 10 MiB
+_ALLOWED_CONTENT_TYPES = {
+    "application/json",
+    "application/xml",
+    "application/xhtml+xml",
+    "text/xml",
+}
+
+
+def _is_public_ip(ip_text: str) -> bool:
+    ip = _ipaddress.ip_address(ip_text)
+    return not (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_multicast
+        or ip.is_reserved
+        or ip.is_unspecified
+    )
+
+
+def _validate_ingest_url(url: str) -> str | None:
+    try:
+        parsed = _urlparse(url)
+    except ValueError:
+        return "Invalid URL format"
+
+    if parsed.scheme not in {"http", "https"}:
+        return "URL scheme must be http or https"
+
+    hostname = parsed.hostname
+    if not hostname:
+        return "URL must include a hostname"
+
+    host_lower = hostname.lower()
+    if host_lower == "localhost" or host_lower.endswith(".localhost"):
+        return "localhost URLs are not allowed"
+
+    try:
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    except ValueError:
+        return "URL contains an invalid port"
+
+    try:
+        resolved = _socket.getaddrinfo(hostname, port, type=_socket.SOCK_STREAM)
+    except OSError:
+        return "URL hostname could not be resolved"
+
+    if not resolved:
+        return "URL hostname could not be resolved"
+
+    for info in resolved:
+        sockaddr = info[4]
+        if not sockaddr:
+            continue
+        ip_text = str(sockaddr[0])
+        try:
+            if not _is_public_ip(ip_text):
+                return "URL hostname resolves to a non-public IP"
+        except ValueError:
+            return "URL hostname resolved to an invalid IP"
+
+    return None
 
 
 @register_handler("ingest_url")
@@ -36,13 +103,39 @@ async def handle_ingest_url(parameters: dict[str, Any], context: HandlerContext)
         return {"status": "error", "detail": "Missing required parameter: url"}
 
     collection_name = parameters.get("collection", "general")
+    validation_error = _validate_ingest_url(url)
+    if validation_error:
+        return {"status": "error", "detail": validation_error}
 
-    # Fetch content via httpx (available in core deps)
+    # Fetch content with streaming + hard cap to prevent oversized responses.
     try:
         async with _httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-            resp = await client.get(url)
-            resp.raise_for_status()
-            text = resp.text
+            async with client.stream("GET", url) as resp:
+                resp.raise_for_status()
+
+                content_type = resp.headers.get("content-type", "")
+                media_type = content_type.split(";", 1)[0].strip().lower()
+                if not (
+                    media_type.startswith("text/")
+                    or media_type in _ALLOWED_CONTENT_TYPES
+                ):
+                    return {
+                        "status": "error",
+                        "detail": f"Unsupported content type: {media_type or 'unknown'}",
+                    }
+
+                content = bytearray()
+                async for chunk in resp.aiter_bytes():
+                    if not chunk:
+                        continue
+                    content.extend(chunk)
+                    if len(content) > _MAX_FETCH_BYTES:
+                        return {
+                            "status": "error",
+                            "detail": "Response body exceeds 10 MiB limit",
+                        }
+
+                text = content.decode(resp.encoding or "utf-8", errors="replace")
     except _httpx.HTTPError as exc:
         logger.warning("ingest_url fetch failed for {}: {}", url, exc)
         return {"status": "error", "detail": f"Fetch failed: {exc}"}

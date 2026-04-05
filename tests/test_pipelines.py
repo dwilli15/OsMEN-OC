@@ -97,7 +97,7 @@ class TestPipelineLoading:
 
 
 class TestCronMatch:
-    """Tests for the simplified cron match logic."""
+    """Tests for cron matching logic."""
 
     def test_exact_match(self) -> None:
         from datetime import UTC, datetime
@@ -111,15 +111,27 @@ class TestCronMatch:
         fake_now = datetime(2026, 4, 4, 8, 30, tzinfo=UTC)
         assert PipelineRunner._cron_matches_now("0 7 * * *", _now=fake_now) is False
 
-    def test_wildcard_hour(self) -> None:
+    def test_step_every_15_minutes(self) -> None:
         from datetime import UTC, datetime
 
-        fake_now = datetime(2026, 4, 4, 15, 30, tzinfo=UTC)
-        assert PipelineRunner._cron_matches_now("30 * * * *", _now=fake_now) is True
+        match_now = datetime(2026, 4, 4, 15, 30, tzinfo=UTC)
+        miss_now = datetime(2026, 4, 4, 15, 31, tzinfo=UTC)
+        assert PipelineRunner._cron_matches_now("*/15 * * * *", _now=match_now) is True
+        assert PipelineRunner._cron_matches_now("*/15 * * * *", _now=miss_now) is False
+
+    def test_weekday_constraint(self) -> None:
+        from datetime import UTC, datetime
+
+        # 2026-04-04 is Saturday.
+        fake_now = datetime(2026, 4, 4, 7, 0, tzinfo=UTC)
+        assert PipelineRunner._cron_matches_now("0 7 * * 6", _now=fake_now) is True
+        assert PipelineRunner._cron_matches_now("0 7 * * 1", _now=fake_now) is False
 
     def test_invalid_cron_returns_false(self) -> None:
         assert PipelineRunner._cron_matches_now("") is False
         assert PipelineRunner._cron_matches_now("x") is False
+        assert PipelineRunner._cron_matches_now("* * *") is False
+        assert PipelineRunner._cron_matches_now("61 * * * *") is False
 
 
 class TestStepExecution:
