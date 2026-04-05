@@ -19,6 +19,7 @@ Usage::
 
 from __future__ import annotations
 
+import importlib.metadata
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
@@ -106,3 +107,43 @@ def register_handler(tool_name: str) -> Callable[[HandlerFn], HandlerFn]:
         return fn
 
     return decorator
+
+
+# ---------------------------------------------------------------------------
+# Entry-point plugin loader
+# ---------------------------------------------------------------------------
+
+ENTRY_POINT_GROUP = "osmen_oc.handlers"
+
+
+def load_entry_point_handlers(
+    registry: HandlerRegistry | None = None,
+) -> list[str]:
+    """Discover and register handlers advertised via ``[project.entry-points]``.
+
+    Each entry point in the ``osmen_oc.handlers`` group should resolve to an
+    async callable with the standard ``(params, context) -> dict`` signature.
+    The entry point *name* becomes the tool name in the registry.
+
+    Args:
+        registry: Registry to populate.  Defaults to the module-level
+            :data:`handler_registry` singleton.
+
+    Returns:
+        List of tool names that were successfully loaded.
+    """
+    if registry is None:
+        registry = handler_registry
+
+    loaded: list[str] = []
+    eps = importlib.metadata.entry_points(group=ENTRY_POINT_GROUP)
+    for ep in eps:
+        try:
+            handler_fn = ep.load()
+            registry.register(ep.name, handler_fn)
+            loaded.append(ep.name)
+            logger.info("Loaded plugin handler '{}' from {}", ep.name, ep.value)
+        except Exception as exc:
+            logger.warning("Failed to load plugin handler '{}': {}", ep.name, exc)
+
+    return loaded

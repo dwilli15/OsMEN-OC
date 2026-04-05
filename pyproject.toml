@@ -40,6 +40,10 @@ dev = [
 where = ["."]
 include = ["core*"]
 
+[project.entry-points."osmen_oc.handlers"]
+# Example: my_tool = "mypkg.handlers:handle_my_tool"
+# External packages add entries here to auto-register handlers at startup.
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 

@@ -295,3 +295,55 @@ class TestBuiltinSearchKnowledge:
 
         assert result["status"] == "ok"
         mock_chroma.query_async.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Entry-point plugin loader
+# ---------------------------------------------------------------------------
+
+
+class TestEntryPointLoader:
+    """Tests for load_entry_point_handlers."""
+
+    def test_loads_entry_points_into_registry(self) -> None:
+        from core.gateway.handlers import HandlerRegistry, load_entry_point_handlers
+
+        async def fake_handler(params, ctx):
+            return {"plugin": True}
+
+        fake_ep = MagicMock()
+        fake_ep.name = "plugin_tool"
+        fake_ep.value = "mypkg.handlers:handle_plugin"
+        fake_ep.load.return_value = fake_handler
+
+        with patch("core.gateway.handlers.importlib.metadata.entry_points", return_value=[fake_ep]):
+            reg = HandlerRegistry()
+            loaded = load_entry_point_handlers(registry=reg)
+
+        assert loaded == ["plugin_tool"]
+        assert reg.has("plugin_tool")
+        assert reg.get("plugin_tool") is fake_handler
+
+    def test_skips_broken_entry_point(self) -> None:
+        from core.gateway.handlers import HandlerRegistry, load_entry_point_handlers
+
+        bad_ep = MagicMock()
+        bad_ep.name = "broken_tool"
+        bad_ep.value = "bad.module:fn"
+        bad_ep.load.side_effect = ImportError("no such module")
+
+        with patch("core.gateway.handlers.importlib.metadata.entry_points", return_value=[bad_ep]):
+            reg = HandlerRegistry()
+            loaded = load_entry_point_handlers(registry=reg)
+
+        assert loaded == []
+        assert not reg.has("broken_tool")
+
+    def test_no_entry_points_returns_empty(self) -> None:
+        from core.gateway.handlers import HandlerRegistry, load_entry_point_handlers
+
+        with patch("core.gateway.handlers.importlib.metadata.entry_points", return_value=[]):
+            reg = HandlerRegistry()
+            loaded = load_entry_point_handlers(registry=reg)
+
+        assert loaded == []
