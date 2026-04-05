@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
@@ -181,6 +181,35 @@ class EventBus:
             )
         except Exception as exc:
             logger.critical("FATAL: Could not write to dead-letter stream: {}", exc)
+
+    async def read_dead_letters(
+        self,
+        *,
+        count: int = 50,
+        start: str = "-",
+        end: str = "+",
+    ) -> list[dict[str, Any]]:
+        """Read recent entries from the dead-letter stream.
+
+        Args:
+            count: Maximum entries to return.
+            start: Start ID for XRANGE (default earliest).
+            end: End ID for XRANGE (default latest).
+
+        Returns:
+            List of raw field dicts, newest last.
+        """
+        try:
+            entries = await self._redis.xrange(
+                DEAD_LETTER_STREAM, min=start, max=end, count=count,
+            )
+        except Exception as exc:
+            raise EventBusError(f"Failed to read dead-letter stream: {exc}") from exc
+
+        return [
+            {"msg_id": msg_id, **fields}
+            for msg_id, fields in entries
+        ]
 
     # ------------------------------------------------------------------
     # Helpers

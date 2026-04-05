@@ -268,6 +268,22 @@ async def readiness() -> dict[str, Any]:
     return {"status": "ready" if all_ok else "degraded", "checks": checks}
 
 
+@app.get("/events/dead-letter", tags=["ops"])
+async def dead_letter_list(count: int = 50) -> dict[str, Any]:
+    """Return recent entries from the dead-letter stream.
+
+    Query params:
+        count: Maximum entries to return (default 50, max 200).
+    """
+    count = min(max(count, 1), 200)
+    event_bus = getattr(app.state, "event_bus", None)
+    if event_bus is None:
+        return {"entries": [], "total": 0, "note": "event bus not configured"}
+
+    entries = await event_bus.read_dead_letters(count=count)
+    return {"entries": entries, "total": len(entries)}
+
+
 # ---------------------------------------------------------------------------
 # MCP tool list
 # ---------------------------------------------------------------------------
