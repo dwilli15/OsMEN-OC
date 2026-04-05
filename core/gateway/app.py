@@ -33,7 +33,7 @@ from core.audit.trail import AuditRecord
 from core.bridge.protocol import BridgeInboundMessage, BridgeOutboundMessage
 from core.events.envelope import EventEnvelope, EventPriority
 from core.gateway.deps import ApprovalGateDep, AuditTrailDep, EventBusDep, MCPRegistry
-from core.gateway.handlers import HandlerContext, handler_registry
+from core.gateway.handlers import HandlerContext, handler_registry, load_entry_point_handlers
 from core.gateway.mcp import MCPTool, register_tools, scan_manifests
 from core.utils.exceptions import ApprovalError, AuditError, EventBusError
 
@@ -103,6 +103,11 @@ async def lifespan(app: FastAPI):
     tools = scan_manifests(agents_dir)
     app.state.mcp_registry = register_tools(tools)
     logger.info("Gateway ready. {} MCP tools registered.", len(app.state.mcp_registry))
+
+    # --- Plugin entry-point handlers ---
+    loaded_plugins = load_entry_point_handlers()
+    if loaded_plugins:
+        logger.info("Loaded {} plugin handler(s): {}", len(loaded_plugins), loaded_plugins)
 
     # --- Approval gate (always available) ---
     app.state.approval_gate = ApprovalGate()
