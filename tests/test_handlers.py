@@ -495,9 +495,6 @@ class TestGenerateBrief:
 
         ctx = HandlerContext(agent_id="daily_brief")
         with patch.dict("os.environ", {}, clear=True):
-            import os
-
-            os.environ.pop("ZAI_API_KEY", None)
             result = await handle_generate_brief({"period": "morning"}, ctx)
 
         assert result["status"] == "error"
@@ -748,9 +745,6 @@ class TestTransferToPlex:
         src.write_bytes(b"\x00")
         ctx = HandlerContext(agent_id="media_organization")
         with patch.dict("os.environ", {}, clear=True):
-            import os
-
-            os.environ.pop("PLEX_LIBRARY_ROOT", None)
             result = await handle_transfer_to_plex(
                 {"source_path": str(src), "media_type": "movies"}, ctx
             )
@@ -983,9 +977,6 @@ class TestPurgeCompleted:
 
         ctx = HandlerContext(agent_id="media_organization")
         with patch.dict("os.environ", {}, clear=True):
-            import os
-
-            os.environ.pop("DOWNLOAD_STAGING_DIR", None)
             result = await handle_purge_completed({}, ctx)
 
         assert result["status"] == "error"

@@ -88,6 +88,9 @@ _GLM_API_URL = "https://api.z.ai/api/coding/paas/v4/chat/completions"
 _GLM_DEFAULT_MODEL = "glm-4"
 _GLM_RATE_LIMIT_CODE = 1302
 
+# Bytes per megabyte — used for SABnzbd size conversion.
+_MB_TO_BYTES = 1024 * 1024
+
 
 def _qbt_state_to_status(state: str) -> str:
     return _QBT_STATE_MAP.get(state, "paused")
@@ -331,7 +334,8 @@ async def handle_fetch_task_summary(
         return {"status": "error", "detail": f"Failed to parse task export JSON: {exc}"}
 
     projects: dict[str, list[dict[str, Any]]] = {}
-    for task in tasks[:limit]:
+    capped = tasks[:limit]
+    for task in capped:
         project = task.get("project") or "(none)"
         projects.setdefault(project, []).append(
             {
@@ -344,7 +348,13 @@ async def handle_fetch_task_summary(
             }
         )
 
-    logger.info("fetch_task_summary: {} tasks across {} projects", len(tasks), len(projects))
+    returned = sum(len(v) for v in projects.values())
+    logger.info(
+        "fetch_task_summary: returning {} of {} tasks across {} projects",
+        returned,
+        len(tasks),
+        len(projects),
+    )
     return {"status": "ok", "total": len(tasks), "projects": projects}
 
 
@@ -623,7 +633,11 @@ async def handle_audit_vpn(
                     "osmen-media-gluetun",
                     "sh",
                     "-c",
-                    "wget -qO- --timeout=10 https://api.ipify.org 2>/dev/null || true",
+                    (
+                        "curl -sf --max-time 10 https://api.ipify.org"
+                        " || wget -qO- --timeout=10 https://api.ipify.org"
+                        " || true"
+                    ),
                 ],
                 check=False,
             )
@@ -705,7 +719,7 @@ async def handle_list_downloads(
                             "name": slot.get("filename"),
                             "status": dl_status,
                             "progress": round(float(slot.get("percentage", 0)) / 100, 4),
-                            "size_bytes": int(float(slot.get("mb", 0)) * 1024 * 1024),
+                            "size_bytes": int(float(slot.get("mb", 0)) * _MB_TO_BYTES),
                         }
                     )
         except _httpx.HTTPError as exc:
