@@ -34,10 +34,14 @@ HealthTimeout=10s
 HealthRetries=5
 HealthStartPeriod=20s
 
+NoNewPrivileges=true
+
 [Service]
 Restart=always
 RestartSec=5s
 Slice=user-osmen-core.slice
+MemoryMax=2G
+CPUQuota=200%
 
 [Install]
 WantedBy=default.target
