@@ -134,6 +134,8 @@ async def lifespan(app: FastAPI):
     if database_url and asyncpg is not None:
         try:
             pg_pool = await asyncpg.create_pool(database_url, min_size=2, max_size=10)
+            async with pg_pool.acquire() as conn:
+                await conn.fetchval("SELECT 1")
             app.state.pg_pool = pg_pool
             logger.info("PostgreSQL pool connected to {}", database_url.split("@")[-1])
         except Exception as exc:
@@ -226,6 +228,44 @@ app = FastAPI(
 async def health() -> dict[str, str]:
     """Liveness probe — always returns ``{"status": "ok"}``."""
     return {"status": "ok"}
+
+
+@app.get("/ready", tags=["ops"])
+async def readiness() -> dict[str, Any]:
+    """Readiness probe — checks Redis, PostgreSQL, and bridge connectivity."""
+    checks: dict[str, str] = {}
+
+    # Redis / EventBus
+    event_bus = getattr(app.state, "event_bus", None)
+    if event_bus is not None:
+        try:
+            redis_client = getattr(event_bus, "_redis", None)
+            if redis_client is not None:
+                await redis_client.ping()
+            checks["redis"] = "ok"
+        except Exception as exc:
+            checks["redis"] = f"error: {exc}"
+    else:
+        checks["redis"] = "not_configured"
+
+    # PostgreSQL
+    pg_pool = getattr(app.state, "pg_pool", None)
+    if pg_pool is not None:
+        try:
+            async with pg_pool.acquire() as conn:
+                await conn.fetchval("SELECT 1")
+            checks["postgres"] = "ok"
+        except Exception as exc:
+            checks["postgres"] = f"error: {exc}"
+    else:
+        checks["postgres"] = "not_configured"
+
+    # OpenClaw bridge
+    bridge_client = getattr(app.state, "bridge_client", None)
+    checks["bridge"] = "connected" if bridge_client is not None else "not_configured"
+
+    all_ok = all(v in ("ok", "not_configured", "connected") for v in checks.values())
+    return {"status": "ready" if all_ok else "degraded", "checks": checks}
 
 
 # ---------------------------------------------------------------------------
