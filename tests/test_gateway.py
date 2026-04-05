@@ -140,9 +140,12 @@ def test_readiness_bridge_connected(client_with_registry: TestClient) -> None:
     bridge.is_connected = True
     app.state.bridge_client = bridge
 
-    resp = client_with_registry.get("/ready")
-    body = resp.json()
-    assert body["checks"]["bridge"] == "connected"
+    try:
+        resp = client_with_registry.get("/ready")
+        body = resp.json()
+        assert body["checks"]["bridge"] == "connected"
+    finally:
+        del app.state.bridge_client
 
 
 def test_readiness_bridge_disconnected_is_degraded(client_with_registry: TestClient) -> None:
@@ -151,10 +154,13 @@ def test_readiness_bridge_disconnected_is_degraded(client_with_registry: TestCli
     bridge.is_connected = False
     app.state.bridge_client = bridge
 
-    resp = client_with_registry.get("/ready")
-    body = resp.json()
-    assert body["checks"]["bridge"] == "disconnected"
-    assert body["status"] == "degraded"
+    try:
+        resp = client_with_registry.get("/ready")
+        body = resp.json()
+        assert body["checks"]["bridge"] == "disconnected"
+        assert body["status"] == "degraded"
+    finally:
+        del app.state.bridge_client
 
 
 def test_readiness_bridge_not_configured(client_with_registry: TestClient) -> None:

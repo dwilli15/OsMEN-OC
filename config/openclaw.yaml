@@ -9,7 +9,7 @@ bridge:
   # Override at runtime via OPENCLAW_WS_URL environment variable.
   endpoint: "ws://127.0.0.1:18789"
 
-  # Reconnection behaviour (exponential backoff)
+  # Reconnection behavior (exponential backoff)
   reconnect:
     initial_backoff_seconds: 1.0
     max_backoff_seconds: 60.0
