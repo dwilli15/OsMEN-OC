@@ -7,7 +7,7 @@ name = "osmen-oc"
 version = "0.1.0"
 description = "OsMEN-OC execution engine — pipeline execution, tools, bridge logic, memory, Podman services, timers"
 license = { text = "Apache-2.0" }
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115,<1",
     "uvicorn[standard]>=0.29,<1",

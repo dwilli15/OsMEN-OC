@@ -193,6 +193,8 @@ class AuditTrail:
 
         where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
         params.append(limit)
+        # `where` contains only hardcoded condition templates with positional
+        # asyncpg placeholders ($1…$N); no raw user input is ever interpolated.
         sql = f"""
             SELECT record_id, agent_id, tool_name, risk_level,
                    outcome, reason, parameters, correlation_id,
@@ -201,7 +203,7 @@ class AuditTrail:
             {where}
             ORDER BY created_at DESC
             LIMIT ${idx}
-        """
+        """  # nosec B608
 
         try:
             async with self._pool.acquire() as conn:
