@@ -231,7 +231,7 @@ class TestBuiltinIngestUrl:
         mock_client = self._make_streaming_client(response)
 
         mock_chroma = MagicMock()
-        mock_chroma.add_documents = MagicMock()
+        mock_chroma.add_documents_async = AsyncMock()
 
         app_state = MagicMock()
         app_state.chroma_store = mock_chroma
@@ -255,7 +255,7 @@ class TestBuiltinIngestUrl:
 
         assert result["status"] == "ok"
         assert result["stored"] is True
-        mock_chroma.add_documents.assert_called_once()
+        mock_chroma.add_documents_async.assert_called_once()
 
 
 class TestBuiltinSearchKnowledge:
@@ -283,7 +283,9 @@ class TestBuiltinSearchKnowledge:
         from core.gateway.builtin_handlers import handle_search_knowledge
 
         mock_chroma = MagicMock()
-        mock_chroma.query = MagicMock(return_value={"documents": [["hello"]], "ids": [["1"]]})
+        mock_chroma.query_async = AsyncMock(
+            return_value={"documents": [["hello"]], "ids": [["1"]]},
+        )
 
         app_state = MagicMock()
         app_state.chroma_store = mock_chroma
@@ -292,4 +294,4 @@ class TestBuiltinSearchKnowledge:
         result = await handle_search_knowledge({"query": "hello", "top_k": "3"}, ctx)
 
         assert result["status"] == "ok"
-        mock_chroma.query.assert_called_once()
+        mock_chroma.query_async.assert_called_once()

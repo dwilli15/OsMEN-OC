@@ -167,7 +167,7 @@ async def handle_ingest_url(parameters: dict[str, Any], context: HandlerContext)
             )
             for i, chunk in enumerate(chunks)
         ]
-        chroma_store.add_documents(docs)
+        await chroma_store.add_documents_async(docs)
         logger.info("Ingested {} chunks from {} into '{}'", len(docs), url, collection_name)
     else:
         logger.warning("ChromaDB not configured; chunked {} but not stored", len(chunks))
@@ -206,7 +206,7 @@ async def handle_search_knowledge(
         return {"status": "error", "detail": "ChromaDB not configured"}
 
     where_filter = {"collection": collection} if collection else None
-    results = chroma_store.query(query, n_results=top_k, where=where_filter)
+    results = await chroma_store.query_async(query, n_results=top_k, where=where_filter)
 
     return {
         "status": "ok",
