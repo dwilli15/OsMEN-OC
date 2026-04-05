@@ -374,3 +374,48 @@ async def test_health_async() -> None:
         resp = await ac.get("/health")
     assert resp.status_code == 200
     assert resp.json()["status"] == "ok"
+
+
+# ---------------------------------------------------------------------------
+# Dead-letter endpoint
+# ---------------------------------------------------------------------------
+
+
+def test_dead_letter_no_bus(client_with_registry: TestClient) -> None:
+    """GET /events/dead-letter without event bus returns empty list."""
+    # Remove event_bus from state if present
+    app.state.event_bus = None
+    resp = client_with_registry.get("/events/dead-letter")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["entries"] == []
+    assert body["total"] == 0
+
+
+def test_dead_letter_with_entries(client_with_registry: TestClient) -> None:
+    """GET /events/dead-letter returns entries from the bus."""
+    bus = AsyncMock()
+    bus.read_dead_letters = AsyncMock(
+        return_value=[
+            {"msg_id": "1-0", "domain": "test", "dead_letter_reason": "parse error"},
+        ]
+    )
+    app.state.event_bus = bus
+
+    resp = client_with_registry.get("/events/dead-letter")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 1
+    assert body["entries"][0]["dead_letter_reason"] == "parse error"
+    bus.read_dead_letters.assert_called_once_with(count=50)
+
+
+def test_dead_letter_count_clamped(client_with_registry: TestClient) -> None:
+    """GET /events/dead-letter?count=999 is clamped to 200."""
+    bus = AsyncMock()
+    bus.read_dead_letters = AsyncMock(return_value=[])
+    app.state.event_bus = bus
+
+    resp = client_with_registry.get("/events/dead-letter?count=999")
+    assert resp.status_code == 200
+    bus.read_dead_letters.assert_called_once_with(count=200)
