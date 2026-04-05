@@ -44,3 +44,11 @@ tools:
         required: false
         description: Only purge files older than this many days (default 7).
     risk_level: medium
+
+  - name: assess_plex_readiness
+    description: >
+      Assess whether the system is ready to accept Plex media transfers.
+      Checks library root configuration, per-media-type subdirectories,
+      available disk space, and Plex container health.
+    parameters: {}
+    risk_level: low

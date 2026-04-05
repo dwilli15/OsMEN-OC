@@ -19,6 +19,7 @@ media_organization
 - ``audit_vpn`` — verify gluetun VPN container is connected.
 - ``list_downloads`` — aggregate qBittorrent + SABnzbd download lists.
 - ``purge_completed`` — delete old staged downloads from DOWNLOAD_STAGING_DIR.
+- ``assess_plex_readiness`` — check library root, disk space, subdirs, and container health.
 """
 
 from __future__ import annotations
@@ -90,6 +91,9 @@ _GLM_RATE_LIMIT_CODE = 1302
 
 # Bytes per megabyte — used for SABnzbd size conversion.
 _MB_TO_BYTES = 1024 * 1024
+
+# Minimum free disk space (bytes) required for Plex readiness.
+_PLEX_MIN_FREE_BYTES = 10 * 1024 * 1024 * 1024  # 10 GiB
 
 
 def _qbt_state_to_status(state: str) -> str:
@@ -790,3 +794,155 @@ async def handle_purge_completed(
         "files": purged,
         "errors": errors,
     }
+
+
+@register_handler("assess_plex_readiness")
+async def handle_assess_plex_readiness(
+    parameters: dict[str, Any], context: HandlerContext
+) -> dict[str, Any]:
+    """Assess whether the system is ready to accept Plex media transfers.
+
+    Runs a set of read-only checks and returns a structured readiness report:
+
+    - ``plex_library_root_configured`` — ``PLEX_LIBRARY_ROOT`` env var is set.
+    - ``plex_library_root_exists`` — the configured path is an accessible directory.
+    - ``disk_space`` — at least 10 GiB free at the library root.
+      This check includes a ``free_gib`` field with the measured free space in GiB.
+    - ``library_dir_<media_type>`` — per-media-type subdirectory exists.
+    - ``plex_container_running`` — ``osmen-media-plex`` Podman container is running.
+
+    Returns:
+        A dict with ``status``, ``ready`` (overall bool), and ``checks`` list.
+        Each check entry has ``name``, ``passed``, and ``detail``.
+        The ``disk_space`` check also includes ``free_gib`` (float, rounded to 2 dp).
+    """
+    checks: list[dict[str, Any]] = []
+
+    # --- Check 1: PLEX_LIBRARY_ROOT is configured ---
+    library_root_str = _os.environ.get("PLEX_LIBRARY_ROOT")
+    if not library_root_str:
+        checks.append(
+            {
+                "name": "plex_library_root_configured",
+                "passed": False,
+                "detail": "PLEX_LIBRARY_ROOT environment variable is not set",
+            }
+        )
+        return {"status": "ok", "ready": False, "checks": checks}
+
+    checks.append(
+        {
+            "name": "plex_library_root_configured",
+            "passed": True,
+            "detail": library_root_str,
+        }
+    )
+    library_root = _Path(library_root_str)
+
+    # --- Check 2: Library root directory exists ---
+    root_exists = await _anyio.to_thread.run_sync(library_root.is_dir)
+    checks.append(
+        {
+            "name": "plex_library_root_exists",
+            "passed": root_exists,
+            "detail": (
+                str(library_root)
+                if root_exists
+                else f"Directory not found: {library_root}"
+            ),
+        }
+    )
+
+    if root_exists:
+        # --- Check 3: Disk space ---
+        try:
+            usage = await _anyio.to_thread.run_sync(
+                lambda: _shutil.disk_usage(str(library_root))
+            )
+            free_gib = usage.free / (1024**3)
+            min_free_gib = _PLEX_MIN_FREE_BYTES / (1024**3)
+            space_ok = usage.free >= _PLEX_MIN_FREE_BYTES
+            checks.append(
+                {
+                    "name": "disk_space",
+                    "passed": space_ok,
+                    "free_gib": round(free_gib, 2),
+                    "detail": (
+                        f"{free_gib:.1f} GiB free"
+                        if space_ok
+                        else (
+                            f"Low disk space: {free_gib:.1f} GiB free"
+                            f" (need ≥ {min_free_gib:.0f} GiB)"
+                        )
+                    ),
+                }
+            )
+        except OSError as exc:
+            checks.append(
+                {
+                    "name": "disk_space",
+                    "passed": False,
+                    "detail": f"Could not check disk space: {exc}",
+                }
+            )
+
+        # --- Check 4: Per-media-type subdirectories ---
+        for media_type in sorted(_PLEX_MEDIA_TYPES):
+            subdir = library_root / media_type
+            subdir_exists = await _anyio.to_thread.run_sync(subdir.is_dir)
+            checks.append(
+                {
+                    "name": f"library_dir_{media_type}",
+                    "passed": subdir_exists,
+                    "detail": (
+                        str(subdir) if subdir_exists else f"Missing subdirectory: {subdir}"
+                    ),
+                }
+            )
+
+    # --- Check 5: osmen-media-plex container is running ---
+    try:
+        with _anyio.fail_after(10):
+            inspect_result = await _anyio.run_process(
+                [
+                    "podman",
+                    "inspect",
+                    "--format",
+                    "{{.State.Running}}",
+                    "osmen-media-plex",
+                ],
+                check=False,
+            )
+        container_running = inspect_result.stdout.decode().strip().lower() == "true"
+        checks.append(
+            {
+                "name": "plex_container_running",
+                "passed": container_running,
+                "detail": (
+                    "osmen-media-plex is running"
+                    if container_running
+                    else "osmen-media-plex is not running"
+                ),
+            }
+        )
+    except FileNotFoundError:
+        checks.append(
+            {"name": "plex_container_running", "passed": False, "detail": "podman not installed"}
+        )
+    except TimeoutError:
+        checks.append(
+            {
+                "name": "plex_container_running",
+                "passed": False,
+                "detail": "podman inspect timed out",
+            }
+        )
+
+    ready = all(c["passed"] for c in checks)
+    logger.info(
+        "assess_plex_readiness: ready={}, passed={}/{}",
+        ready,
+        sum(1 for c in checks if c["passed"]),
+        len(checks),
+    )
+    return {"status": "ok", "ready": ready, "checks": checks}
