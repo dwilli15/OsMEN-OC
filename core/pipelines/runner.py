@@ -22,9 +22,11 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
+from cronsim import CronSim
 from loguru import logger
 
 from core.approval.gate import ApprovalGate, ApprovalOutcome, ApprovalRequest, RiskLevel
@@ -211,10 +213,7 @@ class PipelineRunner:
 
     @staticmethod
     def _cron_matches_now(cron_expr: str, *, _now: Any | None = None) -> bool:
-        """Simplified cron match: ``minute hour * * *`` against current UTC time.
-
-        Only evaluates the minute and hour fields for basic scheduling.
-        Full cron evaluation is deferred to a future iteration.
+        """Match full 5-field cron expressions at UTC minute granularity.
 
         Args:
             cron_expr: Standard 5-field cron expression.
@@ -222,16 +221,13 @@ class PipelineRunner:
         """
         from datetime import UTC, datetime
 
-        parts = cron_expr.strip().split()
-        if len(parts) < 2:
+        now = (_now or datetime.now(UTC)).replace(second=0, microsecond=0)
+        try:
+            next_fire = next(CronSim(cron_expr, now - timedelta(minutes=1)))
+        except Exception:
             return False
 
-        now = _now or datetime.now(UTC)
-        cron_minute, cron_hour = parts[0], parts[1]
-
-        minute_match = cron_minute == "*" or cron_minute == str(now.minute)
-        hour_match = cron_hour == "*" or cron_hour == str(now.hour)
-        return minute_match and hour_match
+        return next_fire == now
 
     async def _execute_pipeline(self, pipeline: Pipeline, *, trigger_payload: Any) -> None:
         """Execute all steps in a pipeline sequentially."""

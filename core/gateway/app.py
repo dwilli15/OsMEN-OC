@@ -410,7 +410,16 @@ async def invoke_tool(
         try:
             handler_result = await handler_registry.execute(tool_name, body.parameters, ctx)
         except Exception as exc:
-            logger.warning("Handler execution failed for tool={}: {}", tool_name, exc)
+            logger.error("Handler execution failed for tool={}: {}", tool_name, exc)
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "error": "handler_error",
+                    "detail": str(exc),
+                    "tool_name": tool_name,
+                    "correlation_id": body.correlation_id,
+                },
+            )
 
     # APPROVED: medium-risk tools are flagged for the daily summary → "queued"
     status = "queued" if gate_result.flagged_for_summary else "ok"

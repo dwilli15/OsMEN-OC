@@ -8,6 +8,7 @@ Covers:
 - POST /mcp/tools/{name}/invoke — denied path (high risk, no callback → 403).
 - POST /mcp/tools/{name}/invoke — audit failure → 500 structured error.
 - POST /mcp/tools/{name}/invoke — approval gate failure → 500 structured error.
+- POST /mcp/tools/{name}/invoke — handler failure → 500 structured error.
 - POST /mcp/tools/unknown/invoke returns 404.
 """
 
@@ -320,6 +321,27 @@ def test_invoke_approval_gate_failure_returns_500(client_with_registry: TestClie
     assert "gate exploded" in detail["detail"]
 
     app.dependency_overrides.pop(get_approval_gate, None)
+
+
+def test_invoke_handler_failure_returns_500(
+    client_with_registry: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A handler exception during invoke must return a structured 500 response."""
+    mock_registry = MagicMock()
+    mock_registry.has.return_value = True
+    mock_registry.execute = AsyncMock(side_effect=RuntimeError("handler exploded"))
+    monkeypatch.setattr("core.gateway.app.handler_registry", mock_registry)
+
+    resp = client_with_registry.post(
+        "/mcp/tools/low_tool/invoke",
+        json={"parameters": {"x": 1}, "correlation_id": "cid-handler"},
+    )
+    assert resp.status_code == 500
+    detail = resp.json()["detail"]
+    assert detail["error"] == "handler_error"
+    assert "handler exploded" in detail["detail"]
+    assert detail["correlation_id"] == "cid-handler"
 
 
 # ---------------------------------------------------------------------------
