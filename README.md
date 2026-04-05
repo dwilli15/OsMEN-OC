@@ -17,6 +17,37 @@ Two-plane design:
 - SOPS + age for secrets, restic for backups
 - Zhipu GLM-5 (primary LLM), Ollama + LM Studio (local inference)
 
+## Database Configuration
+
+OsMEN-OC stores the audit trail and pipeline state in PostgreSQL with pgvector.
+Two options are supported:
+
+### Option A — Self-hosted (default)
+
+The default setup runs `osmen-core-postgres` (`pgvector/pgvector:pg17`) as a
+rootless Podman container inside the `osmen-core.network` namespace.
+Bootstrap starts it automatically. Export one variable before starting the gateway:
+
+```bash
+export DATABASE_URL="postgresql://osmen:<password>@127.0.0.1:5432/osmen"
+```
+
+### Option B — Supabase free tier
+
+No local Postgres container needed. Create a free project at
+[supabase.com](https://supabase.com) (pgvector is enabled by default), then
+export **one** variable:
+
+```bash
+export SUPABASE_DB_URL="postgresql://postgres:<password>@db.<project>.supabase.co:5432/postgres"
+```
+
+The gateway automatically uses `SUPABASE_DB_URL` as a fallback when
+`DATABASE_URL` is absent — no other code or config changes required.
+
+> **Note**: Supabase free projects auto-pause after 7 days of inactivity.
+> For always-on production use, keep the self-hosted Podman container (Option A).
+
 ## Quick Start
 
 ```bash

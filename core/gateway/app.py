@@ -63,6 +63,32 @@ def _try_import_asyncpg():
 
 
 # ---------------------------------------------------------------------------
+# Database URL resolution
+# ---------------------------------------------------------------------------
+
+
+def _resolve_database_url() -> str | None:
+    """Return the database URL to connect to, with Supabase fallback.
+
+    Checks ``DATABASE_URL`` first (self-hosted asyncpg DSN).  When that env
+    var is absent, falls back to ``SUPABASE_DB_URL`` so that a Supabase
+    free-tier project can substitute for the local ``osmen-core-postgres``
+    container without any other code changes.
+
+    Returns:
+        The resolved connection string, or ``None`` when neither env var is set.
+    """
+    url = os.environ.get("DATABASE_URL")
+    if url:
+        return url
+    supabase_url = os.environ.get("SUPABASE_DB_URL")
+    if supabase_url:
+        logger.info("DATABASE_URL not set; falling back to SUPABASE_DB_URL")
+        return supabase_url
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Bridge message handler (used by OpenClawBridgeClient)
 # ---------------------------------------------------------------------------
 
@@ -135,7 +161,7 @@ async def lifespan(app: FastAPI):
     # --- asyncpg pool (optional) ---
     pg_pool = None
     asyncpg = _try_import_asyncpg()
-    database_url = os.environ.get("DATABASE_URL")
+    database_url = _resolve_database_url()
     if database_url and asyncpg is not None:
         try:
             pg_pool = await asyncpg.create_pool(database_url, min_size=2, max_size=10)

@@ -20,7 +20,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from core.gateway.app import app
+from core.gateway.app import _resolve_database_url, app
 from core.gateway.deps import get_approval_gate, get_audit_trail, get_event_bus
 from core.gateway.mcp import MCPTool
 from core.utils.exceptions import ApprovalError, AuditError, EventBusError
@@ -374,6 +374,38 @@ async def test_health_async() -> None:
         resp = await ac.get("/health")
     assert resp.status_code == 200
     assert resp.json()["status"] == "ok"
+
+
+# ---------------------------------------------------------------------------
+# _resolve_database_url helper
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_database_url_returns_database_url_when_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """DATABASE_URL takes priority over SUPABASE_DB_URL when both are set."""
+    monkeypatch.setenv("DATABASE_URL", "postgresql://host/db")
+    monkeypatch.setenv("SUPABASE_DB_URL", "postgresql://supabase/db")
+    assert _resolve_database_url() == "postgresql://host/db"
+
+
+def test_resolve_database_url_falls_back_to_supabase_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """SUPABASE_DB_URL is used when DATABASE_URL is absent."""
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv("SUPABASE_DB_URL", "postgresql://supabase/db")
+    assert _resolve_database_url() == "postgresql://supabase/db"
+
+
+def test_resolve_database_url_returns_none_when_neither_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Returns None when neither DATABASE_URL nor SUPABASE_DB_URL is set."""
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("SUPABASE_DB_URL", raising=False)
+    assert _resolve_database_url() is None
 
 
 # ---------------------------------------------------------------------------

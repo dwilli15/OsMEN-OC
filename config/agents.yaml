@@ -25,3 +25,15 @@ media_organization:
   model_tier: local-medium
   plex_library_root: "${PLEX_LIBRARY_ROOT}"
   download_staging: "${DOWNLOAD_STAGING_DIR}"
+
+# Database connection — set exactly ONE of the following env vars before starting the gateway.
+# The gateway reads these directly from the environment (not from this file).
+#
+# Option A — self-hosted (default, osmen-core-postgres Podman container):
+#   export DATABASE_URL="postgresql://osmen:<password>@127.0.0.1:5432/osmen"
+#
+# Option B — Supabase free tier (no local Postgres container required):
+#   export SUPABASE_DB_URL="postgresql://postgres:<password>@db.<project>.supabase.co:5432/postgres"
+#   The gateway uses SUPABASE_DB_URL as a fallback when DATABASE_URL is absent.
+#   Obtain it from: Supabase Dashboard → Project → Settings → Database → Connection string.
+#   NOTE: Supabase free projects auto-pause after 7 days of inactivity.
