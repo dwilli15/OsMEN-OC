@@ -45,6 +45,9 @@ class PipelineStep:
     agent: str
     tool: str
     parameters: dict[str, Any] = field(default_factory=dict)
+    max_retries: int = 0
+    retry_delay: float = 1.0
+    circuit_breaker_threshold: int = 0  # 0 = disabled
 
 
 @dataclass
@@ -93,6 +96,7 @@ class PipelineRunner:
         self.pipelines: list[Pipeline] = []
         self._tasks: list[asyncio.Task[None]] = []
         self._running = False
+        self._circuit_failures: dict[str, int] = {}  # tool_name → consecutive failures
 
     def _load_pipelines(self) -> list[Pipeline]:
         """Parse ``config/pipelines.yaml`` into :class:`Pipeline` objects."""
@@ -124,6 +128,9 @@ class PipelineRunner:
                     agent=s.get("agent", ""),
                     tool=s.get("tool", ""),
                     parameters=s.get("parameters", {}),
+                    max_retries=int(s.get("max_retries", 0)),
+                    retry_delay=float(s.get("retry_delay", 1.0)),
+                    circuit_breaker_threshold=int(s.get("circuit_breaker_threshold", 0)),
                 )
                 for s in raw.get("steps", [])
             ]
@@ -246,7 +253,7 @@ class PipelineRunner:
             if isinstance(trigger_payload, dict):
                 merged_params.setdefault("_trigger", trigger_payload)
 
-            await self._execute_step(pipeline.id, step, tool, merged_params)
+            await self._execute_step_with_retry(pipeline.id, step, tool, merged_params)
 
         # Publish pipeline completion event
         completion = EventEnvelope(
@@ -260,6 +267,62 @@ class PipelineRunner:
             await self._event_bus.publish(completion)
         except Exception as exc:
             logger.warning("Failed to publish pipeline completion event: {}", exc)
+
+    async def _execute_step_with_retry(
+        self,
+        pipeline_id: str,
+        step: PipelineStep,
+        tool: MCPTool,
+        parameters: dict[str, Any],
+    ) -> None:
+        """Run a step with optional retries and circuit-breaker logic."""
+        # Circuit breaker check
+        if step.circuit_breaker_threshold > 0:
+            failures = self._circuit_failures.get(step.tool, 0)
+            if failures >= step.circuit_breaker_threshold:
+                logger.warning(
+                    "Pipeline '{}' step '{}' circuit breaker OPEN ({} consecutive failures)",
+                    pipeline_id,
+                    step.tool,
+                    failures,
+                )
+                return
+
+        last_exc: Exception | None = None
+        attempts = 1 + step.max_retries
+        for attempt in range(1, attempts + 1):
+            try:
+                await self._execute_step(pipeline_id, step, tool, parameters)
+                # Success — reset circuit breaker counter
+                if step.circuit_breaker_threshold > 0:
+                    self._circuit_failures[step.tool] = 0
+                return
+            except Exception as exc:
+                last_exc = exc
+                if attempt < attempts:
+                    logger.warning(
+                        "Pipeline '{}' step '{}' attempt {}/{} failed: {}. Retrying in {}s",
+                        pipeline_id,
+                        step.tool,
+                        attempt,
+                        attempts,
+                        exc,
+                        step.retry_delay,
+                    )
+                    await asyncio.sleep(step.retry_delay)
+
+        # All retries exhausted
+        if step.circuit_breaker_threshold > 0:
+            self._circuit_failures[step.tool] = (
+                self._circuit_failures.get(step.tool, 0) + 1
+            )
+        logger.error(
+            "Pipeline '{}' step '{}' failed after {} attempts: {}",
+            pipeline_id,
+            step.tool,
+            attempts,
+            last_exc,
+        )
 
     async def _execute_step(
         self,
@@ -334,6 +397,7 @@ class PipelineRunner:
                     step.tool,
                     exc,
                 )
+                raise
 
         step_event = EventEnvelope(
             domain="pipelines",
