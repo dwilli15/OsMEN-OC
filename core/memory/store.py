@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from functools import partial
 from typing import Any
 
+import anyio
 from pydantic import BaseModel, Field
 
 
@@ -57,3 +59,22 @@ class ChromaStore:
         if not ids:
             return
         self._collection.delete(ids=ids)
+
+    # --- Async wrappers (offload sync ChromaDB calls to a thread) ---
+
+    async def add_documents_async(self, documents: list[MemoryDocument]) -> None:
+        await anyio.to_thread.run_sync(partial(self.add_documents, documents))
+
+    async def query_async(
+        self,
+        query_text: str,
+        *,
+        n_results: int = 5,
+        where: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return await anyio.to_thread.run_sync(
+            partial(self.query, query_text, n_results=n_results, where=where),
+        )
+
+    async def delete_async(self, ids: list[str]) -> None:
+        await anyio.to_thread.run_sync(partial(self.delete, ids))
