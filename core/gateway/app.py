@@ -35,7 +35,8 @@ from core.events.envelope import EventEnvelope, EventPriority
 from core.gateway.deps import ApprovalGateDep, AuditTrailDep, EventBusDep, MCPRegistry
 from core.gateway.handlers import HandlerContext, handler_registry, load_entry_point_handlers
 from core.gateway.mcp import MCPTool, register_tools, scan_manifests
-from core.utils.exceptions import ApprovalError, AuditError, EventBusError
+from core.utils.config import load_config
+from core.utils.exceptions import ApprovalError, AuditError, ConfigError, EventBusError
 
 # ---------------------------------------------------------------------------
 # Optional runtime imports (graceful fallback when not installed)
@@ -154,12 +155,26 @@ async def lifespan(app: FastAPI):
     # --- OpenClaw bridge client (optional background task) ---
     bridge_task = None
     bridge_url = os.environ.get("OPENCLAW_WS_URL")
+
+    # Load bridge defaults from config/openclaw.yaml when the env var is absent.
+    openclaw_cfg: dict[str, Any] = {}
+    try:
+        openclaw_cfg = load_config("config/openclaw.yaml")
+    except ConfigError:
+        logger.debug("config/openclaw.yaml not found; using env / built-in defaults")
+
+    bridge_section = openclaw_cfg.get("bridge", {})
+    if not bridge_url:
+        bridge_url = bridge_section.get("endpoint")
+
     if bridge_url:
         from core.bridge.ws_client import OpenClawBridgeClient
 
+        reconnect = bridge_section.get("reconnect", {})
         bridge_client = OpenClawBridgeClient(
             endpoint=bridge_url,
             on_message=lambda msg: _bridge_message_handler(app, msg),
+            max_backoff_seconds=float(reconnect.get("max_backoff_seconds", 60.0)),
         )
         app.state.bridge_client = bridge_client
         bridge_task = asyncio.create_task(bridge_client.run_forever())
@@ -267,7 +282,10 @@ async def readiness() -> dict[str, Any]:
 
     # OpenClaw bridge
     bridge_client = getattr(app.state, "bridge_client", None)
-    checks["bridge"] = "connected" if bridge_client is not None else "not_configured"
+    if bridge_client is not None:
+        checks["bridge"] = "connected" if bridge_client.is_connected else "disconnected"
+    else:
+        checks["bridge"] = "not_configured"
 
     all_ok = all(v in ("ok", "not_configured", "connected") for v in checks.values())
     return {"status": "ready" if all_ok else "degraded", "checks": checks}
