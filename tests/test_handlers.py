@@ -81,9 +81,14 @@ class TestBuiltinIngestUrl:
             chunks: list[bytes],
             content_type: str = "text/html; charset=utf-8",
             encoding: str = "utf-8",
+            status_code: int = 200,
+            headers: dict[str, str] | None = None,
         ) -> None:
             self._chunks = chunks
+            self.status_code = status_code
             self.headers = {"content-type": content_type}
+            if headers:
+                self.headers.update(headers)
             self.encoding = encoding
             self.raise_for_status = MagicMock()
 
@@ -103,11 +108,17 @@ class TestBuiltinIngestUrl:
 
     @staticmethod
     def _make_streaming_client(
-        response: TestBuiltinIngestUrl._MockStreamResponse,
+        responses: TestBuiltinIngestUrl._MockStreamResponse
+        | list[TestBuiltinIngestUrl._MockStreamResponse],
     ) -> AsyncMock:
         mock_client = AsyncMock()
-        ctx = TestBuiltinIngestUrl._MockStreamContext(response)
-        mock_client.stream = MagicMock(return_value=ctx)
+        if isinstance(responses, list):
+            mock_client.stream = MagicMock(
+                side_effect=[TestBuiltinIngestUrl._MockStreamContext(resp) for resp in responses],
+            )
+        else:
+            ctx = TestBuiltinIngestUrl._MockStreamContext(responses)
+            mock_client.stream = MagicMock(return_value=ctx)
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
         return mock_client
@@ -151,6 +162,54 @@ class TestBuiltinIngestUrl:
         assert result["status"] == "error"
         assert "non-public" in result["detail"].lower()
         mock_async_client.assert_not_called()
+
+    @pytest.mark.anyio
+    async def test_ingest_url_rejects_redirect_to_localhost(self) -> None:
+        from core.gateway.builtin_handlers import handle_ingest_url
+
+        redirect_resp = self._MockStreamResponse(
+            chunks=[],
+            status_code=302,
+            headers={"location": "http://localhost/internal"},
+        )
+        final_resp = self._MockStreamResponse(chunks=[b"ok"], content_type="text/plain")
+        mock_client = self._make_streaming_client([redirect_resp, final_resp])
+
+        ctx = HandlerContext(agent_id="knowledge_librarian")
+        with (
+            patch(
+                "core.gateway.builtin_handlers._socket.getaddrinfo",
+                side_effect=[
+                    [(2, 1, 6, "", ("93.184.216.34", 443))],
+                    [(2, 1, 6, "", ("127.0.0.1", 80))],
+                ],
+            ),
+            patch("core.gateway.builtin_handlers._httpx.AsyncClient", return_value=mock_client),
+        ):
+            result = await handle_ingest_url({"url": "https://example.com/redirect"}, ctx)
+
+        assert result["status"] == "error"
+        assert "redirect target blocked" in result["detail"].lower()
+
+    @pytest.mark.anyio
+    async def test_ingest_url_rejects_redirect_without_location(self) -> None:
+        from core.gateway.builtin_handlers import handle_ingest_url
+
+        redirect_resp = self._MockStreamResponse(chunks=[], status_code=301)
+        mock_client = self._make_streaming_client(redirect_resp)
+
+        ctx = HandlerContext(agent_id="knowledge_librarian")
+        with (
+            patch(
+                "core.gateway.builtin_handlers._socket.getaddrinfo",
+                return_value=[(2, 1, 6, "", ("93.184.216.34", 443))],
+            ),
+            patch("core.gateway.builtin_handlers._httpx.AsyncClient", return_value=mock_client),
+        ):
+            result = await handle_ingest_url({"url": "https://example.com/redirect"}, ctx)
+
+        assert result["status"] == "error"
+        assert "missing location" in result["detail"].lower()
 
     @pytest.mark.anyio
     async def test_ingest_url_rejects_unsupported_content_type(self) -> None:
@@ -255,7 +314,7 @@ class TestBuiltinIngestUrl:
 
         assert result["status"] == "ok"
         assert result["stored"] is True
-        mock_chroma.add_documents_async.assert_called_once()
+        mock_chroma.add_documents_async.assert_awaited_once()
 
 
 class TestBuiltinSearchKnowledge:
@@ -283,9 +342,7 @@ class TestBuiltinSearchKnowledge:
         from core.gateway.builtin_handlers import handle_search_knowledge
 
         mock_chroma = MagicMock()
-        mock_chroma.query_async = AsyncMock(
-            return_value={"documents": [["hello"]], "ids": [["1"]]},
-        )
+        mock_chroma.query_async = AsyncMock(return_value={"documents": [["hello"]], "ids": [["1"]]})
 
         app_state = MagicMock()
         app_state.chroma_store = mock_chroma
@@ -294,7 +351,7 @@ class TestBuiltinSearchKnowledge:
         result = await handle_search_knowledge({"query": "hello", "top_k": "3"}, ctx)
 
         assert result["status"] == "ok"
-        mock_chroma.query_async.assert_called_once()
+        mock_chroma.query_async.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------
@@ -302,48 +359,65 @@ class TestBuiltinSearchKnowledge:
 # ---------------------------------------------------------------------------
 
 
-class TestEntryPointLoader:
-    """Tests for load_entry_point_handlers."""
+class TestLoadEntryPointHandlers:
+    """Tests for load_entry_point_handlers()."""
 
-    def test_loads_entry_points_into_registry(self) -> None:
+    def test_returns_empty_when_no_entry_points(self) -> None:
+        """With no osmen_oc.handlers entry-points, returns an empty list."""
+        from unittest.mock import patch
+
         from core.gateway.handlers import HandlerRegistry, load_entry_point_handlers
 
-        async def fake_handler(params, ctx):
-            return {"plugin": True}
+        registry = HandlerRegistry()
+        with patch("importlib.metadata.entry_points", return_value=[]) as mock_eps:
+            result = load_entry_point_handlers(registry=registry)
+        assert result == []
+        mock_eps.assert_called_once_with(group="osmen_oc.handlers")
 
-        fake_ep = MagicMock()
-        fake_ep.name = "plugin_tool"
-        fake_ep.value = "mypkg.handlers:handle_plugin"
-        fake_ep.load.return_value = fake_handler
+    def test_loads_and_registers_entry_point(self) -> None:
+        """A valid entry-point is loaded and registered in the registry."""
+        from unittest.mock import MagicMock, patch
 
-        with patch("core.gateway.handlers.importlib.metadata.entry_points", return_value=[fake_ep]):
-            reg = HandlerRegistry()
-            loaded = load_entry_point_handlers(registry=reg)
-
-        assert loaded == ["plugin_tool"]
-        assert reg.has("plugin_tool")
-        assert reg.get("plugin_tool") is fake_handler
-
-    def test_skips_broken_entry_point(self) -> None:
         from core.gateway.handlers import HandlerRegistry, load_entry_point_handlers
+
+        async def dummy_handler(params: dict, ctx: object) -> dict:
+            return {"status": "ok"}
+
+        ep = MagicMock()
+        ep.name = "dummy_tool"
+        ep.value = "my_package.handlers:dummy_handler"
+        ep.load.return_value = dummy_handler
+
+        registry = HandlerRegistry()
+        with patch("importlib.metadata.entry_points", return_value=[ep]):
+            loaded = load_entry_point_handlers(registry=registry)
+
+        assert loaded == ["dummy_tool"]
+        assert registry.has("dummy_tool")
+
+    def test_skips_entry_point_that_fails_to_load(self) -> None:
+        """A broken entry-point is skipped; other tools still load."""
+        from unittest.mock import MagicMock, patch
+
+        from core.gateway.handlers import HandlerRegistry, load_entry_point_handlers
+
+        async def good_handler(params: dict, ctx: object) -> dict:
+            return {"status": "ok"}
 
         bad_ep = MagicMock()
         bad_ep.name = "broken_tool"
-        bad_ep.value = "bad.module:fn"
-        bad_ep.load.side_effect = ImportError("no such module")
+        bad_ep.load.side_effect = ImportError("module not found")
 
-        with patch("core.gateway.handlers.importlib.metadata.entry_points", return_value=[bad_ep]):
-            reg = HandlerRegistry()
-            loaded = load_entry_point_handlers(registry=reg)
+        good_ep = MagicMock()
+        good_ep.name = "good_tool"
+        good_ep.value = "my_package:good_handler"
+        good_ep.load.return_value = good_handler
 
-        assert loaded == []
-        assert not reg.has("broken_tool")
+        registry = HandlerRegistry()
+        with patch("importlib.metadata.entry_points", return_value=[bad_ep, good_ep]):
+            loaded = load_entry_point_handlers(registry=registry)
 
-    def test_no_entry_points_returns_empty(self) -> None:
-        from core.gateway.handlers import HandlerRegistry, load_entry_point_handlers
-
-        with patch("core.gateway.handlers.importlib.metadata.entry_points", return_value=[]):
-            reg = HandlerRegistry()
-            loaded = load_entry_point_handlers(registry=reg)
-
-        assert loaded == []
+        assert "good_tool" in loaded
+        assert "broken_tool" not in loaded
+        assert not registry.has("broken_tool")
+        assert registry.has("good_tool")

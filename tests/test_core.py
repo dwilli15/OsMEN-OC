@@ -42,7 +42,7 @@ def test_exception_hierarchy() -> None:
 
 def test_load_config_missing_file() -> None:
     """load_config raises ConfigError for non-existent files."""
-    with pytest.raises(ConfigError, match="not found"):
+    with pytest.raises(ConfigError, match="not allowed"):
         load_config("/tmp/does_not_exist_osmen.yaml")
 
 
@@ -50,7 +50,7 @@ def test_load_config_basic(tmp_path: Path) -> None:
     """load_config returns a dict for a plain YAML file."""
     cfg_file = tmp_path / "test.yaml"
     cfg_file.write_text("key: value\nnested:\n  inner: 42\n")
-    result = load_config(cfg_file)
+    result = load_config(cfg_file, allowed_roots=[tmp_path])
     assert result == {"key": "value", "nested": {"inner": 42}}
 
 
@@ -59,7 +59,7 @@ def test_load_config_env_interpolation(tmp_path: Path, monkeypatch: pytest.Monke
     monkeypatch.setenv("TEST_TOKEN", "secret123")
     cfg_file = tmp_path / "env.yaml"
     cfg_file.write_text("token: ${TEST_TOKEN}\n")
-    result = load_config(cfg_file)
+    result = load_config(cfg_file, allowed_roots=[tmp_path])
     assert result["token"] == "secret123"
 
 
@@ -70,7 +70,7 @@ def test_load_config_missing_env_var(tmp_path: Path) -> None:
     # Make sure the variable is not accidentally set
     os.environ.pop("OSMEN_MISSING_VAR_XYZ", None)
     with pytest.raises(ConfigError, match="OSMEN_MISSING_VAR_XYZ"):
-        load_config(cfg_file)
+        load_config(cfg_file, allowed_roots=[tmp_path])
 
 
 def test_load_config_not_a_mapping(tmp_path: Path) -> None:
@@ -78,6 +78,15 @@ def test_load_config_not_a_mapping(tmp_path: Path) -> None:
     cfg_file = tmp_path / "list.yaml"
     cfg_file.write_text("- item1\n- item2\n")
     with pytest.raises(ConfigError, match="must contain a YAML mapping"):
+        load_config(cfg_file, allowed_roots=[tmp_path])
+
+
+def test_load_config_rejects_absolute_path_outside_allowed_roots(tmp_path: Path) -> None:
+    """load_config rejects paths outside trusted roots unless explicitly allowed."""
+    cfg_file = tmp_path / "unsafe.yaml"
+    cfg_file.write_text("key: value\n")
+
+    with pytest.raises(ConfigError, match="not allowed"):
         load_config(cfg_file)
 
 

@@ -20,6 +20,29 @@ import yaml
 from core.utils.exceptions import ConfigError
 
 _ENV_PATTERN = re.compile(r"\$\{([^}]+)\}")
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _is_within(path: Path, root: Path) -> bool:
+    try:
+        path.relative_to(root)
+        return True
+    except ValueError:
+        return False
+
+
+def _resolve_config_path(path: str | Path, allowed_roots: list[str | Path] | None = None) -> Path:
+    candidate = Path(path).expanduser()
+    resolved = candidate if candidate.is_absolute() else (_REPO_ROOT / candidate)
+    resolved = resolved.resolve()
+
+    trusted_roots = allowed_roots if allowed_roots is not None else [_REPO_ROOT / "config"]
+    normalized_roots = [Path(root).expanduser().resolve() for root in trusted_roots]
+    if not any(_is_within(resolved, root) for root in normalized_roots):
+        allowed_text = ", ".join(str(root) for root in normalized_roots)
+        raise ConfigError(f"Config path not allowed: {resolved}. Allowed roots: {allowed_text}")
+
+    return resolved
 
 
 def _interpolate(value: Any) -> Any:
@@ -44,11 +67,17 @@ def _interpolate(value: Any) -> Any:
     return value
 
 
-def load_config(path: str | Path) -> dict[str, Any]:
+def load_config(
+    path: str | Path,
+    *,
+    allowed_roots: list[str | Path] | None = None,
+) -> dict[str, Any]:
     """Load a YAML config file, resolving ``${ENV_VAR}`` placeholders.
 
     Args:
         path: Path to the YAML file (relative or absolute).
+        allowed_roots: Optional trusted root directories. If omitted,
+            only ``<repo>/config`` is allowed.
 
     Returns:
         Parsed and interpolated configuration dictionary.
@@ -56,9 +85,7 @@ def load_config(path: str | Path) -> dict[str, Any]:
     Raises:
         ConfigError: If the file cannot be read or parsed.
     """
-    resolved = Path(path)
-    if not resolved.is_absolute():
-        resolved = Path.cwd() / resolved
+    resolved = _resolve_config_path(path, allowed_roots)
 
     try:
         raw = resolved.read_text(encoding="utf-8")

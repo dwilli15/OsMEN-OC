@@ -377,45 +377,102 @@ async def test_health_async() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Dead-letter endpoint
+# Dead-letter endpoints
 # ---------------------------------------------------------------------------
 
 
-def test_dead_letter_no_bus(client_with_registry: TestClient) -> None:
-    """GET /events/dead-letter without event bus returns empty list."""
-    # Remove event_bus from state if present
-    app.state.event_bus = None
-    resp = client_with_registry.get("/events/dead-letter")
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["entries"] == []
-    assert body["total"] == 0
+def test_dead_letter_no_bus_returns_503(client_with_registry: TestClient) -> None:
+    """GET /events/dead-letter without event bus returns 503."""
+    app.dependency_overrides[get_event_bus] = lambda: None
+    try:
+        resp = client_with_registry.get("/events/dead-letter")
+        assert resp.status_code == 503
+    finally:
+        app.dependency_overrides.pop(get_event_bus, None)
 
 
-def test_dead_letter_with_entries(client_with_registry: TestClient) -> None:
-    """GET /events/dead-letter returns entries from the bus."""
-    bus = AsyncMock()
+def test_dead_letter_list_returns_entries(client_with_registry: TestClient) -> None:
+    """GET /events/dead-letter returns the list from the bus."""
+    bus = MagicMock()
     bus.read_dead_letters = AsyncMock(
         return_value=[
             {"msg_id": "1-0", "domain": "test", "dead_letter_reason": "parse error"},
         ]
     )
-    app.state.event_bus = bus
+    app.dependency_overrides[get_event_bus] = lambda: bus
+    try:
+        resp = client_with_registry.get("/events/dead-letter")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert len(body) == 1
+        assert body[0]["dead_letter_reason"] == "parse error"
+        bus.read_dead_letters.assert_called_once_with(count=50)
+    finally:
+        app.dependency_overrides.pop(get_event_bus, None)
 
-    resp = client_with_registry.get("/events/dead-letter")
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["total"] == 1
-    assert body["entries"][0]["dead_letter_reason"] == "parse error"
-    bus.read_dead_letters.assert_called_once_with(count=50)
+
+def test_dead_letter_summary_groups_by_stream(client_with_registry: TestClient) -> None:
+    """GET /events/dead-letter/summary returns totals grouped by original_stream."""
+    bus = MagicMock()
+    bus.read_dead_letters = AsyncMock(
+        return_value=[
+            {"msg_id": "1-0", "original_stream": "events:media"},
+            {"msg_id": "2-0", "original_stream": "events:media"},
+            {"msg_id": "3-0", "original_stream": "events:ingest"},
+        ]
+    )
+    app.dependency_overrides[get_event_bus] = lambda: bus
+    try:
+        resp = client_with_registry.get("/events/dead-letter/summary")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 3
+        assert body["by_original_stream"]["events:media"] == 2
+        assert body["by_original_stream"]["events:ingest"] == 1
+        assert body["oldest_msg_id"] == "1-0"
+    finally:
+        app.dependency_overrides.pop(get_event_bus, None)
 
 
-def test_dead_letter_count_clamped(client_with_registry: TestClient) -> None:
-    """GET /events/dead-letter?count=999 is clamped to 200."""
-    bus = AsyncMock()
-    bus.read_dead_letters = AsyncMock(return_value=[])
-    app.state.event_bus = bus
+def test_dead_letter_summary_no_bus_returns_503(client_with_registry: TestClient) -> None:
+    """GET /events/dead-letter/summary without event bus returns 503."""
+    app.dependency_overrides[get_event_bus] = lambda: None
+    try:
+        resp = client_with_registry.get("/events/dead-letter/summary")
+        assert resp.status_code == 503
+    finally:
+        app.dependency_overrides.pop(get_event_bus, None)
 
-    resp = client_with_registry.get("/events/dead-letter?count=999")
-    assert resp.status_code == 200
-    bus.read_dead_letters.assert_called_once_with(count=200)
+
+def test_replay_dead_letters_calls_bus(client_with_registry: TestClient) -> None:
+    """POST /events/dead-letter/replay delegates to bus.replay_dead_letters."""
+    bus = MagicMock()
+    bus.replay_dead_letters = AsyncMock(
+        return_value={
+            "inspected": 5, "replayed": 4, "skipped": 1, "errors": 0, "delete_replayed": False
+        }
+    )
+    app.dependency_overrides[get_event_bus] = lambda: bus
+    try:
+        resp = client_with_registry.post(
+            "/events/dead-letter/replay",
+            json={"count": 10, "delete_replayed": False},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["replayed"] == 4
+        bus.replay_dead_letters.assert_called_once_with(count=10, delete_replayed=False)
+    finally:
+        app.dependency_overrides.pop(get_event_bus, None)
+
+
+def test_replay_dead_letters_no_bus_returns_503(client_with_registry: TestClient) -> None:
+    """POST /events/dead-letter/replay without event bus returns 503."""
+    app.dependency_overrides[get_event_bus] = lambda: None
+    try:
+        resp = client_with_registry.post(
+            "/events/dead-letter/replay", json={"count": 5}
+        )
+        assert resp.status_code == 503
+    finally:
+        app.dependency_overrides.pop(get_event_bus, None)

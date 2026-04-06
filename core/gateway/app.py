@@ -33,7 +33,7 @@ from core.audit.trail import AuditRecord
 from core.bridge.protocol import BridgeInboundMessage, BridgeOutboundMessage
 from core.events.envelope import EventEnvelope, EventPriority
 from core.gateway.deps import ApprovalGateDep, AuditTrailDep, EventBusDep, MCPRegistry
-from core.gateway.handlers import HandlerContext, handler_registry, load_entry_point_handlers
+from core.gateway.handlers import HandlerContext, handler_registry
 from core.gateway.mcp import MCPTool, register_tools, scan_manifests
 from core.utils.exceptions import ApprovalError, AuditError, EventBusError
 
@@ -104,10 +104,14 @@ async def lifespan(app: FastAPI):
     app.state.mcp_registry = register_tools(tools)
     logger.info("Gateway ready. {} MCP tools registered.", len(app.state.mcp_registry))
 
-    # --- Plugin entry-point handlers ---
-    loaded_plugins = load_entry_point_handlers()
-    if loaded_plugins:
-        logger.info("Loaded {} plugin handler(s): {}", len(loaded_plugins), loaded_plugins)
+    # --- Plugin handler entry-points ---
+    from core.gateway.handlers import load_entry_point_handlers
+
+    ep_loaded = load_entry_point_handlers()
+    if ep_loaded:
+        logger.info("Loaded {} plugin handler(s) from entry-points: {}", len(ep_loaded), ep_loaded)
+    else:
+        logger.debug("No plugin handlers found in osmen_oc.handlers entry-points")
 
     # --- Approval gate (always available) ---
     app.state.approval_gate = ApprovalGate()
@@ -238,22 +242,24 @@ async def health() -> dict[str, str]:
 @app.get("/ready", tags=["ops"])
 async def readiness() -> dict[str, Any]:
     """Readiness probe — checks Redis, PostgreSQL, and bridge connectivity."""
-    checks: dict[str, str] = {}
+    checks: dict[str, Any] = {}
 
     # Redis / EventBus
     event_bus = getattr(app.state, "event_bus", None)
     if event_bus is not None:
-        try:
-            redis_client = getattr(event_bus, "_redis", None)
-            if redis_client is not None:
+        redis_client = getattr(event_bus, "_redis", None)
+        if redis_client is not None:
+            try:
                 await redis_client.ping()
-            checks["redis"] = "ok"
-        except Exception as exc:
-            checks["redis"] = f"error: {exc}"
+                checks["redis"] = "ok"
+            except Exception as exc:
+                checks["redis"] = f"error: {exc}"
+        else:
+            checks["redis"] = "noop"
     else:
         checks["redis"] = "not_configured"
 
-    # PostgreSQL
+    # PostgreSQL pool
     pg_pool = getattr(app.state, "pg_pool", None)
     if pg_pool is not None:
         try:
@@ -265,28 +271,119 @@ async def readiness() -> dict[str, Any]:
     else:
         checks["postgres"] = "not_configured"
 
-    # OpenClaw bridge
+    # Bridge client
     bridge_client = getattr(app.state, "bridge_client", None)
     checks["bridge"] = "connected" if bridge_client is not None else "not_configured"
 
-    all_ok = all(v in ("ok", "not_configured", "connected") for v in checks.values())
-    return {"status": "ready" if all_ok else "degraded", "checks": checks}
+    # ChromaDB
+    chroma_store = getattr(app.state, "chroma_store", None)
+    checks["chromadb"] = "available" if chroma_store is not None else "not_configured"
+
+    all_ok = all(
+        v in {"ok", "noop", "not_configured", "connected", "available"}
+        for v in checks.values()
+    )
+    status_code = 200 if all_ok else 503
+    if not all_ok:
+        raise HTTPException(status_code=status_code, detail=checks)
+
+    return {"status": "ready", "checks": checks}
 
 
-@app.get("/events/dead-letter", tags=["ops"])
-async def dead_letter_list(count: int = 50) -> dict[str, Any]:
-    """Return recent entries from the dead-letter stream.
+# ---------------------------------------------------------------------------
+# Dead-letter queue management
+# ---------------------------------------------------------------------------
 
-    Query params:
-        count: Maximum entries to return (default 50, max 200).
+
+@app.get("/events/dead-letter", tags=["events"])
+async def list_dead_letters(
+    event_bus: EventBusDep,
+    count: int = 50,
+) -> list[dict[str, Any]]:
+    """Return the most recent entries from the dead-letter stream.
+
+    Args:
+        count: Maximum number of entries to return (default 50).
     """
-    count = min(max(count, 1), 200)
-    event_bus = getattr(app.state, "event_bus", None)
-    if event_bus is None:
-        return {"entries": [], "total": 0, "note": "event bus not configured"}
+    if not hasattr(event_bus, "read_dead_letters"):
+        raise HTTPException(status_code=503, detail="Event bus not configured")
+    try:
+        return await event_bus.read_dead_letters(count=count)  # type: ignore[union-attr]
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    entries = await event_bus.read_dead_letters(count=count)
-    return {"entries": entries, "total": len(entries)}
+
+class DeadLetterSummary(BaseModel):
+    """Per-stream dead-letter counts and oldest entry metadata."""
+
+    total: int
+    by_original_stream: dict[str, int]
+    oldest_msg_id: str | None = None
+
+
+@app.get("/events/dead-letter/summary", tags=["events"])
+async def dead_letter_summary(
+    event_bus: EventBusDep,
+    count: int = 200,
+) -> DeadLetterSummary:
+    """Return a triage summary: total count grouped by original stream.
+
+    Inspects up to *count* dead-letter entries and aggregates by the
+    ``original_stream`` field so operators can prioritise which stream to
+    replay first.
+    """
+    if not hasattr(event_bus, "read_dead_letters"):
+        raise HTTPException(status_code=503, detail="Event bus not configured")
+    try:
+        entries = await event_bus.read_dead_letters(count=count)  # type: ignore[union-attr]
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    by_stream: dict[str, int] = {}
+    for entry in entries:
+        stream = str(entry.get("original_stream", "<unknown>"))
+        by_stream[stream] = by_stream.get(stream, 0) + 1
+
+    oldest = entries[0].get("msg_id") if entries else None
+    return DeadLetterSummary(
+        total=len(entries),
+        by_original_stream=by_stream,
+        oldest_msg_id=str(oldest) if oldest is not None else None,
+    )
+
+
+class ReplayRequest(BaseModel):
+    """Parameters for a dead-letter replay operation."""
+
+    count: int = 50
+    delete_replayed: bool = False
+
+
+@app.post("/events/dead-letter/replay", tags=["events"])
+async def replay_dead_letters(
+    body: ReplayRequest,
+    event_bus: EventBusDep,
+) -> dict[str, Any]:
+    """Replay dead-letter entries back to their original streams.
+
+    Each entry is re-published to the stream recorded in its
+    ``original_stream`` field.  Entries without an ``original_stream``
+    are counted as skipped.
+
+    Args:
+        body.count: Maximum entries to inspect (default 50).
+        body.delete_replayed: When true, delete successfully replayed entries
+            from the dead-letter stream (default false — safe preview mode).
+    """
+    if not hasattr(event_bus, "replay_dead_letters"):
+        raise HTTPException(status_code=503, detail="Event bus not configured")
+    try:
+        return await event_bus.replay_dead_letters(  # type: ignore[union-attr]
+            count=body.count,
+            delete_replayed=body.delete_replayed,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 # ---------------------------------------------------------------------------

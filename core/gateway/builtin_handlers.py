@@ -15,6 +15,7 @@ import ipaddress as _ipaddress
 import re as _re
 import socket as _socket
 from typing import Any
+from urllib.parse import urljoin as _urljoin
 from urllib.parse import urlparse as _urlparse
 
 import httpx as _httpx
@@ -24,6 +25,7 @@ from core.gateway.handlers import HandlerContext, register_handler
 from core.memory.chunking import chunk_text
 
 _MAX_FETCH_BYTES = 10 * 1024 * 1024  # 10 MiB
+_MAX_REDIRECT_HOPS = 5
 _ALLOWED_CONTENT_TYPES = {
     "application/json",
     "application/xml",
@@ -107,35 +109,63 @@ async def handle_ingest_url(parameters: dict[str, Any], context: HandlerContext)
     if validation_error:
         return {"status": "error", "detail": validation_error}
 
-    # Fetch content with streaming + hard cap to prevent oversized responses.
+    # Fetch content with streaming + hard cap. Redirects are handled manually
+    # so each hop can be re-validated against SSRF policy.
     try:
-        async with _httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-            async with client.stream("GET", url) as resp:
-                resp.raise_for_status()
-
-                content_type = resp.headers.get("content-type", "")
-                media_type = content_type.split(";", 1)[0].strip().lower()
-                if not (
-                    media_type.startswith("text/")
-                    or media_type in _ALLOWED_CONTENT_TYPES
-                ):
+        current_url = url
+        async with _httpx.AsyncClient(timeout=30.0, follow_redirects=False) as client:
+            for hop in range(_MAX_REDIRECT_HOPS + 1):
+                validation_error = _validate_ingest_url(current_url)
+                if validation_error:
                     return {
                         "status": "error",
-                        "detail": f"Unsupported content type: {media_type or 'unknown'}",
+                        "detail": f"Redirect target blocked: {validation_error}",
                     }
 
-                content = bytearray()
-                async for chunk in resp.aiter_bytes():
-                    if not chunk:
+                async with client.stream("GET", current_url) as resp:
+                    if 300 <= resp.status_code < 400:
+                        location = resp.headers.get("location")
+                        if not location:
+                            return {
+                                "status": "error",
+                                "detail": "Redirect response missing Location header",
+                            }
+                        if hop >= _MAX_REDIRECT_HOPS:
+                            return {
+                                "status": "error",
+                                "detail": "Too many redirect hops",
+                            }
+                        current_url = _urljoin(current_url, location)
                         continue
-                    content.extend(chunk)
-                    if len(content) > _MAX_FETCH_BYTES:
+
+                    resp.raise_for_status()
+
+                    content_type = resp.headers.get("content-type", "")
+                    media_type = content_type.split(";", 1)[0].strip().lower()
+                    if not (
+                        media_type.startswith("text/")
+                        or media_type in _ALLOWED_CONTENT_TYPES
+                    ):
                         return {
                             "status": "error",
-                            "detail": "Response body exceeds 10 MiB limit",
+                            "detail": f"Unsupported content type: {media_type or 'unknown'}",
                         }
 
-                text = content.decode(resp.encoding or "utf-8", errors="replace")
+                    content = bytearray()
+                    async for chunk in resp.aiter_bytes():
+                        if not chunk:
+                            continue
+                        content.extend(chunk)
+                        if len(content) > _MAX_FETCH_BYTES:
+                            return {
+                                "status": "error",
+                                "detail": "Response body exceeds 10 MiB limit",
+                            }
+
+                    text = content.decode(resp.encoding or "utf-8", errors="replace")
+                    break
+            else:
+                return {"status": "error", "detail": "Too many redirect hops"}
     except _httpx.HTTPError as exc:
         logger.warning("ingest_url fetch failed for {}: {}", url, exc)
         return {"status": "error", "detail": f"Fetch failed: {exc}"}

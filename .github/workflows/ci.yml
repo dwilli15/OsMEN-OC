@@ -23,7 +23,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev]" pip-audit bandit
 
       - name: Run tests with coverage
         run: python -m pytest tests/ -q --cov=core --cov-report=term-missing --cov-fail-under=80
@@ -35,11 +35,14 @@ jobs:
         run: python -m mypy core/ --ignore-missing-imports
 
       - name: Security audit (pip-audit)
-        run: |
-          pip install pip-audit
-          pip-audit --strict
+        run: python -m pip_audit --strict --progress-spinner=off
 
       - name: Security lint (bandit)
+        run: python -m bandit -r core/ -q -c pyproject.toml
+
+      - name: Validate quadlet syntax
         run: |
-          pip install bandit
-          bandit -r core/ -q -ll
+          for f in quadlets/core/*.container; do
+            echo "Checking $f ..."
+            grep -q '^\[Container\]' "$f" || { echo "FAIL: missing [Container] in $f"; exit 1; }
+          done

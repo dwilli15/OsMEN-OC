@@ -127,13 +127,54 @@ class ApprovalGate:
         approval_callback: ApprovalCallback | None = None,
     ) -> None:
         self._callback = approval_callback
+        # Keyed by (agent_id, tool_name) → overridden RiskLevel
+        self._risk_overrides: dict[tuple[str, str], RiskLevel] = {}
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
+    def override_risk(
+        self,
+        agent_id: str,
+        tool_name: str,
+        risk_level: RiskLevel,
+    ) -> None:
+        """Set a runtime risk override for a specific (agent, tool) pair.
+
+        The override takes precedence over the tool's declared risk level for
+        all subsequent evaluations.  This enables adaptive policy — for
+        example, an orchestrator can downgrade a trusted tool to LOW after a
+        streak of clean approvals, or escalate a tool to CRITICAL after a
+        suspicious result.
+
+        Args:
+            agent_id: Agent whose invocation is being constrained.
+            tool_name: Tool name to override.
+            risk_level: Effective risk level to apply.
+        """
+        self._risk_overrides[(agent_id, tool_name)] = risk_level
+        logger.info(
+            "Risk override set: agent={} tool={} → {}",
+            agent_id,
+            tool_name,
+            risk_level.value,
+        )
+
+    def clear_risk_override(self, agent_id: str, tool_name: str) -> None:
+        """Remove a previously set risk override, restoring default policy.
+
+        Args:
+            agent_id: Agent identifier.
+            tool_name: Tool name.
+        """
+        self._risk_overrides.pop((agent_id, tool_name), None)
+
     async def evaluate(self, request: ApprovalRequest) -> ApprovalResult:
         """Evaluate an invocation request and return a gate decision.
+
+        If a risk override exists for the ``(agent_id, tool_name)`` pair it
+        takes precedence over ``request.risk_level``.
 
         Args:
             request: The tool invocation context to evaluate.
@@ -145,7 +186,20 @@ class ApprovalGate:
         Raises:
             ApprovalError: If the gate encounters an unexpected internal error.
         """
-        match request.risk_level:
+        effective_risk = self._risk_overrides.get(
+            (request.agent_id, request.tool_name),
+            request.risk_level,
+        )
+        if effective_risk != request.risk_level:
+            logger.info(
+                "Risk override applied: tool={} agent={} declared={} → effective={}",
+                request.tool_name,
+                request.agent_id,
+                request.risk_level.value,
+                effective_risk.value,
+            )
+
+        match effective_risk:
             case RiskLevel.LOW:
                 return self._auto_approve(request, flagged=False)
             case RiskLevel.MEDIUM:
