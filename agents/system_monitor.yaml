@@ -1,0 +1,59 @@
+agent_id: system_monitor
+name: System Monitor
+model_tier: local-small
+capabilities:
+  - hardware-monitoring
+  - thermal
+  - storage
+  - gpu
+  - npu
+  - compute-routing
+description: Monitors hardware health (thermal, GPU/NPU utilisation, storage SMART data) and routes compute workloads to the appropriate processing unit.
+tools:
+  - name: get_thermal_status
+    description: Return CPU/GPU temperature readings from lm-sensors and flag any cores above threshold.
+    parameters:
+      threshold_celsius:
+        type: integer
+        required: false
+        description: Warning threshold in °C (default 85).
+    risk_level: low
+
+  - name: get_gpu_status
+    description: Report NVIDIA RTX 5070 (nvidia-smi) and AMD Radeon 780M (rocm-smi) utilisation, VRAM usage, and power draw.
+    parameters:
+      gpu:
+        type: string
+        required: false
+        description: Which GPU to query.
+        enum: [nvidia, amd, all]
+    risk_level: low
+
+  - name: get_npu_status
+    description: Report XDNA 2 NPU utilisation and driver status via xrt-smi; falls back to CPU if the driver is unavailable.
+    parameters: {}
+    risk_level: low
+
+  - name: get_storage_status
+    description: Run smartmontools self-tests on NVMe drives and return SMART health summary.
+    parameters:
+      device:
+        type: string
+        required: false
+        description: Block device path (e.g. /dev/nvme1n1). Omit to check all monitored drives.
+    risk_level: low
+
+  - name: intake_compute_routing
+    description: Evaluate the current hardware load and return the recommended compute target for an incoming inference workload.
+    parameters:
+      workload_type:
+        type: string
+        required: true
+        description: Class of inference workload to route.
+        enum: [llm_inference, image_generation, audio_transcription, embedding]
+      preferred_backend:
+        type: string
+        required: false
+        description: Caller-preferred backend; routing may override if hardware is unavailable.
+        enum: [cuda, vulkan, npu, cpu]
+    risk_level: low

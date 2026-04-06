@@ -50,10 +50,20 @@ class TestPipelineLoading:
             config_path=FIXTURES_DIR / "pipelines.yaml",
         )
         pipelines = runner._load_pipelines()
-        assert len(pipelines) == 4
+        assert len(pipelines) == 9
 
         ids = {p.id for p in pipelines}
-        assert ids == {"morning_brief", "evening_brief", "knowledge_ingest", "media_transfer"}
+        assert ids == {
+            "morning_brief",
+            "evening_brief",
+            "knowledge_ingest",
+            "media_transfer",
+            "boot_hardening_weekly",
+            "focus_check_hourly",
+            "taskwarrior_sync_periodic",
+            "hardware_health_check",
+            "research_request",
+        }
 
     def test_cron_pipelines_have_schedule(self) -> None:
         runner = PipelineRunner(
@@ -64,7 +74,7 @@ class TestPipelineLoading:
         )
         pipelines = runner._load_pipelines()
         cron = [p for p in pipelines if p.trigger_type == "cron"]
-        assert len(cron) == 2
+        assert len(cron) == 6
         assert all(p.trigger_value for p in cron)
 
     def test_event_pipelines_have_stream(self) -> None:
@@ -76,10 +86,11 @@ class TestPipelineLoading:
         )
         pipelines = runner._load_pipelines()
         event_pipes = [p for p in pipelines if p.trigger_type == "event"]
-        assert len(event_pipes) == 2
+        assert len(event_pipes) == 3
         streams = {p.trigger_value for p in event_pipes}
         assert "events:knowledge:ingest_requested" in streams
         assert "events:media:download_complete" in streams
+        assert "events:knowledge:research_requested" in streams
 
     def test_pipeline_steps_parsed(self) -> None:
         runner = PipelineRunner(

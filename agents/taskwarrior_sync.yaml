@@ -1,0 +1,70 @@
+agent_id: taskwarrior_sync
+name: Taskwarrior Sync
+model_tier: local-small
+capabilities:
+  - tasks
+  - calendar-sync
+  - taskwarrior
+  - google-calendar
+description: Bidirectional sync between Taskwarrior and Google Calendar, running every 15 minutes to keep tasks and calendar events consistent.
+tools:
+  - name: sync_tasks
+    description: Run a full bidirectional sync between Taskwarrior and Google Calendar.
+    parameters:
+      direction:
+        type: string
+        required: false
+        description: Constrain sync direction.
+        enum: [bidirectional, to_calendar, from_calendar]
+      dry_run:
+        type: boolean
+        required: false
+        description: Report planned changes without writing to either system.
+    risk_level: low
+
+  - name: get_pending_tasks
+    description: List all pending Taskwarrior tasks, optionally filtered by project or tag.
+    parameters:
+      project:
+        type: string
+        required: false
+        description: Taskwarrior project filter.
+      tag:
+        type: string
+        required: false
+        description: Taskwarrior tag filter.
+      limit:
+        type: integer
+        required: false
+        description: Maximum number of tasks to return (default 50).
+    risk_level: low
+
+  - name: create_task
+    description: Create a new Taskwarrior task, optionally scheduling it on Google Calendar.
+    parameters:
+      description:
+        type: string
+        required: true
+        description: Task description.
+      project:
+        type: string
+        required: false
+        description: Project to assign the task to.
+      due:
+        type: string
+        required: false
+        description: Due date in ISO-8601 format.
+      calendar_event:
+        type: boolean
+        required: false
+        description: Also create a corresponding Google Calendar event.
+    risk_level: low
+
+  - name: complete_task
+    description: Mark a Taskwarrior task as done and remove the corresponding calendar event if one exists.
+    parameters:
+      task_id:
+        type: string
+        required: true
+        description: Taskwarrior task ID or UUID.
+    risk_level: low

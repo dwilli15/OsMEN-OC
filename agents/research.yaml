@@ -1,0 +1,65 @@
+agent_id: research
+name: Research
+model_tier: cloud-primary
+capabilities:
+  - web-research
+  - rag-search
+  - summarization
+  - fact-checking
+description: Performs web research, summarises pages, and answers questions by combining live web results with the local RAG knowledge base.
+tools:
+  - name: web_search
+    description: Execute a web search and return ranked result summaries.
+    parameters:
+      query:
+        type: string
+        required: true
+        description: Natural-language search query.
+      max_results:
+        type: integer
+        required: false
+        description: Maximum number of results to return (default 10).
+      safe_search:
+        type: boolean
+        required: false
+        description: Enable safe-search filtering (default true).
+    risk_level: low
+
+  - name: summarize_page
+    description: Fetch a URL, extract the main content, and return a concise summary.
+    parameters:
+      url:
+        type: string
+        required: true
+        description: Page URL to summarise.
+      max_length_words:
+        type: integer
+        required: false
+        description: Target summary length in words (default 200).
+    risk_level: low
+
+  - name: answer_from_knowledge
+    description: Answer a question by searching the local ChromaDB RAG knowledge base and synthesising a response.
+    parameters:
+      question:
+        type: string
+        required: true
+        description: Question to answer.
+      collection:
+        type: string
+        required: false
+        description: ChromaDB collection to search (defaults to all).
+      top_k:
+        type: integer
+        required: false
+        description: Number of supporting chunks to retrieve (default 5).
+    risk_level: low
+
+  - name: fact_check
+    description: Cross-reference a claim against both the RAG knowledge base and live web sources, returning a confidence score and supporting evidence.
+    parameters:
+      claim:
+        type: string
+        required: true
+        description: Statement to fact-check.
+    risk_level: low

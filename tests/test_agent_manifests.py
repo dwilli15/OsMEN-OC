@@ -30,7 +30,16 @@ REPO_ROOT = Path(__file__).parent.parent
 AGENTS_DIR = REPO_ROOT / "agents"
 CONFIG_DIR = REPO_ROOT / "config"
 
-EXPECTED_AGENT_IDS = {"daily_brief", "knowledge_librarian", "media_organization"}
+EXPECTED_AGENT_IDS = {
+    "daily_brief",
+    "knowledge_librarian",
+    "media_organization",
+    "boot_hardening",
+    "focus_guardrails",
+    "taskwarrior_sync",
+    "system_monitor",
+    "research",
+}
 
 # ---------------------------------------------------------------------------
 # Discover manifest files for parametrised tests
@@ -163,6 +172,7 @@ def test_agents_config_parses(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ZAI_API_KEY", "test-key")
     monkeypatch.setenv("PLEX_LIBRARY_ROOT", "/tmp/plex")
     monkeypatch.setenv("DOWNLOAD_STAGING_DIR", "/tmp/staging")
+    monkeypatch.setenv("GOOGLE_CALENDAR_CREDENTIALS_PATH", "/tmp/gcal-creds.json")
     config = load_config(CONFIG_DIR / "agents.yaml")
     assert "defaults" in config
 

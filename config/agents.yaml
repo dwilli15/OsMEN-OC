@@ -25,3 +25,38 @@ media_organization:
   model_tier: local-medium
   plex_library_root: "${PLEX_LIBRARY_ROOT}"
   download_staging: "${DOWNLOAD_STAGING_DIR}"
+
+boot_hardening:
+  schedule: "0 3 * * 0"  # cron: Sunday 03:00
+  model_tier: local-small
+  # Path to the canonical security ruleset consumed by apply_ufw_rules.
+  security_config: "config/security.yaml"
+
+focus_guardrails:
+  schedule: "0 9-22 * * *"  # cron: every hour between 09:00 and 22:00
+  model_tier: cloud-primary
+  llm_api_key: "${ZAI_API_KEY}"
+  # Minimum break interval in minutes between reminders.
+  break_interval_minutes: 60
+
+taskwarrior_sync:
+  schedule: "*/15 * * * *"  # cron: every 15 minutes
+  model_tier: local-small
+  # Path to the Google Calendar OAuth2 credentials JSON (SOPS-decrypted at runtime).
+  google_calendar_credentials: "${GOOGLE_CALENDAR_CREDENTIALS_PATH}"
+  # Taskwarrior data directory (defaults to ~/.task).
+  taskwarrior_data_dir: "~/.task"
+
+system_monitor:
+  schedule: "*/5 * * * *"  # cron: every 5 minutes
+  model_tier: local-small
+  # Thermal threshold in °C above which the agent emits a warning event.
+  thermal_warn_celsius: 85
+  # Path to compute routing rules (overridable via COMPUTE_ROUTING_CONFIG env var).
+  compute_routing_config: "config/compute-routing.yaml"
+
+research:
+  schedule: event-driven
+  model_tier: cloud-primary
+  llm_api_key: "${ZAI_API_KEY}"
+  chromadb_collection: knowledge
