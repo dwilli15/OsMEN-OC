@@ -50,10 +50,16 @@ class TestPipelineLoading:
             config_path=FIXTURES_DIR / "pipelines.yaml",
         )
         pipelines = runner._load_pipelines()
-        assert len(pipelines) == 4
+        assert len(pipelines) == 5
 
         ids = {p.id for p in pipelines}
-        assert ids == {"morning_brief", "evening_brief", "knowledge_ingest", "media_transfer"}
+        assert ids == {
+            "morning_brief",
+            "evening_brief",
+            "knowledge_ingest",
+            "media_transfer",
+            "hardware_metrics_poll",
+        }
 
     def test_cron_pipelines_have_schedule(self) -> None:
         runner = PipelineRunner(
@@ -64,7 +70,7 @@ class TestPipelineLoading:
         )
         pipelines = runner._load_pipelines()
         cron = [p for p in pipelines if p.trigger_type == "cron"]
-        assert len(cron) == 2
+        assert len(cron) == 3
         assert all(p.trigger_value for p in cron)
 
     def test_event_pipelines_have_stream(self) -> None:
