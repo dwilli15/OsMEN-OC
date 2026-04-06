@@ -1,0 +1,86 @@
+# Generic hardware capability configuration for OsMEN-OC.
+# This file describes capability tiers used for tool compatibility checks.
+# It does NOT contain any user-specific hardware specifications.
+# Runtime detection is always preferred; these tiers are fallback defaults.
+
+# Minimum kernel versions required for optional features.
+kernel_requirements:
+  amdxdna_npu: "6.8"       # XDNA 2 NPU driver (amdxdna module)
+  amd_pstate_epp: "6.3"    # AMD P-state EPP governor
+  nvidia_open: "6.2"       # NVIDIA open kernel module support
+
+# CLI tool dependency matrix — which tool is needed for which capability.
+# If a tool is absent, the handler degrades gracefully.
+tool_dependencies:
+  cpu_thermal:
+    tool: sensors              # package: lm-sensors
+    fallback: sysfs            # /sys/class/thermal/thermal_zone*/temp
+    compatibility: universal
+
+  amd_power_management:
+    tool: ryzenadj             # package: ryzenadj (AUR/build from source)
+    compatibility:
+      arch: [zen2, zen3, zen4, zen5]
+      notes: >
+        Requires kernel powercap interface (kernel >= 5.17) or direct MSR
+        access. May require the user to be in the 'wheel' group or
+        have CAP_SYS_ADMIN. Only effective on AMD mobile/laptop APUs.
+
+  nvidia_gpu:
+    tool: nvidia-smi           # package: nvidia-utils (driver-provided)
+    compatibility:
+      driver_min: "520"
+      notes: "Requires NVIDIA proprietary driver."
+
+  amd_gpu:
+    tool: rocm-smi             # package: rocm-smi-lib (ROCm)
+    fallback: sysfs            # /sys/class/drm/card*/device/hwmon/*/
+    compatibility:
+      notes: >
+        Full metrics require ROCm installation. Basic sysfs fallback
+        works on any amdgpu kernel module.
+
+  npu_xdna:
+    tool: xrt-smi              # package: xrt (AMD XRT)
+    status: experimental
+    compatibility:
+      families: [ryzen_ai_300, ryzen_ai_700]
+      driver: amdxdna
+      kernel_min: "6.8"
+      notes: >
+        XDNA 2 NPU on Ryzen AI 9 300+ series. Requires amdxdna kernel
+        module and AMD XRT runtime. Driver is upstream but marked
+        experimental in many distributions as of early 2026.
+
+  fan_control:
+    tool: nbfc                 # package: nbfc-linux
+    compatibility:
+      notes: >
+        NoteBook Fan Control supports HP OMEN (all generations), Lenovo
+        ThinkPad/IdeaPad, Acer Nitro/Predator, ASUS ROG/TUF, MSI, and
+        hundreds of other laptop models via community config files.
+        Requires the nbfc service to be running (systemctl --user start nbfc).
+
+# Named power profiles — values applied by set_power_profile.
+# All values in watts. Override with explicit parameters for fine-tuning.
+power_profiles:
+  quiet:
+    amd_stapm_watts: 15
+    amd_fast_watts: 20
+    amd_slow_watts: 15
+    nvidia_power_limit_watts: 35
+    description: "Silent/battery-saver mode. Minimal noise and heat."
+
+  balanced:
+    amd_stapm_watts: 28
+    amd_fast_watts: 35
+    amd_slow_watts: 28
+    nvidia_power_limit_watts: 60
+    description: "Default everyday workload balance."
+
+  performance:
+    amd_stapm_watts: 45
+    amd_fast_watts: 54
+    amd_slow_watts: 45
+    nvidia_power_limit_watts: 80
+    description: "Maximum sustained throughput for compute workloads."

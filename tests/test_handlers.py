@@ -364,6 +364,14 @@ def _make_completed(returncode: int, stdout: bytes, stderr: bytes = b""):
     return subprocess.CompletedProcess(args=[], returncode=returncode, stdout=stdout, stderr=stderr)
 
 
+def _make_disk_usage(free: int, total: int = 100 * 1024**3):
+    """Build a shutil.disk_usage namedtuple for mocking."""
+    from collections import namedtuple
+
+    DiskUsage = namedtuple("DiskUsage", ["total", "used", "free"])
+    return DiskUsage(total=total, used=total - free, free=free)
+
+
 class TestFetchTaskSummary:
     """Tests for the fetch_task_summary builtin handler."""
 
@@ -1042,3 +1050,210 @@ class TestPurgeCompleted:
 
         assert result["status"] == "ok"
         assert result["purged"] == 0
+
+
+# ---------------------------------------------------------------------------
+# assess_plex_readiness
+# ---------------------------------------------------------------------------
+
+
+class TestAssessPlexReadiness:
+    """Tests for the assess_plex_readiness builtin handler."""
+
+    @pytest.mark.anyio
+    async def test_library_root_not_configured(self) -> None:
+        from core.gateway.builtin_handlers import handle_assess_plex_readiness
+
+        ctx = HandlerContext(agent_id="media_organization")
+        with patch.dict("os.environ", {}, clear=True):
+            result = await handle_assess_plex_readiness({}, ctx)
+
+        assert result["status"] == "ok"
+        assert result["ready"] is False
+        root_check = next(
+            c for c in result["checks"] if c["name"] == "plex_library_root_configured"
+        )
+        assert root_check["passed"] is False
+        assert "PLEX_LIBRARY_ROOT" in root_check["detail"]
+
+    @pytest.mark.anyio
+    async def test_library_root_not_found(self, tmp_path) -> None:
+        from core.gateway.builtin_handlers import handle_assess_plex_readiness
+
+        missing = tmp_path / "no_such_dir"
+        ctx = HandlerContext(agent_id="media_organization")
+        with patch(
+            "core.gateway.builtin_handlers._anyio.run_process",
+            new=AsyncMock(return_value=_make_completed(0, b"false\n")),
+        ):
+            with patch.dict("os.environ", {"PLEX_LIBRARY_ROOT": str(missing)}):
+                result = await handle_assess_plex_readiness({}, ctx)
+
+        assert result["status"] == "ok"
+        assert result["ready"] is False
+        exists_check = next(c for c in result["checks"] if c["name"] == "plex_library_root_exists")
+        assert exists_check["passed"] is False
+        assert "not found" in exists_check["detail"].lower()
+
+    @pytest.mark.anyio
+    async def test_all_checks_pass(self, tmp_path) -> None:
+        from core.gateway.builtin_handlers import _PLEX_MEDIA_TYPES, handle_assess_plex_readiness
+
+        library_root = tmp_path / "plex"
+        library_root.mkdir()
+        for media_type in _PLEX_MEDIA_TYPES:
+            (library_root / media_type).mkdir()
+
+        ctx = HandlerContext(agent_id="media_organization")
+        with patch(
+            "core.gateway.builtin_handlers._anyio.run_process",
+            new=AsyncMock(return_value=_make_completed(0, b"true\n")),
+        ):
+            with patch(
+                "core.gateway.builtin_handlers._shutil.disk_usage",
+                return_value=_make_disk_usage(free=20 * 1024**3),
+            ):
+                with patch.dict("os.environ", {"PLEX_LIBRARY_ROOT": str(library_root)}):
+                    result = await handle_assess_plex_readiness({}, ctx)
+
+        assert result["status"] == "ok"
+        assert result["ready"] is True
+        assert all(c["passed"] for c in result["checks"])
+
+    @pytest.mark.anyio
+    async def test_low_disk_space_fails(self, tmp_path) -> None:
+        from core.gateway.builtin_handlers import _PLEX_MEDIA_TYPES, handle_assess_plex_readiness
+
+        library_root = tmp_path / "plex"
+        library_root.mkdir()
+        for media_type in _PLEX_MEDIA_TYPES:
+            (library_root / media_type).mkdir()
+
+        ctx = HandlerContext(agent_id="media_organization")
+        with patch(
+            "core.gateway.builtin_handlers._anyio.run_process",
+            new=AsyncMock(return_value=_make_completed(0, b"true\n")),
+        ):
+            with patch(
+                "core.gateway.builtin_handlers._shutil.disk_usage",
+                return_value=_make_disk_usage(free=1 * 1024**3),
+            ):
+                with patch.dict("os.environ", {"PLEX_LIBRARY_ROOT": str(library_root)}):
+                    result = await handle_assess_plex_readiness({}, ctx)
+
+        assert result["status"] == "ok"
+        assert result["ready"] is False
+        disk_check = next(c for c in result["checks"] if c["name"] == "disk_space")
+        assert disk_check["passed"] is False
+        assert "low disk space" in disk_check["detail"].lower()
+
+    @pytest.mark.anyio
+    async def test_missing_media_subdirectory(self, tmp_path) -> None:
+        from core.gateway.builtin_handlers import handle_assess_plex_readiness
+
+        library_root = tmp_path / "plex"
+        library_root.mkdir()
+        # Intentionally omit all media subdirectories.
+
+        ctx = HandlerContext(agent_id="media_organization")
+        with patch(
+            "core.gateway.builtin_handlers._anyio.run_process",
+            new=AsyncMock(return_value=_make_completed(0, b"true\n")),
+        ):
+            with patch(
+                "core.gateway.builtin_handlers._shutil.disk_usage",
+                return_value=_make_disk_usage(free=20 * 1024**3),
+            ):
+                with patch.dict("os.environ", {"PLEX_LIBRARY_ROOT": str(library_root)}):
+                    result = await handle_assess_plex_readiness({}, ctx)
+
+        assert result["status"] == "ok"
+        assert result["ready"] is False
+        subdir_checks = [c for c in result["checks"] if c["name"].startswith("library_dir_")]
+        assert len(subdir_checks) == 4
+        assert all(not c["passed"] for c in subdir_checks)
+        assert all("missing" in c["detail"].lower() for c in subdir_checks)
+
+    @pytest.mark.anyio
+    async def test_plex_container_not_running(self, tmp_path) -> None:
+        from core.gateway.builtin_handlers import _PLEX_MEDIA_TYPES, handle_assess_plex_readiness
+
+        library_root = tmp_path / "plex"
+        library_root.mkdir()
+        for media_type in _PLEX_MEDIA_TYPES:
+            (library_root / media_type).mkdir()
+
+        ctx = HandlerContext(agent_id="media_organization")
+        with patch(
+            "core.gateway.builtin_handlers._anyio.run_process",
+            new=AsyncMock(return_value=_make_completed(0, b"false\n")),
+        ):
+            with patch(
+                "core.gateway.builtin_handlers._shutil.disk_usage",
+                return_value=_make_disk_usage(free=20 * 1024**3),
+            ):
+                with patch.dict("os.environ", {"PLEX_LIBRARY_ROOT": str(library_root)}):
+                    result = await handle_assess_plex_readiness({}, ctx)
+
+        assert result["status"] == "ok"
+        assert result["ready"] is False
+        container_check = next(c for c in result["checks"] if c["name"] == "plex_container_running")
+        assert container_check["passed"] is False
+        assert "not running" in container_check["detail"]
+
+    @pytest.mark.anyio
+    async def test_podman_not_installed(self, tmp_path) -> None:
+        from core.gateway.builtin_handlers import _PLEX_MEDIA_TYPES, handle_assess_plex_readiness
+
+        library_root = tmp_path / "plex"
+        library_root.mkdir()
+        for media_type in _PLEX_MEDIA_TYPES:
+            (library_root / media_type).mkdir()
+
+        ctx = HandlerContext(agent_id="media_organization")
+        with patch(
+            "core.gateway.builtin_handlers._anyio.run_process",
+            side_effect=FileNotFoundError,
+        ):
+            with patch(
+                "core.gateway.builtin_handlers._shutil.disk_usage",
+                return_value=_make_disk_usage(free=20 * 1024**3),
+            ):
+                with patch.dict("os.environ", {"PLEX_LIBRARY_ROOT": str(library_root)}):
+                    result = await handle_assess_plex_readiness({}, ctx)
+
+        assert result["status"] == "ok"
+        assert result["ready"] is False
+        container_check = next(c for c in result["checks"] if c["name"] == "plex_container_running")
+        assert container_check["passed"] is False
+        assert "podman not installed" in container_check["detail"]
+
+    @pytest.mark.anyio
+    async def test_checks_include_all_expected_names(self, tmp_path) -> None:
+        from core.gateway.builtin_handlers import _PLEX_MEDIA_TYPES, handle_assess_plex_readiness
+
+        library_root = tmp_path / "plex"
+        library_root.mkdir()
+        for media_type in _PLEX_MEDIA_TYPES:
+            (library_root / media_type).mkdir()
+
+        ctx = HandlerContext(agent_id="media_organization")
+        with patch(
+            "core.gateway.builtin_handlers._anyio.run_process",
+            new=AsyncMock(return_value=_make_completed(0, b"true\n")),
+        ):
+            with patch(
+                "core.gateway.builtin_handlers._shutil.disk_usage",
+                return_value=_make_disk_usage(free=20 * 1024**3),
+            ):
+                with patch.dict("os.environ", {"PLEX_LIBRARY_ROOT": str(library_root)}):
+                    result = await handle_assess_plex_readiness({}, ctx)
+
+        check_names = {c["name"] for c in result["checks"]}
+        assert "plex_library_root_configured" in check_names
+        assert "plex_library_root_exists" in check_names
+        assert "disk_space" in check_names
+        assert "plex_container_running" in check_names
+        for media_type in _PLEX_MEDIA_TYPES:
+            assert f"library_dir_{media_type}" in check_names
+

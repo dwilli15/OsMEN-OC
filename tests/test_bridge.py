@@ -92,6 +92,54 @@ async def test_bridge_client_send_requires_connection() -> None:
         await client.send(BridgeOutboundMessage(type="ping"))
 
 
+def test_bridge_client_is_connected_false_initially() -> None:
+    """is_connected is False before run_forever establishes a session."""
+    async def on_message(_msg: BridgeInboundMessage) -> None:
+        return
+
+    client = OpenClawBridgeClient(endpoint="ws://test", on_message=on_message)
+    assert client.is_connected is False
+
+
+@pytest.mark.anyio
+async def test_bridge_client_is_connected_true_during_session() -> None:
+    """is_connected reflects True while the WebSocket session is open."""
+    connected_during: list[bool] = []
+
+    async def on_message(msg: BridgeInboundMessage) -> None:
+        pass
+
+    ws = _FakeWebSocket(
+        [BridgeInboundMessage(type="ping", payload={}).model_dump_json()]
+    )
+
+    class _SpySession(_FakeSession):
+        def __init__(self, inner_ws: _FakeWebSocket, client_ref: OpenClawBridgeClient):
+            super().__init__(inner_ws)
+            self._client_ref = client_ref
+
+        async def __aenter__(self) -> _FakeWebSocket:
+            result = await super().__aenter__()
+            return result
+
+        async def __aexit__(self, exc_type, exc, tb) -> bool:
+            connected_during.append(self._client_ref.is_connected)
+            return await super().__aexit__(exc_type, exc, tb)
+
+    client = OpenClawBridgeClient(
+        endpoint="ws://test",
+        on_message=on_message,
+        session_factory=lambda _ep: _SpySession(ws, client),
+    )
+
+    await client.run_forever(max_cycles=1)
+
+    # During __aexit__ (before finally clears it), is_connected should be True
+    assert connected_during == [True]
+    # After run_forever completes, is_connected should be False
+    assert client.is_connected is False
+
+
 @pytest.mark.anyio
 async def test_bridge_client_reconnect_backoff_caps() -> None:
     sleeps: list[float] = []
