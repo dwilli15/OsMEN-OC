@@ -1,0 +1,170 @@
+agent_id: system_monitor
+name: System Monitor
+model_tier: local-small
+capabilities:
+  - hardware-metrics
+  - power-management
+  - fan-control
+  - compute-routing
+  - npu-monitoring
+description: >
+  Monitors and controls system hardware: CPU/GPU/NPU metrics, fan curves,
+  power profiles, and compute-routing rules for GPU workload scheduling.
+  CLI-tool based (lm-sensors, ryzenadj, nvidia-smi, rocm-smi, xrt-smi, nbfc).
+
+tools:
+  - name: get_hardware_metrics
+    description: >
+      Read current CPU, GPU, and fan metrics using lm-sensors, nvidia-smi,
+      and rocm-smi. Returns temperatures, fan RPMs, utilization percentages,
+      power draw, and clock speeds for all detected hardware.
+      Falls back gracefully when a tool is absent.
+    parameters: {}
+    risk_level: low
+
+  - name: set_power_profile
+    description: >
+      Adjust CPU and/or GPU power limits.
+      For AMD CPUs (Zen2+): sets TDP via ryzenadj (stapm_limit, fast_limit, slow_limit).
+      For NVIDIA GPUs: sets power limit via nvidia-smi -pl.
+      Predefined profiles: balanced, performance, quiet.
+      Custom watt values override the profile.
+      Compatible systems: AMD Ryzen mobile (Zen2/3/4/5), NVIDIA with driver 520+.
+    parameters:
+      profile:
+        type: string
+        required: false
+        description: >
+          Named power profile. One of: balanced, performance, quiet.
+          Ignored if explicit watt parameters are provided.
+        enum: [balanced, performance, quiet]
+      amd_stapm_watts:
+        type: integer
+        required: false
+        description: AMD CPU Sustained TDP (STAPM limit) in watts.
+      amd_fast_watts:
+        type: integer
+        required: false
+        description: AMD CPU Fast PPT limit in watts (short burst).
+      amd_slow_watts:
+        type: integer
+        required: false
+        description: AMD CPU Slow PPT limit in watts (sustained PPT).
+      nvidia_power_limit_watts:
+        type: integer
+        required: false
+        description: NVIDIA GPU power limit in watts.
+    risk_level: medium
+
+  - name: set_fan_curve
+    description: >
+      Control laptop fan speed via nbfc-linux (NoteBook Fan Control).
+      Supports HP OMEN, Lenovo ThinkPad/IdeaPad, Acer, ASUS, and many others.
+      Pass speed_percent=auto to return to automatic firmware control.
+      Requires nbfc-linux to be installed and the nbfc service to be running.
+      Compatible systems: Any laptop with a supported nbfc-linux config.
+    parameters:
+      speed_percent:
+        type: string
+        required: true
+        description: >
+          Fan speed 0–100 (integer as string), or "auto" to restore
+          automatic firmware control.
+      fan_index:
+        type: integer
+        required: false
+        description: >
+          Fan index for multi-fan systems (0 = first fan, 1 = second).
+          Defaults to all fans if omitted.
+    risk_level: medium
+
+  - name: get_compute_routing
+    description: >
+      Read the current compute-routing rules from config/compute-routing.yaml.
+      Returns all routing rules with their trigger conditions, target compute
+      resource, and priority ordering.
+    parameters: {}
+    risk_level: low
+
+  - name: set_compute_routing
+    description: >
+      Add or update a single compute-routing rule in config/compute-routing.yaml.
+      Use this for surgical changes to one rule; use intake_compute_routing for
+      a full configuration overhaul.
+    parameters:
+      rule_id:
+        type: string
+        required: true
+        description: Unique snake_case identifier for this rule.
+      description:
+        type: string
+        required: true
+        description: Human-readable description of what the rule does.
+      trigger_process:
+        type: string
+        required: false
+        description: Process name that activates this rule (e.g. ffxiv_dx11.exe).
+      trigger_task_type:
+        type: string
+        required: false
+        description: >
+          Abstract task category that activates this rule.
+          One of: inference, rendering, gaming, transcription, embedding.
+        enum: [inference, rendering, gaming, transcription, embedding]
+      trigger_model_size_gb_min:
+        type: integer
+        required: false
+        description: Minimum model VRAM requirement (GiB) that activates this rule.
+      target_compute:
+        type: string
+        required: true
+        description: >
+          Target compute resource.
+          One of: nvidia, amd_rocm, amd_vulkan, npu, cpu.
+        enum: [nvidia, amd_rocm, amd_vulkan, npu, cpu]
+      priority:
+        type: integer
+        required: false
+        description: >
+          Rule priority (higher = evaluated first). Defaults to 5.
+    risk_level: medium
+
+  - name: intake_compute_routing
+    description: >
+      Run a structured 20-question intake interview to configure compute-routing
+      rules from scratch. The interview covers GPU selection for gaming, LLM
+      inference tiers, NPU vs dGPU vs iGPU preferences, fallback chains,
+      and power-efficiency trade-offs.
+      Call with start=true to begin. Pass session_id and answer to advance.
+      After question 20, rules are committed to config/compute-routing.yaml.
+    parameters:
+      start:
+        type: boolean
+        required: false
+        description: >
+          Set true to begin a new interview session.
+          Clears any existing in-progress session.
+      session_id:
+        type: string
+        required: false
+        description: Session token returned by a previous call. Required when answering.
+      answer:
+        type: string
+        required: false
+        description: >
+          Answer to the current question. Accepted values depend on question type:
+          yes/no questions accept "yes" or "no"; choice questions accept one of
+          the listed options.
+    risk_level: high
+
+  - name: get_npu_status
+    description: >
+      Report XDNA 2 NPU utilization and workload status via xrt-smi.
+      This tool is marked EXPERIMENTAL — the amdxdna driver may not be
+      available on all kernels. Fails gracefully with a detailed error when
+      xrt-smi is absent or the NPU driver is not loaded.
+      Compatible systems: AMD Ryzen AI series (Ryzen AI 9 300+, Ryzen AI 5/7 300+)
+      with kernel ≥ 6.8 and amdxdna driver.
+      Dependencies: xrt (AMD XRT package), amdxdna kernel module.
+    parameters: {}
+    risk_level: low

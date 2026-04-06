@@ -34,6 +34,11 @@ class OpenClawBridgeClient:
         self._sleep = sleep_fn or asyncio.sleep
         self._active_ws: Any | None = None
 
+    @property
+    def is_connected(self) -> bool:
+        """Return ``True`` when the WebSocket session is open."""
+        return self._active_ws is not None
+
     @staticmethod
     def _default_session_factory(endpoint: str) -> Any:
         """Create the default websocket session context manager lazily."""
