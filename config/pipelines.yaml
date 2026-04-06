@@ -45,6 +45,38 @@ pipelines:
       - agent: media_organization
         tool: purge_completed
 
+  - id: boot_hardening_weekly
+    trigger:
+      type: cron
+      schedule: "0 3 * * 0"
+    steps:
+      - agent: boot_hardening
+        tool: check_ufw_rules
+      - agent: boot_hardening
+        tool: check_fail2ban
+      - agent: boot_hardening
+        tool: verify_luks_headers
+      - agent: boot_hardening
+        tool: verify_secure_boot
+
+  - id: focus_check_hourly
+    trigger:
+      type: cron
+      schedule: "0 9-22 * * *"
+    steps:
+      - agent: focus_guardrails
+        tool: get_focus_status
+      - agent: focus_guardrails
+        tool: send_break_reminder
+
+  - id: taskwarrior_sync_periodic
+    trigger:
+      type: cron
+      schedule: "*/15 * * * *"
+    steps:
+      - agent: taskwarrior_sync
+        tool: sync_tasks
+
   - id: hardware_metrics_poll
     trigger:
       type: cron
@@ -52,3 +84,13 @@ pipelines:
     steps:
       - agent: system_monitor
         tool: get_hardware_metrics
+
+  - id: research_request
+    trigger:
+      type: event
+      stream: "events:knowledge:research_requested"
+    steps:
+      - agent: research
+        tool: web_search
+      - agent: research
+        tool: answer_from_knowledge

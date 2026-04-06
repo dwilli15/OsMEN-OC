@@ -1,0 +1,48 @@
+agent_id: boot_hardening
+name: Boot Hardening
+model_tier: local-small
+capabilities:
+  - security
+  - hardening
+  - firewall
+  - luks
+  - secure-boot
+  - fail2ban
+description: Audits and applies OS-level security controls — UFW rules, fail2ban config, LUKS header integrity, and Secure Boot status.
+tools:
+  - name: check_ufw_rules
+    description: Report current UFW firewall rules and identify any unexpected open ports.
+    parameters:
+      verbose:
+        type: boolean
+        required: false
+        description: Include per-rule traffic counters.
+    risk_level: low
+
+  - name: apply_ufw_rules
+    description: Apply the canonical UFW ruleset defined in config/security.yaml, closing unexpected ports.
+    parameters:
+      dry_run:
+        type: boolean
+        required: false
+        description: Report planned changes without executing them.
+    risk_level: high
+
+  - name: check_fail2ban
+    description: Report fail2ban jail status and recent ban events.
+    parameters:
+      jail:
+        type: string
+        required: false
+        description: Specific jail name to inspect (defaults to all jails).
+    risk_level: low
+
+  - name: verify_luks_headers
+    description: Verify LUKS header integrity on encrypted block devices listed in config/security.yaml.
+    parameters: {}
+    risk_level: low
+
+  - name: verify_secure_boot
+    description: Check whether Secure Boot is enabled and report the current MOK/shim state.
+    parameters: {}
+    risk_level: low

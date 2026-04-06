@@ -211,6 +211,68 @@ class EventBus:
             for msg_id, fields in entries
         ]
 
+    async def replay_dead_letters(
+        self,
+        *,
+        count: int = 50,
+        delete_replayed: bool = False,
+    ) -> dict[str, Any]:
+        """Replay entries from dead-letter stream back to their original streams.
+
+        Args:
+            count: Maximum dead-letter entries to inspect.
+            delete_replayed: If true, remove successfully replayed entries
+                from :data:`DEAD_LETTER_STREAM`.
+
+        Returns:
+            Summary dict with replayed/skipped/error counts.
+        """
+        entries = await self.read_dead_letters(count=count)
+        replayed = 0
+        skipped = 0
+        errors = 0
+
+        for entry in entries:
+            msg_id = str(entry.get("msg_id", ""))
+            original_stream = entry.get("original_stream")
+            if not original_stream:
+                skipped += 1
+                continue
+
+            payload = {
+                k: v
+                for k, v in entry.items()
+                if k
+                not in {
+                    "msg_id",
+                    "dead_letter_reason",
+                    "original_stream",
+                    "original_msg_id",
+                }
+            }
+
+            try:
+                await self._redis.xadd(str(original_stream), payload)
+                if delete_replayed and msg_id:
+                    await self._redis.xdel(DEAD_LETTER_STREAM, msg_id)
+                replayed += 1
+            except Exception as exc:
+                logger.warning(
+                    "Failed replay of dead-letter msg_id={} to {}: {}",
+                    msg_id,
+                    original_stream,
+                    exc,
+                )
+                errors += 1
+
+        return {
+            "inspected": len(entries),
+            "replayed": replayed,
+            "skipped": skipped,
+            "errors": errors,
+            "delete_replayed": delete_replayed,
+        }
+
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------

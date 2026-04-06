@@ -25,7 +25,7 @@ DEPLOY_SCRIPT = REPO_ROOT / "scripts" / "deploy_timers.sh"
 # ---------------------------------------------------------------------------
 
 
-def _parse_unit(path: Path) -> configparser.ConfigParser:
+def _parse_unit(path: Path) -> configparser.RawConfigParser:
     """Parse a systemd unit file with configparser (ignoring duplicate keys)."""
     parser = configparser.RawConfigParser(strict=False)
     # systemd unit files use '=' as delimiter without spaces around it.

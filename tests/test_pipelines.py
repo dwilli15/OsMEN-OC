@@ -16,7 +16,7 @@ import pytest
 
 from core.approval.gate import ApprovalGate
 from core.gateway.mcp import MCPTool
-from core.pipelines.runner import Pipeline, PipelineRunner, PipelineStep
+from core.pipelines.runner import Pipeline, PipelineRunner, PipelineStep, _topological_sort
 
 FIXTURES_DIR = Path(__file__).parent.parent / "config"
 
@@ -50,7 +50,7 @@ class TestPipelineLoading:
             config_path=FIXTURES_DIR / "pipelines.yaml",
         )
         pipelines = runner._load_pipelines()
-        assert len(pipelines) == 5
+        assert len(pipelines) == 9
 
         ids = {p.id for p in pipelines}
         assert ids == {
@@ -58,7 +58,11 @@ class TestPipelineLoading:
             "evening_brief",
             "knowledge_ingest",
             "media_transfer",
+            "boot_hardening_weekly",
+            "focus_check_hourly",
+            "taskwarrior_sync_periodic",
             "hardware_metrics_poll",
+            "research_request",
         }
 
     def test_cron_pipelines_have_schedule(self) -> None:
@@ -70,7 +74,7 @@ class TestPipelineLoading:
         )
         pipelines = runner._load_pipelines()
         cron = [p for p in pipelines if p.trigger_type == "cron"]
-        assert len(cron) == 3
+        assert len(cron) == 6
         assert all(p.trigger_value for p in cron)
 
     def test_event_pipelines_have_stream(self) -> None:
@@ -82,10 +86,11 @@ class TestPipelineLoading:
         )
         pipelines = runner._load_pipelines()
         event_pipes = [p for p in pipelines if p.trigger_type == "event"]
-        assert len(event_pipes) == 2
+        assert len(event_pipes) == 3
         streams = {p.trigger_value for p in event_pipes}
         assert "events:knowledge:ingest_requested" in streams
         assert "events:media:download_complete" in streams
+        assert "events:knowledge:research_requested" in streams
 
     def test_pipeline_steps_parsed(self) -> None:
         runner = PipelineRunner(
@@ -232,3 +237,145 @@ class TestStepExecution:
         assert bus.publish.call_count == 1
         completion = bus.publish.call_args_list[0][0][0]
         assert completion.category == "completed"
+
+    @pytest.mark.anyio
+    async def test_handler_retries_then_succeeds(self) -> None:
+        bus = _mock_bus()
+        runner = PipelineRunner(
+            event_bus=bus,
+            mcp_registry=_make_registry(),
+            approval_gate=ApprovalGate(),
+            config_path=FIXTURES_DIR / "pipelines.yaml",
+        )
+
+        execute_mock = AsyncMock(side_effect=[RuntimeError("transient"), {"status": "ok"}])
+
+        from unittest.mock import patch
+
+        with patch("core.pipelines.runner.handler_registry.has", return_value=True), patch(
+            "core.pipelines.runner.handler_registry.execute", execute_mock,
+        ):
+            await runner._execute_step(
+                "retry_pipe",
+                PipelineStep(agent="daily_brief", tool="fetch_task_summary"),
+                _make_registry()["fetch_task_summary"],
+                {"k": "v"},
+            )
+
+        assert execute_mock.await_count == 2
+
+    @pytest.mark.anyio
+    async def test_step_event_publish_retries_then_succeeds(self) -> None:
+        bus = _mock_bus()
+        bus.publish = AsyncMock(side_effect=[RuntimeError("transient"), "1-0"])
+        runner = PipelineRunner(
+            event_bus=bus,
+            mcp_registry=_make_registry(),
+            approval_gate=ApprovalGate(),
+            config_path=FIXTURES_DIR / "pipelines.yaml",
+        )
+
+        await runner._execute_step(
+            "retry_pipe",
+            PipelineStep(agent="daily_brief", tool="fetch_task_summary"),
+            _make_registry()["fetch_task_summary"],
+            {"k": "v"},
+        )
+
+        # First publish fails, second succeeds due to retry logic.
+        assert bus.publish.await_count == 2
+
+
+# ---------------------------------------------------------------------------
+# DAG planner — _topological_sort
+# ---------------------------------------------------------------------------
+
+
+class TestTopologicalSort:
+    """Tests for _topological_sort()."""
+
+    def _step(self, tool: str, depends_on: list[str] | None = None) -> PipelineStep:
+        return PipelineStep(agent="a", tool=tool, depends_on=depends_on or [])
+
+    def test_no_deps_preserves_order(self) -> None:
+        steps = [self._step("a"), self._step("b"), self._step("c")]
+        result = _topological_sort(steps)
+        assert [s.tool for s in result] == ["a", "b", "c"]
+
+    def test_simple_dependency_reorders(self) -> None:
+        """b must run after a; input has b first."""
+        steps = [self._step("b", depends_on=["a"]), self._step("a")]
+        result = _topological_sort(steps)
+        tools = [s.tool for s in result]
+        assert tools.index("a") < tools.index("b")
+
+    def test_diamond_dependency(self) -> None:
+        """a → b, a → c, b+c → d"""
+        steps = [
+            self._step("d", depends_on=["b", "c"]),
+            self._step("b", depends_on=["a"]),
+            self._step("c", depends_on=["a"]),
+            self._step("a"),
+        ]
+        result = _topological_sort(steps)
+        tools = [s.tool for s in result]
+        assert tools.index("a") < tools.index("b")
+        assert tools.index("a") < tools.index("c")
+        assert tools.index("b") < tools.index("d")
+        assert tools.index("c") < tools.index("d")
+
+    def test_cycle_raises_pipeline_error(self) -> None:
+        from core.utils.exceptions import PipelineError
+
+        steps = [self._step("a", depends_on=["b"]), self._step("b", depends_on=["a"])]
+        with pytest.raises(PipelineError, match="Cycle"):
+            _topological_sort(steps)
+
+    def test_unknown_dependency_raises_pipeline_error(self) -> None:
+        from core.utils.exceptions import PipelineError
+
+        steps = [self._step("a", depends_on=["nonexistent"])]
+        with pytest.raises(PipelineError, match="unknown tool"):
+            _topological_sort(steps)
+
+    @pytest.mark.anyio
+    async def test_pipeline_executes_steps_in_dependency_order(self) -> None:
+        """_execute_pipeline respects depends_on ordering."""
+        executed_tools: list[str] = []
+
+        async def fake_execute_step(
+            pipeline_id: str, step: PipelineStep, tool: object, params: dict
+        ) -> None:
+            executed_tools.append(step.tool)
+
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        bus = MagicMock()
+        bus.publish = AsyncMock()
+        bus.subscribe = MagicMock()
+
+        low_tool = MCPTool(name="init", agent_id="ag", description="", risk_level="low")
+        dep_tool = MCPTool(name="process", agent_id="ag", description="", risk_level="low")
+        registry = {"init": low_tool, "process": dep_tool}
+
+        steps = [
+            PipelineStep(agent="ag", tool="process", depends_on=["init"]),
+            PipelineStep(agent="ag", tool="init"),
+        ]
+        pipeline = Pipeline(
+            id="test-dag",
+            trigger_type="event",
+            trigger_value="events:test",
+            steps=steps,
+        )
+
+        runner = PipelineRunner(
+            event_bus=bus,
+            mcp_registry=registry,
+            approval_gate=ApprovalGate(),
+        )
+
+        with patch.object(runner, "_execute_step", side_effect=fake_execute_step):
+            await runner._execute_pipeline(pipeline, trigger_payload={})
+
+        assert executed_tools.index("init") < executed_tools.index("process")

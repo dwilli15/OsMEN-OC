@@ -36,6 +36,8 @@ HealthTimeout=10s
 HealthRetries=5
 HealthStartPeriod=30s
 
+ReadOnly=true
+SecurityLabelDisable=true
 NoNewPrivileges=true
 
 [Service]

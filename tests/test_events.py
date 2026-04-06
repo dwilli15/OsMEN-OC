@@ -153,3 +153,50 @@ async def test_event_bus_ensure_group_swallows_busy_error(mock_redis):
     bus = EventBus(mock_redis)
     # Should not raise
     await bus._ensure_group("events:media:download_complete")
+
+
+@pytest.mark.anyio
+async def test_replay_dead_letters_replays_and_deletes_when_requested(mock_redis):
+    """replay_dead_letters replays to original stream and can delete source entries."""
+    mock_redis.xrange = AsyncMock(
+        return_value=[
+            (
+                "10-0",
+                {
+                    "event_id": "e1",
+                    "payload": '{"k":"v"}',
+                    "original_stream": "events:test:source",
+                    "original_msg_id": "1-0",
+                    "dead_letter_reason": "parse",
+                },
+            ),
+        ]
+    )
+    mock_redis.xadd = AsyncMock(return_value="11-0")
+    mock_redis.xdel = AsyncMock(return_value=1)
+
+    bus = EventBus(mock_redis)
+    summary = await bus.replay_dead_letters(count=10, delete_replayed=True)
+
+    assert summary["inspected"] == 1
+    assert summary["replayed"] == 1
+    assert summary["errors"] == 0
+    mock_redis.xadd.assert_any_call(
+        "events:test:source",
+        {"event_id": "e1", "payload": '{"k":"v"}'},
+    )
+    mock_redis.xdel.assert_awaited_once_with(DEAD_LETTER_STREAM, "10-0")
+
+
+@pytest.mark.anyio
+async def test_replay_dead_letters_skips_entries_without_original_stream(mock_redis):
+    """replay_dead_letters skips malformed dead-letter entries safely."""
+    mock_redis.xrange = AsyncMock(return_value=[("10-0", {"event_id": "e1"})])
+    mock_redis.xadd = AsyncMock(return_value="11-0")
+
+    bus = EventBus(mock_redis)
+    summary = await bus.replay_dead_letters(count=10)
+
+    assert summary["inspected"] == 1
+    assert summary["skipped"] == 1
+    assert summary["replayed"] == 0
