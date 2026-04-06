@@ -14,6 +14,7 @@ from fastapi import Depends, Request
 from core.approval.gate import ApprovalGate
 from core.audit.trail import AuditTrail
 from core.events.bus import EventBus
+from core.utils.exceptions import EventBusError
 
 
 class _NoopEventBus:
@@ -21,6 +22,12 @@ class _NoopEventBus:
 
     async def publish(self, _envelope: Any) -> str:
         return "noop"
+
+    async def read_dead_letters(self, **_kwargs: Any) -> list[Any]:
+        raise EventBusError("Event bus not configured")
+
+    async def replay_dead_letters(self, **_kwargs: Any) -> dict[str, Any]:
+        raise EventBusError("Event bus not configured")
 
 
 def get_mcp_registry(request: Request) -> dict[str, Any]:

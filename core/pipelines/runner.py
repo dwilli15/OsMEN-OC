@@ -21,11 +21,13 @@ Usage::
 from __future__ import annotations
 
 import asyncio
+import inspect
 from dataclasses import dataclass, field
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
+import anyio
 from cronsim import CronSim
 from loguru import logger
 
@@ -37,6 +39,65 @@ from core.gateway.mcp import MCPTool
 from core.utils.config import load_config
 from core.utils.exceptions import PipelineError
 
+_RETRY_MAX_ATTEMPTS = 3
+_RETRY_BASE_DELAY_SECONDS = 0.25
+
+
+def _topological_sort(steps: list[PipelineStep]) -> list[PipelineStep]:
+    """Return *steps* in dependency-respecting execution order.
+
+    Uses Kahn's algorithm.  Raises :class:`~core.utils.exceptions.PipelineError`
+    if a cycle is detected or a ``depends_on`` reference names an unknown tool.
+
+    Args:
+        steps: Ordered list of pipeline steps (index order is tie-broken first).
+
+    Returns:
+        Re-ordered list with all dependencies satisfied before each step.
+
+    Raises:
+        PipelineError: On cycle detection or unknown dependency reference.
+    """
+    # Build tool-name → step mapping (last wins on duplicate tool names)
+    by_tool: dict[str, PipelineStep] = {s.tool: s for s in steps}
+
+    # Validate that all depends_on references exist
+    for step in steps:
+        for dep in step.depends_on:
+            if dep not in by_tool:
+                raise PipelineError(
+                    f"Step '{step.tool}' depends_on unknown tool '{dep}'"
+                )
+
+    # Compute in-degree and adjacency list
+    in_degree: dict[str, int] = {s.tool: 0 for s in steps}
+    dependents: dict[str, list[str]] = {s.tool: [] for s in steps}
+    for step in steps:
+        for dep in step.depends_on:
+            in_degree[step.tool] += 1
+            dependents[dep].append(step.tool)
+
+    # Initialise queue with zero-in-degree nodes (preserve original order)
+    queue: list[str] = [
+        s.tool for s in steps if in_degree[s.tool] == 0
+    ]
+    sorted_tools: list[str] = []
+
+    while queue:
+        tool_name = queue.pop(0)
+        sorted_tools.append(tool_name)
+        for child in dependents[tool_name]:
+            in_degree[child] -= 1
+            if in_degree[child] == 0:
+                queue.append(child)
+
+    if len(sorted_tools) != len(steps):
+        raise PipelineError(
+            "Cycle detected in pipeline step dependencies"
+        )
+
+    return [by_tool[t] for t in sorted_tools]
+
 
 @dataclass
 class PipelineStep:
@@ -45,9 +106,8 @@ class PipelineStep:
     agent: str
     tool: str
     parameters: dict[str, Any] = field(default_factory=dict)
-    max_retries: int = 0
-    retry_delay: float = 1.0
-    circuit_breaker_threshold: int = 0  # 0 = disabled
+    depends_on: list[str] = field(default_factory=list)
+    """Tool names that must complete before this step runs."""
 
 
 @dataclass
@@ -96,7 +156,34 @@ class PipelineRunner:
         self.pipelines: list[Pipeline] = []
         self._tasks: list[asyncio.Task[None]] = []
         self._running = False
-        self._circuit_failures: dict[str, int] = {}  # tool_name → consecutive failures
+
+    async def _run_with_retries(
+        self,
+        *,
+        operation_name: str,
+        correlation_id: str,
+        fn: Any,
+        max_attempts: int = _RETRY_MAX_ATTEMPTS,
+    ) -> Any:
+        """Run an awaitable operation with bounded exponential backoff retries."""
+        attempt = 1
+        while True:
+            try:
+                return await fn()
+            except Exception:
+                if attempt >= max_attempts:
+                    raise
+                delay = _RETRY_BASE_DELAY_SECONDS * (2 ** (attempt - 1))
+                logger.warning(
+                    "{} retry {}/{} failed (correlation_id={}); backing off {:.2f}s",
+                    operation_name,
+                    attempt,
+                    max_attempts,
+                    correlation_id,
+                    delay,
+                )
+                await anyio.sleep(delay)
+                attempt += 1
 
     def _load_pipelines(self) -> list[Pipeline]:
         """Parse ``config/pipelines.yaml`` into :class:`Pipeline` objects."""
@@ -128,9 +215,7 @@ class PipelineRunner:
                     agent=s.get("agent", ""),
                     tool=s.get("tool", ""),
                     parameters=s.get("parameters", {}),
-                    max_retries=int(s.get("max_retries", 0)),
-                    retry_delay=float(s.get("retry_delay", 1.0)),
-                    circuit_breaker_threshold=int(s.get("circuit_breaker_threshold", 0)),
+                    depends_on=s.get("depends_on", []),
                 )
                 for s in raw.get("steps", [])
             ]
@@ -186,7 +271,17 @@ class PipelineRunner:
         """Subscribe to a Redis stream and execute the pipeline on each event."""
         consumer_name = f"pipeline-{pipeline.id}"
         try:
-            async for envelope in self._event_bus.subscribe(pipeline.trigger_value, consumer_name):
+            subscription = self._event_bus.subscribe(pipeline.trigger_value, consumer_name)
+            if inspect.isawaitable(subscription):
+                subscription = await subscription
+            if not hasattr(subscription, "__aiter__"):
+                logger.error(
+                    "Pipeline '{}' subscribe() did not return an async iterator",
+                    pipeline.id,
+                )
+                return
+
+            async for envelope in subscription:
                 if not self._running:
                     return
                 logger.info(
@@ -237,8 +332,16 @@ class PipelineRunner:
         return next_fire == now
 
     async def _execute_pipeline(self, pipeline: Pipeline, *, trigger_payload: Any) -> None:
-        """Execute all steps in a pipeline sequentially."""
-        for idx, step in enumerate(pipeline.steps):
+        """Execute all steps in a pipeline, respecting dependency order."""
+        try:
+            ordered_steps = _topological_sort(pipeline.steps)
+        except PipelineError as exc:
+            logger.error(
+                "Pipeline '{}' step ordering failed: {}", pipeline.id, exc
+            )
+            return
+
+        for idx, step in enumerate(ordered_steps):
             tool = self._registry.get(step.tool)
             if tool is None:
                 logger.warning(
@@ -253,76 +356,25 @@ class PipelineRunner:
             if isinstance(trigger_payload, dict):
                 merged_params.setdefault("_trigger", trigger_payload)
 
-            await self._execute_step_with_retry(pipeline.id, step, tool, merged_params)
+            await self._execute_step(pipeline.id, step, tool, merged_params)
 
         # Publish pipeline completion event
         completion = EventEnvelope(
             domain="pipelines",
             category="completed",
             source=f"pipeline:{pipeline.id}",
+            correlation_id=f"pipeline:{pipeline.id}:completed",
             priority=EventPriority.LOW,
             payload={"pipeline_id": pipeline.id, "steps": len(pipeline.steps)},
         )
         try:
-            await self._event_bus.publish(completion)
+            await self._run_with_retries(
+                operation_name="pipeline_completion_publish",
+                correlation_id=completion.correlation_id or "",
+                fn=lambda: self._event_bus.publish(completion),
+            )
         except Exception as exc:
             logger.warning("Failed to publish pipeline completion event: {}", exc)
-
-    async def _execute_step_with_retry(
-        self,
-        pipeline_id: str,
-        step: PipelineStep,
-        tool: MCPTool,
-        parameters: dict[str, Any],
-    ) -> None:
-        """Run a step with optional retries and circuit-breaker logic."""
-        # Circuit breaker check
-        if step.circuit_breaker_threshold > 0:
-            failures = self._circuit_failures.get(step.tool, 0)
-            if failures >= step.circuit_breaker_threshold:
-                logger.warning(
-                    "Pipeline '{}' step '{}' circuit breaker OPEN ({} consecutive failures)",
-                    pipeline_id,
-                    step.tool,
-                    failures,
-                )
-                return
-
-        last_exc: Exception | None = None
-        attempts = 1 + step.max_retries
-        for attempt in range(1, attempts + 1):
-            try:
-                await self._execute_step(pipeline_id, step, tool, parameters)
-                # Success — reset circuit breaker counter
-                if step.circuit_breaker_threshold > 0:
-                    self._circuit_failures[step.tool] = 0
-                return
-            except Exception as exc:
-                last_exc = exc
-                if attempt < attempts:
-                    logger.warning(
-                        "Pipeline '{}' step '{}' attempt {}/{} failed: {}. Retrying in {}s",
-                        pipeline_id,
-                        step.tool,
-                        attempt,
-                        attempts,
-                        exc,
-                        step.retry_delay,
-                    )
-                    await asyncio.sleep(step.retry_delay)
-
-        # All retries exhausted
-        if step.circuit_breaker_threshold > 0:
-            self._circuit_failures[step.tool] = (
-                self._circuit_failures.get(step.tool, 0) + 1
-            )
-        logger.error(
-            "Pipeline '{}' step '{}' failed after {} attempts: {}",
-            pipeline_id,
-            step.tool,
-            attempts,
-            last_exc,
-        )
 
     async def _execute_step(
         self,
@@ -339,6 +391,7 @@ class PipelineRunner:
             parameters=parameters,
             correlation_id=f"pipeline:{pipeline_id}:{step.tool}",
         )
+        correlation_id = approval_req.correlation_id or ""
 
         try:
             gate_result = await self._gate.evaluate(approval_req)
@@ -379,31 +432,36 @@ class PipelineRunner:
         if gate_result.outcome == ApprovalOutcome.APPROVED and handler_registry.has(step.tool):
             ctx = HandlerContext(
                 agent_id=step.agent,
-                correlation_id=f"pipeline:{pipeline_id}:{step.tool}",
+                correlation_id=correlation_id,
                 app_state=self._app_state,
             )
             try:
-                handler_result = await handler_registry.execute(step.tool, parameters, ctx)
+                handler_result = await self._run_with_retries(
+                    operation_name="pipeline_step_handler",
+                    correlation_id=correlation_id,
+                    fn=lambda: handler_registry.execute(step.tool, parameters, ctx),
+                )
                 logger.info(
-                    "Pipeline '{}' step '{}' handler returned: {}",
+                    "Pipeline '{}' step '{}' handler returned: {} (correlation_id={})",
                     pipeline_id,
                     step.tool,
                     handler_result.get("status", "unknown"),
+                    correlation_id,
                 )
             except Exception as exc:
                 logger.error(
-                    "Pipeline '{}' step '{}' handler error: {}",
+                    "Pipeline '{}' step '{}' handler error: {} (correlation_id={})",
                     pipeline_id,
                     step.tool,
                     exc,
+                    correlation_id,
                 )
-                raise
 
         step_event = EventEnvelope(
             domain="pipelines",
             category="step_completed",
             source=f"pipeline:{pipeline_id}",
-            correlation_id=f"pipeline:{pipeline_id}:{step.tool}",
+            correlation_id=correlation_id,
             priority=EventPriority.NORMAL,
             payload={
                 "pipeline_id": pipeline_id,
@@ -415,13 +473,18 @@ class PipelineRunner:
             },
         )
         try:
-            await self._event_bus.publish(step_event)
+            await self._run_with_retries(
+                operation_name="pipeline_step_publish",
+                correlation_id=correlation_id,
+                fn=lambda: self._event_bus.publish(step_event),
+            )
         except Exception as exc:
             logger.warning(
-                "Pipeline '{}' step '{}' event publish failed: {}",
+                "Pipeline '{}' step '{}' event publish failed: {} (correlation_id={})",
                 pipeline_id,
                 step.tool,
                 exc,
+                correlation_id,
             )
 
         logger.info(

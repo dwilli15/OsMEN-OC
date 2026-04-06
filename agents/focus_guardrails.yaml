@@ -1,0 +1,54 @@
+agent_id: focus_guardrails
+name: Focus Guardrails
+model_tier: cloud-primary
+capabilities:
+  - focus
+  - adhd
+  - productivity
+  - break-reminders
+  - distraction-blocking
+description: Hourly ADHD focus-management agent — sends break reminders, tracks active work sessions, and generates end-of-day productivity summaries.
+tools:
+  - name: get_focus_status
+    description: Return the current focus session state, elapsed time, and the next scheduled break.
+    parameters:
+      include_history:
+        type: boolean
+        required: false
+        description: Include today's completed focus intervals in the response.
+    risk_level: low
+
+  - name: send_break_reminder
+    description: Push a break-reminder notification via OpenClaw to the operator's configured channel.
+    parameters:
+      message:
+        type: string
+        required: false
+        description: Custom reminder text (defaults to a generated suggestion).
+      snooze_minutes:
+        type: integer
+        required: false
+        description: Re-send the reminder after this many minutes if not acknowledged.
+    risk_level: low
+
+  - name: get_productivity_report
+    description: Generate a summary of today's focus sessions, break compliance, and task completions.
+    parameters:
+      date:
+        type: string
+        required: false
+        description: ISO-8601 date to report on (defaults to today).
+    risk_level: low
+
+  - name: block_distraction
+    description: Add a site or application to the distraction-block list for the current focus session.
+    parameters:
+      target:
+        type: string
+        required: true
+        description: Domain or application name to block.
+      duration_minutes:
+        type: integer
+        required: false
+        description: How long to maintain the block (defaults to remainder of focus session).
+    risk_level: medium

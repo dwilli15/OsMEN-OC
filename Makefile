@@ -2,6 +2,7 @@
 
 VENV := .venv
 PYTHON := $(VENV)/bin/python
+PYTHON_REQUIRED := 3.13
 
 # ---------------------------------------------------------------------------
 # bootstrap — first-install / idempotent setup
@@ -12,19 +13,19 @@ bootstrap:
 # ---------------------------------------------------------------------------
 # test — run the pytest suite
 # ---------------------------------------------------------------------------
-test: $(VENV)/bin/pytest
+test: $(VENV)/bin/pytest verify-python
 	$(PYTHON) -m pytest tests/ -q --timeout=15
 
 # ---------------------------------------------------------------------------
 # lint — ruff code style and import checks
 # ---------------------------------------------------------------------------
-lint: $(VENV)/bin/ruff
+lint: $(VENV)/bin/ruff verify-python
 	$(PYTHON) -m ruff check core/ tests/
 
 # ---------------------------------------------------------------------------
 # typecheck — mypy static type analysis
 # ---------------------------------------------------------------------------
-typecheck: $(VENV)/bin/mypy
+typecheck: $(VENV)/bin/mypy verify-python
 	$(PYTHON) -m mypy core/ --ignore-missing-imports
 
 # ---------------------------------------------------------------------------
@@ -47,6 +48,16 @@ status:
 $(VENV)/bin/pytest $(VENV)/bin/ruff $(VENV)/bin/mypy: pyproject.toml
 	@[ -d $(VENV) ] || python3 -m venv $(VENV)
 	$(PYTHON) -m pip install --quiet -e ".[dev]"
+
+# ---------------------------------------------------------------------------
+# verify-python — fail fast if local venv is not on required interpreter
+# ---------------------------------------------------------------------------
+verify-python:
+	@$(PYTHON) -c 'import sys; req=(3,13); cur=sys.version_info[:2];\
+print(f"Python {cur[0]}.{cur[1]}");\
+ok=(cur==req);\
+print("ERROR: OsMEN-OC requires Python 3.13 in .venv." if not ok else "");\
+raise SystemExit(0 if ok else 1)'
 
 # ---------------------------------------------------------------------------
 # dev — run gateway with auto-reload (uvicorn)

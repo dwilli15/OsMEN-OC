@@ -147,3 +147,75 @@ async def test_callback_exception_raises_approval_error():
     gate = ApprovalGate(approval_callback=boom)
     with pytest.raises(ApprovalError):
         await gate.evaluate(_make_request(RiskLevel.HIGH))
+
+
+# ---------------------------------------------------------------------------
+# Adaptive risk overrides (D4)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.anyio
+async def test_risk_override_downgrades_high_to_low():
+    """An override downgrades HIGH → LOW so the tool auto-approves."""
+    gate = ApprovalGate()  # no callback — HIGH would normally deny
+    gate.override_risk("agent_x", "dangerous_tool", RiskLevel.LOW)
+
+    request = ApprovalRequest(
+        tool_name="dangerous_tool",
+        agent_id="agent_x",
+        risk_level=RiskLevel.HIGH,
+        parameters={},
+    )
+    result = await gate.evaluate(request)
+    assert result.outcome == ApprovalOutcome.APPROVED
+
+
+@pytest.mark.anyio
+async def test_risk_override_upgrades_low_to_high_denies_without_callback():
+    """An override escalates LOW → HIGH; with no callback the tool is denied."""
+    gate = ApprovalGate()  # no callback
+    gate.override_risk("agent_y", "safe_tool", RiskLevel.HIGH)
+
+    request = ApprovalRequest(
+        tool_name="safe_tool",
+        agent_id="agent_y",
+        risk_level=RiskLevel.LOW,
+        parameters={},
+    )
+    result = await gate.evaluate(request)
+    assert result.outcome == ApprovalOutcome.DENIED
+
+
+@pytest.mark.anyio
+async def test_risk_override_scoped_to_agent_tool_pair():
+    """Override on (agent_a, tool_x) does not affect (agent_b, tool_x)."""
+    gate = ApprovalGate()
+    gate.override_risk("agent_a", "shared_tool", RiskLevel.LOW)
+
+    request_b = ApprovalRequest(
+        tool_name="shared_tool",
+        agent_id="agent_b",
+        risk_level=RiskLevel.HIGH,
+        parameters={},
+    )
+    result = await gate.evaluate(request_b)
+    # agent_b has no override — still HIGH → denied without callback
+    assert result.outcome == ApprovalOutcome.DENIED
+
+
+@pytest.mark.anyio
+async def test_clear_risk_override_restores_declared_level():
+    """clear_risk_override removes the override so declared risk is used again."""
+    gate = ApprovalGate()
+    gate.override_risk("agent_z", "tool_q", RiskLevel.LOW)
+    gate.clear_risk_override("agent_z", "tool_q")
+
+    request = ApprovalRequest(
+        tool_name="tool_q",
+        agent_id="agent_z",
+        risk_level=RiskLevel.HIGH,
+        parameters={},
+    )
+    result = await gate.evaluate(request)
+    # Override cleared — HIGH without callback → denied
+    assert result.outcome == ApprovalOutcome.DENIED

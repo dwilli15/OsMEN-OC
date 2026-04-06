@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
@@ -12,7 +13,7 @@ from core.utils.exceptions import AuditError
 
 
 def _make_record(**kwargs) -> AuditRecord:
-    defaults = {
+    defaults: dict[str, Any] = {
         "agent_id": "test_agent",
         "tool_name": "test_tool",
         "risk_level": "low",

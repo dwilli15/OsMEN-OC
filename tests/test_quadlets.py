@@ -9,7 +9,7 @@ REPO_ROOT = Path(__file__).parent.parent
 QUADLETS_DIR = REPO_ROOT / "quadlets"
 
 
-def _parse_ini(path: Path) -> configparser.ConfigParser:
+def _parse_ini(path: Path) -> configparser.RawConfigParser:
     parser = configparser.RawConfigParser(strict=False)
     parser.read_string(path.read_text(encoding="utf-8"))
     return parser
@@ -55,3 +55,19 @@ def test_container_quadlets_use_rootless_slice() -> None:
         assert parser.has_section("Service"), f"{path} missing [Service] section"
         slice_name = parser.get("Service", "Slice", fallback="")
         assert slice_name.startswith("user-osmen-"), f"{path} has unexpected Slice: {slice_name!r}"
+
+
+def test_container_quadlets_enforce_no_new_privileges() -> None:
+    for path in _container_files():
+        parser = _parse_ini(path)
+        assert parser.has_section("Container"), f"{path} missing [Container] section"
+        value = parser.get("Container", "NoNewPrivileges", fallback="").strip().lower()
+        assert value == "true", f"{path} must set NoNewPrivileges=true"
+
+
+def test_container_quadlets_enforce_read_only_rootfs() -> None:
+    for path in _container_files():
+        parser = _parse_ini(path)
+        assert parser.has_section("Container"), f"{path} missing [Container] section"
+        value = parser.get("Container", "ReadOnly", fallback="").strip().lower()
+        assert value == "true", f"{path} must set ReadOnly=true"
