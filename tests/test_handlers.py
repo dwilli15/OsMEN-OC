@@ -347,17 +347,18 @@ class TestBuiltinIngestUrl:
 
     @pytest.mark.anyio
     async def test_ingest_url_rejects_too_many_redirect_hops(self) -> None:
-        """A redirect chain exceeding _MAX_REDIRECT_HOPS must be rejected."""
-        from core.gateway.builtin_handlers import _MAX_REDIRECT_HOPS, handle_ingest_url
+        """A redirect chain exceeding the max-hop limit (5) must be rejected."""
+        from core.gateway.builtin_handlers import handle_ingest_url
 
-        # Build _MAX_REDIRECT_HOPS + 1 redirect responses, all pointing to the next hop.
+        # Build 6 redirect responses (one past the limit of 5) all pointing to the next hop.
+        _limit = 5  # must match _MAX_REDIRECT_HOPS in builtin_handlers.py
         redirects = [
             self._MockStreamResponse(
                 chunks=[],
                 status_code=302,
                 headers={"location": f"https://hop{i + 1}.example.com/"},
             )
-            for i in range(_MAX_REDIRECT_HOPS + 1)
+            for i in range(_limit + 1)
         ]
         final_resp = self._MockStreamResponse(chunks=[b"never reached"], content_type="text/plain")
         mock_client = self._make_streaming_client([*redirects, final_resp])

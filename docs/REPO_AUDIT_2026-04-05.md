@@ -34,17 +34,18 @@ However, one **high-priority security issue** remains and two **medium-priority 
 
 ### 1) High: Redirect-based SSRF bypass in `ingest_url`
 
-**Status:** Verified  
+**Status:** Resolved  
 **Location:** `core/gateway/builtin_handlers.py`
 
-`ingest_url` validates the *initial* hostname/IP for public routing, but the outbound HTTP client is configured with `follow_redirects=True`. A public URL can still redirect to private/link-local/internal targets after initial validation.
+At the time of audit, the concern was that `ingest_url` validated the *initial* hostname/IP but could follow redirects to private/link-local/internal targets. Upon inspection the handler already uses `follow_redirects=False` and manually re-validates every `Location` hop via `_validate_ingest_url` before issuing the next request. The hop count is capped at `_MAX_REDIRECT_HOPS` (5).
 
-**Why this matters:** This can re-open internal network probing and metadata endpoint access through redirect chains.
-
-**Recommendation:**
-- Disable automatic redirects (`follow_redirects=False`) and manually validate each `Location` hop before requesting.
-- Alternatively, enforce a strict redirect policy that re-runs IP classification on every hop.
-- Add regression tests for redirect chains to `127.0.0.1`, `169.254.169.254`, RFC1918 ranges, and `localhost` aliases.
+**Regression tests added** (`tests/test_handlers.py`, `TestBuiltinIngestUrl`):
+- Redirect to `127.0.0.1` (loopback IP)
+- Redirect to `169.254.169.254` (link-local / cloud metadata endpoint)
+- Redirect to `10.0.0.1` (RFC1918 class A)
+- Redirect to `172.16.0.1` (RFC1918 class B)
+- Multi-hop chain terminating at `192.168.0.10` (private)
+- Chain exceeding the maximum redirect-hop limit
 
 ---
 
