@@ -7,7 +7,8 @@
 # Prerequisites: Ubuntu 26.04 LTS, user 'armad', sudo-rs available.
 #
 # Usage:
-#   scripts/bootstrap.sh [--skip-apt] [--skip-openclaw] [--dry-run]
+#   scripts/bootstrap.sh [--skip-apt] [--skip-openclaw] [--skip-setup]
+#                        [--auto-setup] [--reconfigure] [--dry-run]
 
 set -euo pipefail
 
@@ -15,6 +16,9 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV_DIR="${REPO_ROOT}/.venv"
 SKIP_APT=false
 SKIP_OPENCLAW=false
+SKIP_SETUP=false
+AUTO_SETUP=false
+RECONFIGURE=false
 DRY_RUN=false
 
 # ── Logging helpers ──────────────────────────────────────────────────────────
@@ -27,6 +31,9 @@ for arg in "$@"; do
   case "$arg" in
     --skip-apt)      SKIP_APT=true ;;
     --skip-openclaw) SKIP_OPENCLAW=true ;;
+    --skip-setup)    SKIP_SETUP=true ;;
+    --auto-setup)    AUTO_SETUP=true ;;
+    --reconfigure)   RECONFIGURE=true ;;
     --dry-run)       DRY_RUN=true ;;
     *) log_error "Unknown argument: $arg" ;;
   esac
@@ -114,7 +121,49 @@ setup_python_venv() {
   log_info "Python environment ready."
 }
 
-# ── Step 4: Rootless Podman setup ─────────────────────────────────────────────
+# ── Step 4: Interactive first-run setup wizard ────────────────────────────────
+run_first_run_setup() {
+  local state_file="${HOME}/.config/osmen/.setup_complete"
+
+  if [[ "${SKIP_SETUP}" == "true" ]]; then
+    log_info "Skipping interactive setup (--skip-setup)."
+    return
+  fi
+
+  if [[ -f "${state_file}" ]] && [[ "${RECONFIGURE}" == "false" ]]; then
+    log_info "First-run setup already complete. Use --reconfigure to update."
+    return
+  fi
+
+  log_info "Running first-run setup wizard..."
+  local wizard_args=()
+  [[ "${AUTO_SETUP}" == "true" ]] && wizard_args+=(--auto)
+  [[ "${RECONFIGURE}" == "true" ]] && wizard_args+=(--reconfigure)
+
+  if [[ "${DRY_RUN}" == "true" ]]; then
+    echo "[DRY-RUN] ${VENV_DIR}/bin/python -m core.setup ${wizard_args[*]:-}"
+  else
+    run "${VENV_DIR}/bin/python" -m core.setup "${wizard_args[@]}"
+  fi
+  log_info "First-run setup complete."
+}
+
+# ── Step 4b: Source the env file produced by the wizard ──────────────────────
+source_env_file() {
+  local env_file="${HOME}/.config/osmen/env"
+  if [[ -f "${env_file}" ]]; then
+    log_info "Sourcing environment from ${env_file}..."
+    set -a
+    # shellcheck source=/dev/null
+    source "${env_file}"
+    set +a
+  else
+    log_warn "No env file found at ${env_file} — core services may fail to start."
+    log_warn "Run 'python -m core.setup' to generate it."
+  fi
+}
+
+# ── Step 5: Rootless Podman setup ─────────────────────────────────────────────
 setup_rootless_podman() {
   log_info "Verifying rootless Podman configuration..."
 
@@ -258,6 +307,8 @@ main() {
   install_apt_packages
   install_openclaw
   setup_python_venv
+  run_first_run_setup
+  source_env_file
   setup_rootless_podman
   deploy_quadlets
   deploy_timers

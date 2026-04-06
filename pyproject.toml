@@ -40,6 +40,9 @@ dev = [
 where = ["."]
 include = ["core*"]
 
+[project.scripts]
+osmen-setup = "core.setup.__main__:main"
+
 [project.entry-points."osmen_oc.handlers"]
 # Example: my_tool = "mypkg.handlers:handle_my_tool"
 # External packages add entries here to auto-register handlers at startup.

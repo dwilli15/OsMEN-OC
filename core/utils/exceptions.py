@@ -45,3 +45,7 @@ class AuditError(OsMENError):
 
 class PipelineError(OsMENError):
     """Raised when pipeline loading or step execution fails."""
+
+
+class SetupError(OsMENError):
+    """Raised when the first-run setup wizard encounters a non-recoverable error."""
