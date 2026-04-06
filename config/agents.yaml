@@ -48,12 +48,12 @@ taskwarrior_sync:
   taskwarrior_data_dir: "~/.task"
 
 system_monitor:
-  schedule: "*/5 * * * *"  # cron: every 5 minutes
+  schedule: event-driven
   model_tier: local-small
-  # Thermal threshold in °C above which the agent emits a warning event.
-  thermal_warn_celsius: 85
-  # Path to compute routing rules (overridable via COMPUTE_ROUTING_CONFIG env var).
+  # Path to compute-routing rules config (optional override for testing).
   compute_routing_config: "config/compute-routing.yaml"
+  # Path to hardware capability config.
+  hardware_config: "config/hardware.yaml"
 
 research:
   schedule: event-driven

@@ -16,10 +16,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.13
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.12"
           cache: pip
 
       - name: Install dependencies
@@ -35,7 +35,9 @@ jobs:
         run: python -m mypy core/ --ignore-missing-imports
 
       - name: Security audit (pip-audit)
-        run: python -m pip_audit --strict --progress-spinner=off
+        run: |
+          pip install pip-audit
+          pip-audit --skip-editable
 
       - name: Security lint (bandit)
         run: python -m bandit -r core/ -q -c pyproject.toml

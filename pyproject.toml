@@ -7,7 +7,7 @@ name = "osmen-oc"
 version = "0.1.0"
 description = "OsMEN-OC execution engine — pipeline execution, tools, bridge logic, memory, Podman services, timers"
 license = { text = "Apache-2.0" }
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115,<1",
     "uvicorn[standard]>=0.29,<1",
@@ -17,45 +17,35 @@ dependencies = [
     "httpx>=0.27,<1",
     "anyio>=4.4,<5",
     "cronsim>=2.6,<3",
-    "websockets>=12.0,<14",
+    "websockets>=12.0,<15",
 ]
 
 [project.optional-dependencies]
 runtime = [
-    "redis[hiredis]>=5.0",
-    "asyncpg>=0.29",
-    "chromadb>=0.5",
+    "redis[hiredis]>=5.0,<6",
+    "asyncpg>=0.29,<1",
+    "chromadb>=0.5,<1",
 ]
 dev = [
-    "pytest>=8.2",
-    "pytest-cov>=5.0",
-    "anyio[trio]>=4.4",
-    "ruff>=0.4",
-    "mypy>=1.10",
-    "httpx>=0.27",
-    "types-PyYAML>=6.0",
+    "pytest>=8.2,<9",
+    "pytest-cov>=5.0,<6",
+    "anyio[trio]>=4.4,<5",
+    "ruff>=0.4,<1",
+    "mypy>=1.10,<2",
+    "httpx>=0.27,<1",
+    "types-PyYAML>=6.0,<7",
 ]
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["core*"]
 
-# ---------------------------------------------------------------------------
-# Plugin handler entry-points
-# ---------------------------------------------------------------------------
-# Third-party packages can advertise additional MCP tool handlers by
-# declaring an entry-point in the "osmen_oc.handlers" group.  The entry-point
-# *name* becomes the tool name in the handler registry; the *value* must
-# resolve to an async callable with signature:
-#   async def handler(params: dict, ctx: HandlerContext) -> dict
-#
-# Example (in the plugin package's pyproject.toml):
-#   [project.entry-points."osmen_oc.handlers"]
-#   my_tool = "my_package.handlers:handle_my_tool"
-#
-# Built-in example (disabled — enable by uncommenting):
-# [project.entry-points."osmen_oc.handlers"]
-# ingest_url = "core.gateway.builtin_handlers:_register_ingest_url"
+[project.scripts]
+osmen-setup = "core.setup.__main__:main"
+
+[project.entry-points."osmen_oc.handlers"]
+# Example: my_tool = "mypkg.handlers:handle_my_tool"
+# External packages add entries here to auto-register handlers at startup.
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -66,10 +56,6 @@ target-version = "py313"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
-
-[tool.bandit]
-skips = ["B101"]
-targets = ["core"]
 
 [tool.mypy]
 python_version = "3.13"

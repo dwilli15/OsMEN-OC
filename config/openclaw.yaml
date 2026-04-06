@@ -1,0 +1,41 @@
+# OpenClaw control-plane bridge configuration
+# ─────────────────────────────────────────────
+# This file is safe to commit — it contains no secrets, only ${ENV_VAR}
+# references.  Real values are written to ~/.config/osmen/env by the
+# first-run setup wizard:
+#
+#   python -m core.setup
+#
+# Source the env file before starting services:
+#   source ~/.config/osmen/env
+
+bridge:
+  # WebSocket address that OpenClaw listens on (control-plane side).
+  ws_url: "ws://127.0.0.1:18789"
+  # Seconds between reconnect attempts when the bridge drops.
+  reconnect_interval_seconds: 5
+  # Maximum inbound message size (bytes) — messages over this limit are dropped.
+  max_message_bytes: 65536
+
+telegram:
+  # Bot token issued by @BotFather.  Set via TELEGRAM_BOT_TOKEN in the env file.
+  token: "${TELEGRAM_BOT_TOKEN}"
+  # Chat/group ID where approval notifications and briefings are delivered.
+  chat_id: "${TELEGRAM_CHAT_ID}"
+  parse_mode: "MarkdownV2"
+
+discord:
+  # Bot token from the Discord Developer Portal.  Leave blank to disable Discord.
+  token: "${DISCORD_BOT_TOKEN}"
+  # Server (guild) ID where the bot is installed.
+  guild_id: "${DISCORD_GUILD_ID}"
+
+trust_policy:
+  # Channels through which operator commands are accepted.
+  allowed_channels:
+    - telegram
+    - discord
+  # Risk levels that require explicit human approval before execution.
+  require_approval_risk_levels:
+    - high
+    - critical

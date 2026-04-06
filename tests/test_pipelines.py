@@ -61,7 +61,7 @@ class TestPipelineLoading:
             "boot_hardening_weekly",
             "focus_check_hourly",
             "taskwarrior_sync_periodic",
-            "hardware_health_check",
+            "hardware_metrics_poll",
             "research_request",
         }
 

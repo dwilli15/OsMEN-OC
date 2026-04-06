@@ -77,15 +77,13 @@ pipelines:
       - agent: taskwarrior_sync
         tool: sync_tasks
 
-  - id: hardware_health_check
+  - id: hardware_metrics_poll
     trigger:
       type: cron
-      schedule: "*/5 * * * *"
+      schedule: "*/5 * * * *"  # every 5 minutes
     steps:
       - agent: system_monitor
-        tool: get_thermal_status
-      - agent: system_monitor
-        tool: get_gpu_status
+        tool: get_hardware_metrics
 
   - id: research_request
     trigger:
