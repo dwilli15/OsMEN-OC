@@ -17,7 +17,7 @@ import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import IO, Any
+from typing import IO, Any, TextIO
 
 import yaml
 from loguru import logger
@@ -82,13 +82,13 @@ class SetupWizard:
         reconfigure: bool = False,
         repo_root: Path | None = None,
         stdin: IO[str] | None = None,
-        stdout: IO[str] | None = None,
+        stdout: TextIO | None = None,
         use_getpass: bool = True,
     ) -> None:
         self.auto = auto
         self.reconfigure = reconfigure
         self._in: IO[str] = stdin if stdin is not None else sys.stdin
-        self._out: IO[str] = stdout if stdout is not None else sys.stdout
+        self._out: TextIO = stdout if stdout is not None else sys.stdout
         self._use_getpass = use_getpass
         self._config = SetupConfig()
 
