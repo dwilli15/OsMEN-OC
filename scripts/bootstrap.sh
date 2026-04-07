@@ -4,7 +4,7 @@
 # Master first-install / re-run bootstrap for OsMEN-OC.
 # Idempotent: safe to run multiple times on a fresh or existing system.
 #
-# Prerequisites: Ubuntu 26.04 LTS, user 'armad', sudo-rs available.
+# Prerequisites: Ubuntu 26.04 LTS. Uses pkexec for privilege escalation.
 #
 # Usage:
 #   scripts/bootstrap.sh [--skip-apt] [--skip-openclaw] [--skip-setup]
@@ -56,8 +56,8 @@ install_apt_packages() {
   fi
 
   log_info "Installing system packages..."
-  run sudo apt-get update -qq
-  run sudo apt-get install -y --no-install-recommends \
+  run pkexec apt-get update -qq
+  run pkexec apt-get install -y --no-install-recommends \
     python3-dev \
     python3-venv \
     nodejs \
@@ -97,7 +97,7 @@ install_openclaw() {
 setup_python_venv() {
   if [[ ! -d "${VENV_DIR}" ]]; then
     log_info "Creating Python virtual environment at ${VENV_DIR}..."
-    run python3 -m venv "${VENV_DIR}"
+    run python3.13 -m venv "${VENV_DIR}"
   else
     log_info "Python venv already exists at ${VENV_DIR}."
   fi
@@ -108,7 +108,7 @@ setup_python_venv() {
     if ! "${VENV_DIR}/bin/python" -m pip --version &>/dev/null; then
       log_info "pip not found in venv; attempting to bootstrap via ensurepip..."
       if ! "${VENV_DIR}/bin/python" -m ensurepip --upgrade 2>/dev/null; then
-        log_warn "Fix: sudo apt-get install -y python3-pip, then re-run bootstrap."
+        log_warn "Fix: pkexec apt-get install -y python3-pip, then re-run bootstrap."
         log_error "ensurepip is unavailable and pip is missing from the venv."
       fi
     fi
@@ -171,11 +171,11 @@ setup_rootless_podman() {
   uid="$(id -u)"
   if ! grep -q "^${USER}:" /etc/subuid 2>/dev/null; then
     log_warn "No subuid entry for ${USER}. Adding one..."
-    run sudo usermod --add-subuids 100000-165535 "${USER}"
+    run pkexec usermod --add-subuids 100000-165535 "${USER}"
   fi
   if ! grep -q "^${USER}:" /etc/subgid 2>/dev/null; then
     log_warn "No subgid entry for ${USER}. Adding one..."
-    run sudo usermod --add-subgids 100000-165535 "${USER}"
+    run pkexec usermod --add-subgids 100000-165535 "${USER}"
   fi
 
   log_info "Enabling podman.socket for user session..."
