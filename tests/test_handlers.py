@@ -195,6 +195,189 @@ class TestBuiltinIngestUrl:
         assert "redirect target blocked" in result["detail"].lower()
 
     @pytest.mark.anyio
+    async def test_ingest_url_rejects_redirect_to_loopback_ip(self) -> None:
+        """Redirect to a bare loopback IP (127.0.0.1) must be blocked."""
+        from core.gateway.builtin_handlers import handle_ingest_url
+
+        redirect_resp = self._MockStreamResponse(
+            chunks=[],
+            status_code=301,
+            headers={"location": "http://127.0.0.1/secret"},
+        )
+        final_resp = self._MockStreamResponse(chunks=[b"secret"], content_type="text/plain")
+        mock_client = self._make_streaming_client([redirect_resp, final_resp])
+
+        ctx = HandlerContext(agent_id="knowledge_librarian")
+        with (
+            patch(
+                "core.gateway.builtin_handlers._socket.getaddrinfo",
+                side_effect=[
+                    [(2, 1, 6, "", ("93.184.216.34", 443))],
+                    [(2, 1, 6, "", ("127.0.0.1", 80))],
+                ],
+            ),
+            patch("core.gateway.builtin_handlers._httpx.AsyncClient", return_value=mock_client),
+        ):
+            result = await handle_ingest_url({"url": "https://example.com/page"}, ctx)
+
+        assert result["status"] == "error"
+        assert "redirect target blocked" in result["detail"].lower()
+
+    @pytest.mark.anyio
+    async def test_ingest_url_rejects_redirect_to_link_local_metadata(self) -> None:
+        """Redirect to 169.254.169.254 (cloud metadata endpoint) must be blocked."""
+        from core.gateway.builtin_handlers import handle_ingest_url
+
+        redirect_resp = self._MockStreamResponse(
+            chunks=[],
+            status_code=302,
+            headers={"location": "http://169.254.169.254/latest/meta-data/"},
+        )
+        final_resp = self._MockStreamResponse(chunks=[b"metadata"], content_type="text/plain")
+        mock_client = self._make_streaming_client([redirect_resp, final_resp])
+
+        ctx = HandlerContext(agent_id="knowledge_librarian")
+        with (
+            patch(
+                "core.gateway.builtin_handlers._socket.getaddrinfo",
+                side_effect=[
+                    [(2, 1, 6, "", ("93.184.216.34", 443))],
+                    [(2, 1, 6, "", ("169.254.169.254", 80))],
+                ],
+            ),
+            patch("core.gateway.builtin_handlers._httpx.AsyncClient", return_value=mock_client),
+        ):
+            result = await handle_ingest_url({"url": "https://example.com/page"}, ctx)
+
+        assert result["status"] == "error"
+        assert "redirect target blocked" in result["detail"].lower()
+
+    @pytest.mark.anyio
+    async def test_ingest_url_rejects_redirect_to_rfc1918_class_a(self) -> None:
+        """Redirect to an RFC1918 10.x.x.x address must be blocked."""
+        from core.gateway.builtin_handlers import handle_ingest_url
+
+        redirect_resp = self._MockStreamResponse(
+            chunks=[],
+            status_code=302,
+            headers={"location": "http://10.0.0.1/admin"},
+        )
+        final_resp = self._MockStreamResponse(chunks=[b"admin"], content_type="text/plain")
+        mock_client = self._make_streaming_client([redirect_resp, final_resp])
+
+        ctx = HandlerContext(agent_id="knowledge_librarian")
+        with (
+            patch(
+                "core.gateway.builtin_handlers._socket.getaddrinfo",
+                side_effect=[
+                    [(2, 1, 6, "", ("93.184.216.34", 443))],
+                    [(2, 1, 6, "", ("10.0.0.1", 80))],
+                ],
+            ),
+            patch("core.gateway.builtin_handlers._httpx.AsyncClient", return_value=mock_client),
+        ):
+            result = await handle_ingest_url({"url": "https://example.com/page"}, ctx)
+
+        assert result["status"] == "error"
+        assert "redirect target blocked" in result["detail"].lower()
+
+    @pytest.mark.anyio
+    async def test_ingest_url_rejects_redirect_to_rfc1918_class_b(self) -> None:
+        """Redirect to an RFC1918 172.16.x.x address must be blocked."""
+        from core.gateway.builtin_handlers import handle_ingest_url
+
+        redirect_resp = self._MockStreamResponse(
+            chunks=[],
+            status_code=302,
+            headers={"location": "http://172.16.0.1/internal"},
+        )
+        final_resp = self._MockStreamResponse(chunks=[b"internal"], content_type="text/plain")
+        mock_client = self._make_streaming_client([redirect_resp, final_resp])
+
+        ctx = HandlerContext(agent_id="knowledge_librarian")
+        with (
+            patch(
+                "core.gateway.builtin_handlers._socket.getaddrinfo",
+                side_effect=[
+                    [(2, 1, 6, "", ("93.184.216.34", 443))],
+                    [(2, 1, 6, "", ("172.16.0.1", 80))],
+                ],
+            ),
+            patch("core.gateway.builtin_handlers._httpx.AsyncClient", return_value=mock_client),
+        ):
+            result = await handle_ingest_url({"url": "https://example.com/page"}, ctx)
+
+        assert result["status"] == "error"
+        assert "redirect target blocked" in result["detail"].lower()
+
+    @pytest.mark.anyio
+    async def test_ingest_url_rejects_multihop_chain_ending_at_private(self) -> None:
+        """A multi-hop redirect chain that terminates at a private IP must be blocked."""
+        from core.gateway.builtin_handlers import handle_ingest_url
+
+        hop1 = self._MockStreamResponse(
+            chunks=[],
+            status_code=302,
+            headers={"location": "https://cdn.example.com/resource"},
+        )
+        hop2 = self._MockStreamResponse(
+            chunks=[],
+            status_code=301,
+            headers={"location": "http://192.168.0.10/internal"},
+        )
+        final_resp = self._MockStreamResponse(chunks=[b"internal"], content_type="text/plain")
+        mock_client = self._make_streaming_client([hop1, hop2, final_resp])
+
+        ctx = HandlerContext(agent_id="knowledge_librarian")
+        with (
+            patch(
+                "core.gateway.builtin_handlers._socket.getaddrinfo",
+                side_effect=[
+                    [(2, 1, 6, "", ("93.184.216.34", 443))],   # example.com/start
+                    [(2, 1, 6, "", ("198.51.100.5", 443))],    # cdn.example.com (public)
+                    [(2, 1, 6, "", ("192.168.0.10", 80))],     # 192.168.0.10 (private) → blocked
+                ],
+            ),
+            patch("core.gateway.builtin_handlers._httpx.AsyncClient", return_value=mock_client),
+        ):
+            result = await handle_ingest_url({"url": "https://example.com/start"}, ctx)
+
+        assert result["status"] == "error"
+        assert "redirect target blocked" in result["detail"].lower()
+
+    @pytest.mark.anyio
+    async def test_ingest_url_rejects_too_many_redirect_hops(self) -> None:
+        """A redirect chain exceeding the max-hop limit (5) must be rejected."""
+        from core.gateway.builtin_handlers import handle_ingest_url
+
+        # Build 6 redirect responses (one past the limit of 5) all pointing to the next hop.
+        _limit = 5  # must match _MAX_REDIRECT_HOPS in builtin_handlers.py
+        redirects = [
+            self._MockStreamResponse(
+                chunks=[],
+                status_code=302,
+                headers={"location": f"https://hop{i + 1}.example.com/"},
+            )
+            for i in range(_limit + 1)
+        ]
+        final_resp = self._MockStreamResponse(chunks=[b"never reached"], content_type="text/plain")
+        mock_client = self._make_streaming_client([*redirects, final_resp])
+
+        public_addr = [(2, 1, 6, "", ("93.184.216.34", 443))]
+        ctx = HandlerContext(agent_id="knowledge_librarian")
+        with (
+            patch(
+                "core.gateway.builtin_handlers._socket.getaddrinfo",
+                return_value=public_addr,
+            ),
+            patch("core.gateway.builtin_handlers._httpx.AsyncClient", return_value=mock_client),
+        ):
+            result = await handle_ingest_url({"url": "https://example.com/start"}, ctx)
+
+        assert result["status"] == "error"
+        assert "too many redirect" in result["detail"].lower()
+
+    @pytest.mark.anyio
     async def test_ingest_url_rejects_redirect_without_location(self) -> None:
         from core.gateway.builtin_handlers import handle_ingest_url
 
