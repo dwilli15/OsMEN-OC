@@ -20,7 +20,7 @@ This repo contains the execution engine; OpenClaw (Node.js, `npm install -g open
 
 ## Key Architectural Decisions
 
-1. **Rootless Podman only** — no Docker, no docker-compose. All containers run as user `armad` via systemd Quadlets.
+1. **Rootless Podman only** — no Docker, no docker-compose. All containers run as a rootless user via systemd Quadlets.
 2. **Single Python package** — everything imports from `core.*`. No util/ grab-bags. No circular imports.
 3. **Agent manifests are YAML** — agents are data (YAML), not code. Each manifest declares tools, risk level, model tier, schedule.
 4. **MCP auto-registration** — gateway reads agent YAML manifests at startup and exposes their tools as MCP endpoints automatically.

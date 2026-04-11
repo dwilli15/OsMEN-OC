@@ -61,7 +61,7 @@ User (Telegram / Discord)
    Redis (working) → PostgreSQL+pgvector → ChromaDB (RAG)
          │
          ▼
-   Podman Quadlets (rootless, user=armad)
+   Podman Quadlets (rootless, user=$USER)
    osmen-core-postgres  osmen-core-redis  osmen-core-chromadb
    osmen-media-*        osmen-inference-* osmen-librarian-*
 ```
@@ -73,7 +73,7 @@ User (Telegram / Discord)
 ### Phase 0 — Pre-flight Checks (automated, no auth required)
 
 1. Confirm OS: `lsb_release -rs` must return `26.04`.
-2. Confirm user: must not be `root`; user `armad` recommended.
+2. Confirm user: must not be `root`; a dedicated non-root user is recommended.
 3. Check `sudo-rs` available (`sudo --version` output contains "sudo-rs" or `doas` present).
 4. Check kernel ≥ 6.8 for XDNA2 NPU (`uname -r`).
 5. Verify subuid/subgid entries exist for current user (`/etc/subuid`, `/etc/subgid`).
@@ -143,8 +143,8 @@ Config template `config/openclaw.yaml` uses `${ENV_VAR}` placeholders resolved a
 
 ```bash
 # Adds subuid/subgid if missing:
-sudo usermod --add-subuids 100000-165535 armad
-sudo usermod --add-subgids 100000-165535 armad
+sudo usermod --add-subuids 100000-165535 "$USER"
+sudo usermod --add-subgids 100000-165535 "$USER"
 systemctl --user enable --now podman.socket
 ```
 
@@ -400,7 +400,7 @@ Rule: **never** add any service to this pod that should bypass the VPN.
 |---------|-------------|------------|
 | `openclaw: command not found` | npm global bin not in PATH | Add `$(npm prefix -g)/bin` to PATH |
 | Quadlet units not appearing | `systemctl --user daemon-reload` not run | Run `scripts/deploy_quadlets.sh` again |
-| `osmen-core-postgres` fails to start | Missing subuid/subgid entries | Run `sudo usermod --add-subuids 100000-165535 armad` |
+| `osmen-core-postgres` fails to start | Missing subuid/subgid entries | Run `sudo usermod --add-subuids 100000-165535 "$USER"` |
 | SOPS decryption fails | age key not at `~/.config/sops/age/keys.txt` | `age-keygen -o ~/.config/sops/age/keys.txt` then re-run |
 | `ensurepip` unavailable in venv | python3-pip not installed | `sudo apt-get install -y python3-pip` |
 | ChromaDB collection errors | ChromaDB container not healthy | `systemctl --user restart osmen-core-chromadb` |
