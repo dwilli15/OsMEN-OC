@@ -5,7 +5,7 @@
 
 [Unit]
 Description=OsMEN-OC Core — ChromaDB
-Documentation=https://github.com/dwilli15/OsMEN-OC
+Documentation=https://github.com/OsMEN-OC/OsMEN-OC
 After=osmen-core-network.service
 Requires=osmen-core-network.service
 

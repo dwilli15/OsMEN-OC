@@ -2,13 +2,13 @@
 
 ## Context
 
-- Fresh clone of dwilli15/OsMEN-OC at commit `a4b637c` (latest main, 21 commits).
+- Fresh clone of OsMEN-OC at commit `a4b637c` (latest main, 21 commits).
 - Local branch `install/fresh-setup-20260407` created with one staged change: `sudo` → `pkexec` in bootstrap.sh.
 - Host: Ubuntu 26.04 (Resolute Raccoon dev), Python 3.14.3, `python3.14-venv` installed.
 - No Podman installed yet. No containers, no secrets, no quadlet units, no user timers deployed.
 - Setup wizard exists at `core/setup/wizard.py` — handles env file, OpenClaw config, LLM key, Telegram, Discord, Plex paths, Postgres/Redis DSNs.
-- Workspace custom assets (agents, skills, instructions, prompts, hooks) live in `/home/dwill/dev/.github/` and `/home/dwill/dev/.vscode/` — outside OsMEN-OC, untouched.
-- New workspace will be rooted at `/home/dwill/dev/OsMEN-OC`.
+- Workspace custom assets (agents, skills, instructions, prompts, hooks) live in `~/.github/` and `~/.vscode/` — outside OsMEN-OC, untouched.
+- New workspace will be rooted at `~/dev/OsMEN-OC`.
 
 ## Privilege Escalation
 
@@ -211,7 +211,7 @@ Each subsystem follows: install → configure → create accounts/OAuth → wire
 
 ## Resumption Instructions
 
-1. Open new workspace at `/home/dwill/dev/OsMEN-OC`
+1. Open new workspace at `~/dev/OsMEN-OC`
 2. Read this file first
 3. The `osmen-install-setup` agent mode has all instructions baked in
 4. Start with Phase 0 (git identity → commit pkexec patch)
