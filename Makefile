@@ -46,7 +46,7 @@ status:
 # Internal: ensure venv tools are available
 # ---------------------------------------------------------------------------
 $(VENV)/bin/pytest $(VENV)/bin/ruff $(VENV)/bin/mypy: pyproject.toml
-	@[ -d $(VENV) ] || python3 -m venv $(VENV)
+	@[ -d $(VENV) ] || python3.13 -m venv $(VENV)
 	$(PYTHON) -m pip install --quiet -e ".[dev]"
 
 # ---------------------------------------------------------------------------
@@ -63,7 +63,7 @@ raise SystemExit(0 if ok else 1)'
 # dev — run gateway with auto-reload (uvicorn)
 # ---------------------------------------------------------------------------
 dev: $(VENV)/bin/pytest
-	$(PYTHON) -m uvicorn core.gateway.app:app --reload --host 127.0.0.1 --port 8000
+	$(PYTHON) -m uvicorn core.gateway.app:app --reload --host 127.0.0.1 --port 8080
 
 # ---------------------------------------------------------------------------
 # fmt — auto-fix lint issues

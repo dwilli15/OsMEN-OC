@@ -25,16 +25,20 @@ htmlcov/
 # Ruff
 .ruff_cache/
 
-# Editor
+# Editor / workspace
 .vscode/
 .idea/
 *.swp
 *.swo
+*.code-workspace
 
 # Runtime data and secrets (never committed)
 data/
 logs/
 config/secrets/*.enc.yaml
+
+# First-install ephemeral directory (deleted after install)
+temp_1st_install/
 
 # SOPS age key
 *.age
