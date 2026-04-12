@@ -13,7 +13,7 @@ This repo contains the execution engine; OpenClaw (Node.js, `npm install -g open
 | Agents       | `agents/`     | YAML manifests + thin Python runners                          |
 | Gateway      | `gateway/`    | FastAPI app (REST + MCP + WebSocket bridge)                   |
 | Quadlets     | `quadlets/`   | Rootless Podman systemd unit files                            |
-| Config       | `config/`     | YAML config, SOPS-encrypted secrets                           |
+| Config       | `config/`     | YAML config and public-safe secret templates; live secrets stay local under `~/.config/osmen/secrets/` |
 | Scripts      | `scripts/`    | bootstrap.sh, deploy.sh, maintenance cron                     |
 | Tests        | `tests/`      | pytest suite, one test per module minimum                     |
 | Migrations   | `migrations/` | Numbered SQL files (001*, 002*, ...)                          |

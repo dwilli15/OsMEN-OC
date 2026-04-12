@@ -36,9 +36,9 @@ htmlcov/
 data/
 logs/
 
-# Plaintext secrets never committed — only SOPS-encrypted .enc.yaml files are safe
+# Repo stores templates only. Live secret backups stay local under ~/.config/osmen/secrets/
 config/secrets/*
-!config/secrets/*.enc.yaml
+!config/secrets/*.template.yaml
 
 # First-install ephemeral directory (deleted after install)
 temp_1st_install/

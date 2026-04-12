@@ -89,7 +89,7 @@ gpu_conflict_rule: "if ffxiv_dx11 on nvidia → route inference to amd_vulkan or
 
 ## What to NEVER Create
 
-- `.env` files (use SOPS-encrypted YAML in `config/secrets/`)
+- `.env` files (use local SOPS-encrypted YAML under `~/.config/osmen/secrets/`; commit only templates in `config/secrets/`)
 - `data/` or `logs/` directories (created at runtime)
 - Actual secrets or age private keys
 - Docker Compose files

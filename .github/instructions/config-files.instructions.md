@@ -12,12 +12,20 @@ applyTo: "config/**/*.yaml"
 
 ### Secret Config
 
-Files in `config/secrets/` use `.enc.yaml` extension (SOPS + age encrypted).
+Files in `config/secrets/` are public-safe templates only.
 
-- `api-keys.enc.yaml` — LLM provider keys, service API keys
-- `service-creds.enc.yaml` — database passwords, VPN credentials
+- Use `.template.yaml` for committed files that define expected keys and placeholder values.
+- Store live SOPS-encrypted secret backups outside the repo at `~/.config/osmen/secrets/*.enc.yaml`.
+- Runtime services should receive secrets from Podman secrets or `${ENV_VAR}` resolution, never from committed files.
 
-Never put plaintext secrets in any config file. Use `${ENV_VAR}` or SOPS encryption.
+When adding a new secret-bearing integration:
+
+1. Update the committed template in `config/secrets/`.
+2. Update the local encrypted file in `~/.config/osmen/secrets/`.
+3. Update the Podman secret creation/rotation workflow.
+4. Verify the repo still contains templates only.
+
+Never put plaintext secrets in any repo config file.
 
 ### Config Loading Pattern
 
