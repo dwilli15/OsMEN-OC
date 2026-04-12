@@ -1,0 +1,42 @@
+# osmen-monitoring-grafana.container
+# Rootless Podman Quadlet — Grafana (metrics visualization).
+# Exposure: 127.0.0.1:3000 only (behind Caddy: grafana.osmen.local).
+# DISABLED BY DEFAULT — opt-in via P21.
+# NOTE: Port 3000 conflicts with ConvertX when both active.
+# If enabling both, remap Grafana to 3002 or ConvertX to another port.
+
+[Unit]
+Description=OsMEN-OC Monitoring — Grafana (opt-in)
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-monitoring-prometheus.service
+
+[Container]
+Image=docker.io/grafana/grafana-oss:12.1.0
+ContainerName=osmen-monitoring-grafana
+
+PublishPort=127.0.0.1:3002:3000
+
+Volume=osmen-grafana-data.volume:/var/lib/grafana
+
+Environment=GF_SECURITY_ADMIN_PASSWORD__FILE=/run/secrets/osmen-grafana-admin-password
+Secret=osmen-grafana-admin-password,type=mount
+
+HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:3000/api/health || exit 1"
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=15s
+
+SecurityLabelDisable=true
+NoNewPrivileges=true
+
+[Service]
+Restart=always
+RestartSec=5s
+Slice=user-osmen-background.slice
+MemoryMax=512M
+CPUQuota=100%
+
+# DISABLED BY DEFAULT — do not auto-start.
+# [Install]
+# WantedBy=default.target

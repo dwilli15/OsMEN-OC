@@ -1,0 +1,27 @@
+# osmen-inference-lmstudio.service
+# Systemd user service — LM Studio headless (Vulkan inference on AMD 890M iGPU).
+# NOT a container — native binary installed to ~/.local/lib/lm-studio/.
+# Exposes OpenAI-compatible API on 127.0.0.1:1234.
+# PF11: When FFXIV uses NVIDIA GPU, inference routes to AMD Vulkan via this.
+
+[Unit]
+Description=OsMEN-OC Inference — LM Studio Headless (Vulkan/AMD)
+Documentation=https://github.com/dwilli15/OsMEN-OC
+# No network dependency — this is a native binary, not a container.
+
+[Service]
+Type=simple
+ExecStart=%h/.local/lib/lm-studio/lms server start --port 1234
+ExecStop=%h/.local/lib/lm-studio/lms server stop
+Restart=on-failure
+RestartSec=10s
+Slice=user-osmen-inference.slice
+MemoryMax=8G
+CPUQuota=400%
+
+# Vulkan environment for AMD iGPU.
+Environment=VULKAN_SDK=/usr
+Environment=VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.x86_64.json
+
+[Install]
+WantedBy=default.target

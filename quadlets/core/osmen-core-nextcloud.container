@@ -1,0 +1,53 @@
+# osmen-core-nextcloud.container
+# Rootless Podman Quadlet — Nextcloud (file sync + CalDAV + Tasks + WebDAV).
+# Exposure: 127.0.0.1:8080 only (behind Caddy reverse proxy).
+# No Office, no Talk — minimal install for sync + task management.
+
+[Unit]
+Description=OsMEN-OC Core — Nextcloud
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-core-postgres.service osmen-core-redis.service osmen-core-network.service
+Requires=osmen-core-network.service
+
+[Container]
+Image=docker.io/library/nextcloud:31.0.5-fpm
+ContainerName=osmen-core-nextcloud
+
+# Using FPM variant (lightweight, no bundled Apache).
+PublishPort=127.0.0.1:8080:80
+
+Network=osmen-core.network
+
+# Persistent data volume for Nextcloud files.
+Volume=osmen-nextcloud-data.volume:/var/www/html
+
+# PostgreSQL backend.
+Secret=osmen-nextcloud-postgres-host,type=env,target=POSTGRES_HOST
+Secret=osmen-nextcloud-postgres-db,type=env,target=POSTGRES_DB
+Secret=osmen-nextcloud-postgres-user,type=env,target=POSTGRES_USER
+Secret=osmen-nextcloud-postgres-password,type=env,target=POSTGRES_PASSWORD
+
+# Redis for caching and locking.
+Environment=REDIS_HOST=osmen-core-redis
+
+# PF13: www-data UID mapping for rootless Podman.
+UserNS=keep-id:uid=33,gid=33
+
+HealthCmd=/bin/sh -c "curl -sf http://127.0.0.1/status.php | grep -q '\"installed\":true' || exit 1"
+HealthInterval=60s
+HealthTimeout=15s
+HealthRetries=5
+HealthStartPeriod=120s
+
+SecurityLabelDisable=true
+NoNewPrivileges=true
+
+[Service]
+Restart=always
+RestartSec=10s
+Slice=user-osmen-services.slice
+MemoryMax=1G
+CPUQuota=200%
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,42 @@
+# osmen-media-prowlarr.container
+# Rootless Podman Quadlet — Prowlarr (indexer manager).
+# Exposure: 127.0.0.1:9696 only.
+
+[Unit]
+Description=OsMEN-OC Media — Prowlarr
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-media-network.service
+Requires=osmen-media-network.service
+
+[Container]
+Image=docker.io/linuxserver/prowlarr:1.35.1
+ContainerName=osmen-media-prowlarr
+
+PublishPort=127.0.0.1:9696:9696
+
+Network=osmen-media.network
+
+Environment=PUID=1000
+Environment=PGID=1000
+Environment=TZ=America/Chicago
+
+Volume=osmen-prowlarr-config.volume:/config
+
+HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:9696/ping || exit 1"
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=30s
+
+SecurityLabelDisable=true
+NoNewPrivileges=true
+
+[Service]
+Restart=always
+RestartSec=5s
+Slice=user-osmen-media.slice
+MemoryMax=512M
+CPUQuota=100%
+
+[Install]
+WantedBy=default.target

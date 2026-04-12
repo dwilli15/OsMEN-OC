@@ -1,0 +1,13 @@
+# download-stack.pod
+# Podman pod — shared network namespace for VPN-tunneled download clients.
+# gluetun provides the network; qBittorrent and SABnzbd ride in it.
+# All external traffic is forced through gluetun's WireGuard tunnel.
+
+[Pod]
+PodName=download-stack
+# Ports published on the pod level since containers share gluetun's namespace.
+PublishPort=127.0.0.1:9090:9090
+PublishPort=127.0.0.1:8082:8082
+
+[Install]
+WantedBy=default.target

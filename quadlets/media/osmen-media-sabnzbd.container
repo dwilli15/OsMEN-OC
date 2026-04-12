@@ -1,0 +1,34 @@
+# osmen-media-sabnzbd.container
+# Rootless Podman Quadlet — SABnzbd (Usenet client).
+# Runs inside download-stack pod — shares gluetun's VPN namespace.
+# Web UI: 127.0.0.1:8082 (via pod port mapping).
+
+[Unit]
+Description=OsMEN-OC Media — SABnzbd
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-media-gluetun.service
+Requires=osmen-media-gluetun.service
+
+[Container]
+Image=docker.io/linuxserver/sabnzbd:4.5.1
+ContainerName=osmen-media-sabnzbd
+Pod=download-stack.pod
+
+Environment=PUID=1000
+Environment=PGID=1000
+Environment=TZ=America/Chicago
+
+Volume=osmen-sab-config.volume:/config
+Volume=%h/downloads:/downloads
+
+SecurityLabelDisable=true
+
+[Service]
+Restart=always
+RestartSec=5s
+Slice=user-osmen-media.slice
+MemoryMax=1G
+CPUQuota=100%
+
+[Install]
+WantedBy=default.target

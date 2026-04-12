@@ -1,0 +1,46 @@
+# osmen-librarian-kavita.container
+# Rootless Podman Quadlet — Kavita (book/comic/manga server).
+# Exposure: 127.0.0.1:5000 only.
+# Integrates with PKM pipeline: library content → embeddings → memory tiers.
+# Covers: books, comics, manga, light novels — not just media/video.
+
+[Unit]
+Description=OsMEN-OC Librarian — Kavita (Books/Comics/Manga)
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-core-network.service
+Requires=osmen-core-network.service
+
+[Container]
+Image=docker.io/jvmilazz0/kavita:0.8.6
+ContainerName=osmen-librarian-kavita
+
+PublishPort=127.0.0.1:5000:5000
+
+Network=osmen-core.network
+
+# Persistent config/metadata (separate from library files).
+Volume=osmen-kavita-config.volume:/kavita/config
+
+# Library mounts — books, comics, manga.
+Volume=%h/media/books:/books:ro
+Volume=%h/media/comics:/comics:ro
+Volume=%h/media/manga:/manga:ro
+
+HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:5000 || exit 1"
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=30s
+
+SecurityLabelDisable=true
+NoNewPrivileges=true
+
+[Service]
+Restart=always
+RestartSec=5s
+Slice=user-osmen-background.slice
+MemoryMax=1G
+CPUQuota=100%
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,57 @@
+# osmen-core-gateway.container
+# Rootless Podman Quadlet — OsMEN-OC FastAPI Gateway + MCP Server.
+# Exposure: 127.0.0.1:8080 (gateway) — internal only.
+# Built from: OsMEN-OC/gateway/Containerfile
+
+[Unit]
+Description=OsMEN-OC Core — FastAPI Gateway + MCP
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-core-postgres.service osmen-core-redis.service osmen-core-chromadb.service osmen-core-network.service
+Requires=osmen-core-network.service
+
+[Container]
+# NOTE: Image will be built locally from gateway/Containerfile.
+# For now, reference the local image name. Build with:
+#   podman build -t osmen-gateway:latest gateway/
+Image=localhost/osmen-gateway:latest
+ContainerName=osmen-core-gateway
+
+PublishPort=127.0.0.1:8080:8080
+
+Network=osmen-core.network
+
+# Mount agent manifests for MCP auto-registration.
+Volume=%h/dev/OsMEN-OC/agents:/app/agents:ro
+Volume=%h/dev/OsMEN-OC/config:/app/config:ro
+
+# Service credentials.
+Secret=osmen-postgres-password,type=env,target=DATABASE_PASSWORD
+Secret=osmen-redis-password,type=env,target=REDIS_PASSWORD
+Secret=osmen-chromadb-token,type=env,target=CHROMADB_TOKEN
+Secret=osmen-gateway-token,type=env,target=GATEWAY_AUTH_TOKEN
+
+Environment=DATABASE_HOST=osmen-core-postgres
+Environment=DATABASE_PORT=5432
+Environment=REDIS_HOST=osmen-core-redis
+Environment=REDIS_PORT=6379
+Environment=CHROMADB_HOST=osmen-core-chromadb
+Environment=CHROMADB_PORT=8000
+
+HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:8080/health || exit 1"
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=30s
+
+SecurityLabelDisable=true
+NoNewPrivileges=true
+
+[Service]
+Restart=always
+RestartSec=5s
+Slice=user-osmen-services.slice
+MemoryMax=1G
+CPUQuota=200%
+
+[Install]
+WantedBy=default.target

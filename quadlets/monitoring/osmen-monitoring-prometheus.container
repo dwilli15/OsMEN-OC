@@ -1,0 +1,39 @@
+# osmen-monitoring-prometheus.container
+# Rootless Podman Quadlet — Prometheus (metrics collection).
+# Exposure: 127.0.0.1:9090 only.
+# DISABLED BY DEFAULT — opt-in via P21.
+# NOTE: Port 9090 conflicts with qBittorrent pod port when both active.
+# If enabling, remap to 9091 or adjust download-stack.pod.
+
+[Unit]
+Description=OsMEN-OC Monitoring — Prometheus (opt-in)
+Documentation=https://github.com/dwilli15/OsMEN-OC
+
+[Container]
+Image=docker.io/prom/prometheus:v3.4.0
+ContainerName=osmen-monitoring-prometheus
+
+PublishPort=127.0.0.1:9091:9090
+
+Volume=osmen-prometheus-data.volume:/prometheus
+Volume=%h/dev/OsMEN-OC/config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:9090/-/healthy || exit 1"
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=15s
+
+SecurityLabelDisable=true
+NoNewPrivileges=true
+
+[Service]
+Restart=always
+RestartSec=5s
+Slice=user-osmen-background.slice
+MemoryMax=1G
+CPUQuota=100%
+
+# DISABLED BY DEFAULT — do not auto-start.
+# [Install]
+# WantedBy=default.target

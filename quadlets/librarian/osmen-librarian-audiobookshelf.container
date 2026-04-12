@@ -1,0 +1,48 @@
+# osmen-librarian-audiobookshelf.container
+# Rootless Podman Quadlet — Audiobookshelf (audiobook + podcast server).
+# Exposure: 127.0.0.1:13378 only.
+# Integrates with:
+#   - TTS pipeline: text → speech for articles/notes
+#   - Memory tiers: audiobook highlights/notes → embeddings → ChromaDB/pgvector
+#   - PKM pipeline: podcast transcripts → chunking → knowledge base
+
+[Unit]
+Description=OsMEN-OC Librarian — Audiobookshelf (Audiobooks/Podcasts)
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-core-network.service
+Requires=osmen-core-network.service
+
+[Container]
+Image=docker.io/advplyr/audiobookshelf:2.21.0
+ContainerName=osmen-librarian-audiobookshelf
+
+PublishPort=127.0.0.1:13378:80
+
+Network=osmen-core.network
+
+# Persistent config/metadata.
+Volume=osmen-audiobookshelf-config.volume:/config
+Volume=osmen-audiobookshelf-metadata.volume:/metadata
+
+# Library mounts.
+Volume=%h/media/audiobooks:/audiobooks:ro
+Volume=%h/media/podcasts:/podcasts:ro
+
+HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:80/healthcheck || exit 1"
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=30s
+
+SecurityLabelDisable=true
+NoNewPrivileges=true
+
+[Service]
+Restart=always
+RestartSec=5s
+Slice=user-osmen-background.slice
+MemoryMax=1G
+CPUQuota=100%
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,44 @@
+# osmen-media-radarr.container
+# Rootless Podman Quadlet — Radarr (movie management).
+# Exposure: 127.0.0.1:7878 only.
+
+[Unit]
+Description=OsMEN-OC Media — Radarr
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-media-network.service
+Requires=osmen-media-network.service
+
+[Container]
+Image=docker.io/linuxserver/radarr:5.21.1
+ContainerName=osmen-media-radarr
+
+PublishPort=127.0.0.1:7878:7878
+
+Network=osmen-media.network
+
+Environment=PUID=1000
+Environment=PGID=1000
+Environment=TZ=America/Chicago
+
+Volume=osmen-radarr-config.volume:/config
+Volume=%h/downloads:/downloads
+Volume=%h/media/plex:/media/plex
+
+HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:7878/ping || exit 1"
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=30s
+
+SecurityLabelDisable=true
+NoNewPrivileges=true
+
+[Service]
+Restart=always
+RestartSec=5s
+Slice=user-osmen-media.slice
+MemoryMax=512M
+CPUQuota=100%
+
+[Install]
+WantedBy=default.target

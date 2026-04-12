@@ -1,0 +1,36 @@
+# osmen-media-kometa.container
+# Rootless Podman Quadlet — Kometa (Plex metadata manager).
+# Runs on built-in scheduler — daily at 3 AM.
+# No published port — no web UI, runs as a batch process.
+
+[Unit]
+Description=OsMEN-OC Media — Kometa (Plex Metadata Manager)
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-media-network.service
+Requires=osmen-media-network.service
+
+[Container]
+Image=docker.io/kometateam/kometa:2.2.1
+ContainerName=osmen-media-kometa
+
+Network=osmen-media.network
+
+Environment=TZ=America/Chicago
+# Kometa uses its own built-in scheduler.
+Environment=KOMETA_RUN=true
+Environment=KOMETA_TIME=03:00
+
+Volume=osmen-kometa-config.volume:/config
+
+SecurityLabelDisable=true
+NoNewPrivileges=true
+
+[Service]
+Restart=always
+RestartSec=60s
+Slice=user-osmen-background.slice
+MemoryMax=1G
+CPUQuota=100%
+
+[Install]
+WantedBy=default.target

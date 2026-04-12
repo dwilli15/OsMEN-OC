@@ -1,0 +1,46 @@
+# osmen-core-caddy.container
+# Rootless Podman Quadlet — Caddy reverse proxy.
+# Exposure: 0.0.0.0:80,443 — LAN-accessible for *.osmen.local routing.
+# Dual-homed: osmen-core + osmen-media networks.
+
+[Unit]
+Description=OsMEN-OC Core — Caddy Reverse Proxy
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-core-network.service
+Requires=osmen-core-network.service
+
+[Container]
+Image=docker.io/library/caddy:2.9-alpine
+ContainerName=osmen-core-caddy
+
+# LAN-accessible for reverse proxy to all services.
+PublishPort=80:80
+PublishPort=443:443
+
+# Dual-homed: core services + media services.
+Network=osmen-core.network
+Network=osmen-media.network
+
+# Caddyfile from repo (bind mount for easy editing).
+Volume=%h/dev/OsMEN-OC/config/Caddyfile:/etc/caddy/Caddyfile:ro
+Volume=osmen-caddy-data.volume:/data
+Volume=osmen-caddy-config.volume:/config
+
+HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:80 || exit 1"
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=15s
+
+SecurityLabelDisable=true
+NoNewPrivileges=true
+
+[Service]
+Restart=always
+RestartSec=5s
+Slice=user-osmen-services.slice
+MemoryMax=256M
+CPUQuota=100%
+
+[Install]
+WantedBy=default.target

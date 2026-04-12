@@ -1,0 +1,45 @@
+# osmen-media-gluetun.container
+# Rootless Podman Quadlet — gluetun VPN gateway (WireGuard).
+# Runs inside download-stack pod, providing network namespace.
+# PF04: Verify DNS doesn't leak (cat /etc/resolv.conf inside container).
+# PF05: Verify IPv6 disabled (curl -6 ifconfig.me must FAIL).
+# PF06: VPN creds via Podman secrets, never in git.
+# PF07: Must auto-start on reboot.
+
+[Unit]
+Description=OsMEN-OC Media — gluetun VPN Gateway
+Documentation=https://github.com/dwilli15/OsMEN-OC
+
+[Container]
+Image=docker.io/qmcgaw/gluetun:v3.40.2
+ContainerName=osmen-media-gluetun
+Pod=download-stack.pod
+
+# VPN provider configuration.
+Environment=VPN_SERVICE_PROVIDER=privado
+Environment=VPN_TYPE=wireguard
+
+# VPN credentials via Podman secrets.
+Secret=osmen-vpn-wireguard-private-key,type=env,target=WIREGUARD_PRIVATE_KEY
+Secret=osmen-vpn-wireguard-addresses,type=env,target=WIREGUARD_ADDRESSES
+
+# NET_ADMIN required for VPN tunnel creation.
+AddCapability=NET_ADMIN
+
+HealthCmd=/bin/sh -c "wget -q --spider http://ifconfig.me || exit 1"
+HealthInterval=60s
+HealthTimeout=15s
+HealthRetries=5
+HealthStartPeriod=30s
+
+SecurityLabelDisable=true
+
+[Service]
+Restart=always
+RestartSec=10s
+Slice=user-osmen-media.slice
+MemoryMax=256M
+CPUQuota=50%
+
+[Install]
+WantedBy=default.target
