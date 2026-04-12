@@ -18,6 +18,7 @@ Pod=download-stack.pod
 # VPN provider configuration.
 Environment=VPN_SERVICE_PROVIDER=privado
 Environment=VPN_TYPE=wireguard
+Environment=SERVER_CITIES=Amsterdam
 
 # VPN credentials via Podman secrets.
 Secret=osmen-vpn-wireguard-private-key,type=env,target=WIREGUARD_PRIVATE_KEY

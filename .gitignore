@@ -32,10 +32,13 @@ htmlcov/
 *.swo
 *.code-workspace
 
-# Runtime data and secrets (never committed)
+# Runtime data (never committed)
 data/
 logs/
-config/secrets/*.enc.yaml
+
+# Plaintext secrets never committed — only SOPS-encrypted .enc.yaml files are safe
+config/secrets/*
+!config/secrets/*.enc.yaml
 
 # First-install ephemeral directory (deleted after install)
 temp_1st_install/
