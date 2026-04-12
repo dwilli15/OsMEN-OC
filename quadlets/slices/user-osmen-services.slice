@@ -1,0 +1,15 @@
+# user-osmen-services.slice
+# cgroup v2 resource slice for core services (Postgres, Redis, ChromaDB, gateway, etc.)
+# Applied to core containers via Slice= in their [Service] section.
+
+[Unit]
+Description=OsMEN-OC Core Services Slice
+Documentation=https://github.com/dwilli15/OsMEN-OC
+
+[Slice]
+# 4 GiB — core data services shouldn't need more than this.
+MemoryMax=4G
+MemoryHigh=3G
+# 4 full cores worth of CPU time.
+CPUQuota=400%
+IOWeight=100
