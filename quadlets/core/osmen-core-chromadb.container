@@ -28,13 +28,15 @@ Environment=CHROMA_SERVER_AUTH_PROVIDER=chromadb.auth.token_authn.TokenAuthentic
 Environment=IS_PERSISTENT=TRUE
 Environment=ANONYMIZED_TELEMETRY=FALSE
 
-HealthCmd=/bin/sh -c "curl -sf http://127.0.0.1:8000/api/v1/heartbeat"
+# Use a direct command here so Quadlet does not fold the health flags into shell quoting.
+HealthCmd=curl -sf http://127.0.0.1:8000/api/v1/heartbeat
 HealthInterval=30s
 HealthTimeout=10s
 HealthRetries=5
 HealthStartPeriod=20s
 
-ReadOnly=true
+# Chroma writes a log file at /chroma/chroma.log during startup.
+# Keep the dedicated data volume for persistence, but allow container-local writes.
 SecurityLabelDisable=true
 NoNewPrivileges=true
 
