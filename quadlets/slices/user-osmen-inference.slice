@@ -1,0 +1,16 @@
+# user-osmen-inference.slice
+# cgroup v2 resource slice for inference workloads (Ollama, LM Studio, Open WebUI).
+# Applied to inference containers via Slice= in their [Service] section.
+# PF12 guard: Ollama will consume all available RAM without this ceiling.
+
+[Unit]
+Description=OsMEN-OC Inference Slice
+Documentation=https://github.com/dwilli15/OsMEN-OC
+
+[Slice]
+# 16 GiB hard ceiling — NVIDIA RTX 5070 (8 GiB VRAM) + CPU inference headroom.
+MemoryMax=16G
+MemoryHigh=14G
+# 8 full cores (Ryzen AI 9 365 has 12 cores / 24 threads).
+CPUQuota=800%
+IOWeight=200
