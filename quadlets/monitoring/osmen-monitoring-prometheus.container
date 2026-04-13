@@ -26,6 +26,7 @@ HealthStartPeriod=15s
 
 SecurityLabelDisable=true
 NoNewPrivileges=true
+ReadOnly=true
 
 [Service]
 Restart=always
@@ -34,6 +35,6 @@ Slice=user-osmen-background.slice
 MemoryMax=1G
 CPUQuota=100%
 
-# DISABLED BY DEFAULT — do not auto-start.
-# [Install]
-# WantedBy=default.target
+# DISABLED BY DEFAULT — enable manually when opting in to P21.
+[Install]
+WantedBy=default.target

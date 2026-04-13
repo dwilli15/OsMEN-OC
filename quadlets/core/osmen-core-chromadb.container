@@ -39,6 +39,7 @@ HealthStartPeriod=20s
 # Keep the dedicated data volume for persistence, but allow container-local writes.
 SecurityLabelDisable=true
 NoNewPrivileges=true
+ReadOnly=true
 
 [Service]
 Restart=always

@@ -22,8 +22,16 @@ Environment=KOMETA_TIME=03:00
 
 Volume=osmen-kometa-config.volume:/config
 
+# Kometa is a batch scheduler — health check verifies the process is alive.
+HealthCmd=/bin/sh -c "pgrep -f kometa || exit 1"
+HealthInterval=60s
+HealthTimeout=10s
+HealthRetries=3
+HealthStartPeriod=120s
+
 SecurityLabelDisable=true
 NoNewPrivileges=true
+ReadOnly=true
 
 [Service]
 Restart=always

@@ -30,6 +30,7 @@ HealthStartPeriod=30s
 
 SecurityLabelDisable=true
 NoNewPrivileges=true
+ReadOnly=true
 
 [Service]
 Restart=always

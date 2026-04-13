@@ -1,6 +1,7 @@
 # osmen-media-gluetun.container
 # Rootless Podman Quadlet — gluetun VPN gateway (WireGuard).
 # Runs inside download-stack pod, providing network namespace.
+# Uses "custom" provider because gluetun doesn't natively support Privado.
 # PF04: Verify DNS doesn't leak (cat /etc/resolv.conf inside container).
 # PF05: Verify IPv6 disabled (curl -6 ifconfig.me must FAIL).
 # PF06: VPN creds via Podman secrets, never in git.
@@ -15,10 +16,16 @@ Image=docker.io/qmcgaw/gluetun:v3.40.2
 ContainerName=osmen-media-gluetun
 Pod=download-stack.pod
 
-# VPN provider configuration.
-Environment=VPN_SERVICE_PROVIDER=privado
+# Custom WireGuard provider (Privado VPN Amsterdam).
+Environment=VPN_SERVICE_PROVIDER=custom
 Environment=VPN_TYPE=wireguard
-Environment=SERVER_CITIES=Amsterdam
+Environment=VPN_ENDPOINT_IP=91.148.236.70
+Environment=VPN_ENDPOINT_PORT=51820
+Environment=WIREGUARD_PUBLIC_KEY=KgTUh3KLijVluDvNpzDCJJfrJ7EyLzYLmdHCksG4sRg=
+Environment=DNS_ADDRESS=198.18.0.1
+
+# Disable IPv6 (PF05).
+Environment=DOT_IPV6=off
 
 # VPN credentials via Podman secrets.
 Secret=osmen-vpn-wireguard-private-key,type=env,target=WIREGUARD_PRIVATE_KEY
@@ -26,14 +33,18 @@ Secret=osmen-vpn-wireguard-addresses,type=env,target=WIREGUARD_ADDRESSES
 
 # NET_ADMIN required for VPN tunnel creation.
 AddCapability=NET_ADMIN
+AddDevice=/dev/net/tun
 
-HealthCmd=/bin/sh -c "wget -q --spider http://ifconfig.me || exit 1"
+HealthCmd=wget -q --spider http://ifconfig.me
 HealthInterval=60s
 HealthTimeout=15s
 HealthRetries=5
 HealthStartPeriod=30s
 
 SecurityLabelDisable=true
+NoNewPrivileges=true
+ReadOnly=true
+Sysctl=net.ipv6.conf.all.disable_ipv6=1
 
 [Service]
 Restart=always

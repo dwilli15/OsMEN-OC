@@ -41,6 +41,7 @@ HealthStartPeriod=120s
 
 SecurityLabelDisable=true
 NoNewPrivileges=true
+ReadOnly=true
 
 [Service]
 Restart=always

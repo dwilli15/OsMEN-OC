@@ -21,7 +21,15 @@ Environment=TZ=America/Chicago
 Volume=osmen-sab-config.volume:/config
 Volume=%h/downloads:/downloads
 
+HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:8082 || exit 1"
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=30s
+
 SecurityLabelDisable=true
+NoNewPrivileges=true
+ReadOnly=true
 
 [Service]
 Restart=always

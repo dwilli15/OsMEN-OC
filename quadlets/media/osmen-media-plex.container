@@ -52,6 +52,8 @@ HealthRetries=5
 HealthStartPeriod=60s
 
 SecurityLabelDisable=true
+NoNewPrivileges=true
+ReadOnly=true
 
 [Service]
 Restart=always

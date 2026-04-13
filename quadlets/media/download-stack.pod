@@ -2,12 +2,14 @@
 # Podman pod — shared network namespace for VPN-tunneled download clients.
 # gluetun provides the network; qBittorrent and SABnzbd ride in it.
 # All external traffic is forced through gluetun's WireGuard tunnel.
+# Also on osmen-media network so arr services can reach download clients.
 
 [Pod]
 PodName=download-stack
+Network=osmen-media.network
 # Ports published on the pod level since containers share gluetun's namespace.
 PublishPort=127.0.0.1:9090:9090
-PublishPort=127.0.0.1:8082:8082
+PublishPort=127.0.0.1:8082:8080
 
 [Install]
 WantedBy=default.target

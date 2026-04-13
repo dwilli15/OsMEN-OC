@@ -13,7 +13,7 @@ Requires=osmen-core-network.service
 # NOTE: Image will be built locally from gateway/Containerfile.
 # For now, reference the local image name. Build with:
 #   podman build -t osmen-gateway:latest gateway/
-Image=localhost/osmen-gateway:latest
+Image=localhost/osmen-gateway:dev
 ContainerName=osmen-core-gateway
 
 PublishPort=127.0.0.1:8080:8080
@@ -45,6 +45,7 @@ HealthStartPeriod=30s
 
 SecurityLabelDisable=true
 NoNewPrivileges=true
+ReadOnly=true
 
 [Service]
 Restart=always
