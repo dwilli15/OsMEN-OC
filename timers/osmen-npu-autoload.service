@@ -1,0 +1,18 @@
+# osmen-npu-autoload.service — User oneshot to load NPU models into Lemonade.
+# Runs after login; waits for Lemonade server readiness, then loads default model.
+# Deploy: cp timers/osmen-npu-autoload.service ~/.config/systemd/user/
+#         systemctl --user enable osmen-npu-autoload.service
+
+[Unit]
+Description=OsMEN-OC — Load default NPU model into Lemonade
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/dev/OsMEN-OC/scripts/lemonade-autoload.sh
+Environment=LEMONADE_DEFAULT_MODEL=qwen3.5-4b-FLM
+RemainAfterExit=yes
+
+[Install]
+WantedBy=default.target

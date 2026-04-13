@@ -156,6 +156,7 @@ providers:
     backends:
       vulkan:
         compute: amd_vulkan
+        recipe: llamacpp
         benchmark: "77.96 tok/s decode (Qwen3-0.6B)"
       npu:
         compute: npu
@@ -163,6 +164,14 @@ providers:
         benchmark: "73.35 tok/s decode, 56.40 tok/s prefill (Qwen3-0.6B)"
       cpu:
         compute: cpu
+        recipe: llamacpp
     models_pulled:
-      - Qwen3-0.6B-GGUF       # llamacpp (vulkan/cpu)
-      - qwen3-0.6b-FLM         # flm (npu)
+      # --- GGUF (llamacpp: vulkan/cpu) ---
+      - Qwen3-Coder-30B-A3B-Instruct-GGUF
+      - Qwen3.5-4B-GGUF
+      # --- FLM (flm: npu) ---
+      - qwen3.5-4b-FLM         # primary NPU chat (4B, thinking)
+      - qwen3-0.6b-FLM         # fast NPU chat (0.6B)
+      - qwen3-tk-4b-FLM        # NPU tool calling
+      - embed-gemma-300m-FLM   # NPU embeddings (RAG ingest)
+      - whisper-v3-turbo-FLM   # NPU transcription (Whisper v3 Turbo)
