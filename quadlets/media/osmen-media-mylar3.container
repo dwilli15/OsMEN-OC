@@ -9,7 +9,7 @@ After=osmen-media-network.service
 Requires=osmen-media-network.service
 
 [Container]
-Image=docker.io/linuxserver/mylar3:latest
+Image=docker.io/linuxserver/mylar3:0.8.1
 ContainerName=osmen-media-mylar3
 
 PublishPort=127.0.0.1:8090:8090
