@@ -1,0 +1,45 @@
+# osmen-media-mylar3.container
+# Rootless Podman Quadlet — Mylar3 (comic book management).
+# Exposure: 127.0.0.1:8090 only.
+
+[Unit]
+Description=OsMEN-OC Media — Mylar3
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-media-network.service
+Requires=osmen-media-network.service
+
+[Container]
+Image=docker.io/linuxserver/mylar3:latest
+ContainerName=osmen-media-mylar3
+
+PublishPort=127.0.0.1:8090:8090
+
+Network=osmen-media.network
+
+Environment=PUID=1000
+Environment=PGID=1000
+Environment=TZ=America/Chicago
+
+Volume=osmen-mylar3-config.volume:/config
+Volume=%h/downloads:/downloads
+Volume=%h/media/comics:/media/comics
+
+HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:8090 || exit 1"
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=60s
+
+SecurityLabelDisable=true
+NoNewPrivileges=true
+ReadOnly=true
+
+[Service]
+Restart=always
+RestartSec=5s
+Slice=user-osmen-media.slice
+MemoryMax=512M
+CPUQuota=100%
+
+[Install]
+WantedBy=default.target
