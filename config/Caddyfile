@@ -1,0 +1,48 @@
+# OsMEN-OC Caddyfile — reverse proxy for *.osmen.local services.
+# TLS disabled (local-only, no public exposure).
+# All backends are localhost containers on published ports.
+
+{
+	# Disable HTTPS for local DNS (no certs needed).
+	auto_https off
+}
+
+plex.osmen.local:80 {
+	reverse_proxy localhost:32400
+}
+
+nextcloud.osmen.local:80 {
+	reverse_proxy localhost:8080
+}
+
+siyuan.osmen.local:80 {
+	reverse_proxy localhost:6806
+}
+
+grafana.osmen.local:80 {
+	reverse_proxy localhost:3002
+}
+
+uptimekuma.osmen.local:80 {
+	reverse_proxy localhost:3001
+}
+
+kavita.osmen.local:80 {
+	reverse_proxy localhost:5000
+}
+
+audiobookshelf.osmen.local:80 {
+	reverse_proxy localhost:13378
+}
+
+portall.osmen.local:80 {
+	reverse_proxy localhost:3080
+}
+
+gateway.osmen.local:80 {
+	reverse_proxy localhost:18788
+}
+
+ollama.osmen.local:80 {
+	reverse_proxy localhost:11434
+}
