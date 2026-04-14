@@ -6,7 +6,7 @@
 
 [Unit]
 Description=OsMEN-OC — Nightly database backup
-Documentation=https://github.com/dwilli15/OsMEN-OC
+Documentation=https://github.com/OsMEN-OC/OsMEN-OC
 # Require core containers to be healthy before attempting a dump.
 After=osmen-core-postgres.service osmen-core-redis.service
 Wants=osmen-core-postgres.service osmen-core-redis.service

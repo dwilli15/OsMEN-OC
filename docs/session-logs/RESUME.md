@@ -5,7 +5,7 @@
 
 ## How to Resume
 
-1. Open VS Code in `/home/dwill/dev/OsMEN-OC`
+1. Open VS Code in `~/dev/OsMEN-OC`
 2. In Chat, switch to **z_final_install** agent mode
 3. Say: **"Resume from handoff"**
 
