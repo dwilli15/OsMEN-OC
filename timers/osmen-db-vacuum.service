@@ -1,0 +1,29 @@
+# osmen-db-vacuum.service
+# One-shot service: runs PostgreSQL VACUUM ANALYZE for performance.
+# Invoked by osmen-db-vacuum.timer.
+
+[Unit]
+Description=OsMEN-OC — PostgreSQL VACUUM ANALYZE
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-core-postgres.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/dwill/dev/OsMEN-OC
+
+ExecStart=/usr/bin/bash -c '\
+    TS=$(date -Iseconds); \
+    LOG="/home/dwill/dev/OsMEN-OC/vault/logs/db-vacuum.log"; \
+    mkdir -p "$(dirname "$LOG")"; \
+    if podman ps --format "{{.Names}}" 2>/dev/null | grep -q "osmen-core-postgres"; then \
+        echo "[$TS] Running VACUUM ANALYZE on osmen database" >> "$LOG"; \
+        podman exec osmen-core-postgres psql -U osmen -d osmen -c "VACUUM (VERBOSE, ANALYZE);" >> "$LOG" 2>&1; \
+        echo "[$TS] VACUUM complete (exit $?)" >> "$LOG"; \
+    else \
+        echo "[$TS] SKIP: osmen-core-postgres container not running" >> "$LOG"; \
+    fi'
+
+TimeoutStartSec=600
+
+[Install]
+WantedBy=default.target

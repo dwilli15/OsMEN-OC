@@ -1,0 +1,15 @@
+# osmen-health-report.timer
+# Daily health report at 07:00 — ready before morning brief.
+
+[Unit]
+Description=OsMEN-OC — Daily system health report timer
+Documentation=https://github.com/dwilli15/OsMEN-OC
+
+[Timer]
+OnCalendar=*-*-* 07:00:00
+RandomizedDelaySec=60
+Persistent=true
+Unit=osmen-health-report.service
+
+[Install]
+WantedBy=timers.target

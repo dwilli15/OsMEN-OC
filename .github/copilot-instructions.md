@@ -77,7 +77,15 @@ gpus:
     }
 npu: { model: "XDNA 2", driver: amdxdna, status: experimental, fallback: cpu }
 storage:
-  nvme0n1: { size: 954GB, label: Windows, policy: DO_NOT_TOUCH }
+  nvme0n1:
+    size: 954GB
+    label: Windows
+    partitions:
+      nvme0n1p1: { size: 200M, type: EFI, policy: DO_NOT_TOUCH }
+      nvme0n1p2: { size: 16M, type: MSR, policy: DO_NOT_TOUCH }
+      nvme0n1p3: { size: 256G, type: NTFS, label: "Windows OS", policy: DO_NOT_TOUCH }
+      nvme0n1p4: { size: 697G, type: NTFS, label: "Data", policy: OSMEN_BACKUP, role: "secondary restic repo, model storage" }
+      nvme0n1p5: { size: 735M, type: Recovery, policy: DO_NOT_TOUCH }
   nvme1n1:
     {
       size: 932GB,

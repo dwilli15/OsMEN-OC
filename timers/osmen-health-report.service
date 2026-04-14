@@ -1,0 +1,46 @@
+# osmen-health-report.service
+# One-shot service: generates a daily system health summary.
+# Collects CPU/GPU/RAM/disk/service status and logs to vault.
+# Invoked by osmen-health-report.timer.
+
+[Unit]
+Description=OsMEN-OC — Daily system health report
+Documentation=https://github.com/dwilli15/OsMEN-OC
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/dwill/dev/OsMEN-OC
+
+ExecStart=/usr/bin/bash -c '\
+    TS=$(date -Iseconds); \
+    LOG="/home/dwill/dev/OsMEN-OC/vault/logs/health-$(date +%%Y-%%m-%%d).log"; \
+    mkdir -p "$(dirname "$LOG")"; \
+    echo "═══ HEALTH REPORT $TS ═══" >> "$LOG"; \
+    echo "" >> "$LOG"; \
+    echo "── CPU ──" >> "$LOG"; \
+    uptime >> "$LOG"; \
+    echo "" >> "$LOG"; \
+    echo "── Memory ──" >> "$LOG"; \
+    free -h >> "$LOG"; \
+    echo "" >> "$LOG"; \
+    echo "── Disk ──" >> "$LOG"; \
+    df -h / /home 2>/dev/null >> "$LOG"; \
+    echo "" >> "$LOG"; \
+    echo "── GPU ──" >> "$LOG"; \
+    nvidia-smi --query-gpu=name,temperature.gpu,utilization.gpu,memory.used,memory.total --format=csv,noheader 2>/dev/null >> "$LOG" || echo "nvidia-smi unavailable" >> "$LOG"; \
+    echo "" >> "$LOG"; \
+    echo "── Containers ──" >> "$LOG"; \
+    podman ps --format "{{.Names}} {{.Status}}" 2>/dev/null >> "$LOG" || echo "podman unavailable" >> "$LOG"; \
+    echo "" >> "$LOG"; \
+    echo "── Timers ──" >> "$LOG"; \
+    systemctl --user list-timers --all --no-pager 2>/dev/null | grep osmen >> "$LOG" || echo "no osmen timers" >> "$LOG"; \
+    echo "" >> "$LOG"; \
+    echo "── Failed Units ──" >> "$LOG"; \
+    systemctl --user --failed --no-pager 2>/dev/null >> "$LOG"; \
+    echo "" >> "$LOG"; \
+    echo "Report written to $LOG"'
+
+TimeoutStartSec=120
+
+[Install]
+WantedBy=default.target

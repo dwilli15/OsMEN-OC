@@ -1,0 +1,48 @@
+# osmen-vpn-audit.service
+# One-shot service: checks VPN pod for DNS/IPv6 leaks.
+# Invoked by osmen-vpn-audit.timer.
+
+[Unit]
+Description=OsMEN-OC — VPN leak audit
+Documentation=https://github.com/dwilli15/OsMEN-OC
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/dwill/dev/OsMEN-OC
+
+ExecStart=/usr/bin/bash -c '\
+    TS=$(date -Iseconds); \
+    LOG="/home/dwill/dev/OsMEN-OC/vault/logs/vpn-audit.log"; \
+    mkdir -p "$(dirname "$LOG")"; \
+    echo "[$TS] VPN audit started" >> "$LOG"; \
+    \
+    # Check if gluetun is running \
+    if ! podman ps --format "{{.Names}}" 2>/dev/null | grep -q "osmen-media-gluetun"; then \
+        echo "[$TS] SKIP: gluetun container not running" >> "$LOG"; \
+        exit 0; \
+    fi; \
+    \
+    # Get public IP through VPN \
+    VPN_IP=$(podman exec osmen-media-gluetun wget -qO- https://ipinfo.io/ip 2>/dev/null || echo "FAILED"); \
+    HOST_IP=$(wget -qO- https://ipinfo.io/ip 2>/dev/null || echo "FAILED"); \
+    echo "[$TS] VPN IP: $VPN_IP | Host IP: $HOST_IP" >> "$LOG"; \
+    \
+    # Leak check: VPN and host should differ \
+    if [[ "$VPN_IP" == "$HOST_IP" ]] && [[ "$VPN_IP" != "FAILED" ]]; then \
+        echo "[$TS] WARNING: VPN IP matches host IP — possible VPN leak!" >> "$LOG"; \
+    elif [[ "$VPN_IP" == "FAILED" ]]; then \
+        echo "[$TS] WARNING: Could not determine VPN IP — gluetun may be unhealthy" >> "$LOG"; \
+    else \
+        echo "[$TS] OK: VPN IP differs from host IP — no leak detected" >> "$LOG"; \
+    fi; \
+    \
+    # DNS leak check \
+    DNS_VPN=$(podman exec osmen-media-gluetun nslookup whoami.akamai.net 2>/dev/null | grep -i address | tail -1 || echo "FAILED"); \
+    echo "[$TS] DNS resolution through VPN: $DNS_VPN" >> "$LOG"; \
+    \
+    echo "[$TS] VPN audit complete" >> "$LOG"'
+
+TimeoutStartSec=120
+
+[Install]
+WantedBy=default.target

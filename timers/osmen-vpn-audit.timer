@@ -1,0 +1,15 @@
+# osmen-vpn-audit.timer
+# Every 6 hours — catch VPN leaks before they persist.
+
+[Unit]
+Description=OsMEN-OC — VPN leak audit timer
+Documentation=https://github.com/dwilli15/OsMEN-OC
+
+[Timer]
+OnCalendar=*-*-* 00,06,12,18:15:00
+RandomizedDelaySec=120
+Persistent=true
+Unit=osmen-vpn-audit.service
+
+[Install]
+WantedBy=timers.target

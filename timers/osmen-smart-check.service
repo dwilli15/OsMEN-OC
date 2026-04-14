@@ -1,0 +1,33 @@
+# osmen-smart-check.service
+# One-shot service: checks SMART health on NVMe drives.
+# Invoked by osmen-smart-check.timer.
+
+[Unit]
+Description=OsMEN-OC — NVMe SMART health check
+Documentation=https://github.com/dwilli15/OsMEN-OC
+
+[Service]
+Type=oneshot
+
+# smartctl requires root — uses passwordless sudo
+ExecStart=/usr/bin/bash -c '\
+    TS=$(date -Iseconds); \
+    LOG="/home/dwill/dev/OsMEN-OC/vault/logs/smart-health.log"; \
+    mkdir -p "$(dirname "$LOG")"; \
+    for DEV in nvme0n1 nvme1n1; do \
+        JSON=$(sudo smartctl --all /dev/$DEV --json 2>/dev/null); \
+        if [[ $? -le 2 ]]; then \
+            HEALTH=$(echo "$JSON" | python3.13 -c "import json,sys; d=json.load(sys.stdin); print(d.get(\"smart_status\",{}).get(\"passed\",\"unknown\"))"); \
+            PCT=$(echo "$JSON" | python3.13 -c "import json,sys; d=json.load(sys.stdin); print(d.get(\"nvme_smart_health_information_log\",{}).get(\"percentage_used\",-1))"); \
+            TEMP=$(echo "$JSON" | python3.13 -c "import json,sys; d=json.load(sys.stdin); print(d.get(\"temperature\",{}).get(\"current\",-1))"); \
+            LINE="[$TS] $DEV: health=$HEALTH used=${PCT}%% temp=${TEMP}C"; \
+        else \
+            LINE="[$TS] $DEV: smartctl failed (exit $?)"; \
+        fi; \
+        echo "$LINE" | tee -a "$LOG"; \
+    done'
+
+TimeoutStartSec=120
+
+[Install]
+WantedBy=default.target
