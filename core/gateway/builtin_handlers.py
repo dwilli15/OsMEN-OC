@@ -19,7 +19,7 @@ media_organization
 - ``audit_vpn`` — verify gluetun VPN container is connected.
 - ``list_downloads`` — aggregate qBittorrent + SABnzbd download lists.
 - ``purge_completed`` — delete old staged downloads from DOWNLOAD_STAGING_DIR.
-- ``assess_plex_readiness`` — check library root, disk space, subdirs, and container health.
+- ``assess_plex_readiness`` — check library root, disk space, subdirs, and service health.
 
 system_monitor
 - ``get_hardware_metrics`` — CPU/GPU/fan metrics via lm-sensors, nvidia-smi, rocm-smi.
@@ -850,7 +850,7 @@ async def handle_assess_plex_readiness(
     - ``disk_space`` — at least 10 GiB free at the library root.
       This check includes a ``free_gib`` field with the measured free space in GiB.
     - ``library_dir_<media_type>`` — per-media-type subdirectory exists.
-    - ``plex_container_running`` — ``osmen-media-plex`` Podman container is running.
+    - ``plex_service_running`` — ``plexmediaserver`` systemd service is running.
 
     Returns:
         A dict with ``status``, ``ready`` (overall bool), and ``checks`` list.
@@ -941,41 +941,40 @@ async def handle_assess_plex_readiness(
                 }
             )
 
-    # --- Check 5: osmen-media-plex container is running ---
+    # --- Check 5: plexmediaserver systemd service is running ---
     try:
         with _anyio.fail_after(10):
-            inspect_result = await _anyio.run_process(
+            svc_result = await _anyio.run_process(
                 [
-                    "podman",
-                    "inspect",
-                    "--format",
-                    "{{.State.Running}}",
-                    "osmen-media-plex",
+                    "systemctl",
+                    "is-active",
+                    "--quiet",
+                    "plexmediaserver",
                 ],
                 check=False,
             )
-        container_running = inspect_result.stdout.decode().strip().lower() == "true"
+        service_running = svc_result.returncode == 0
         checks.append(
             {
-                "name": "plex_container_running",
-                "passed": container_running,
+                "name": "plex_service_running",
+                "passed": service_running,
                 "detail": (
-                    "osmen-media-plex is running"
-                    if container_running
-                    else "osmen-media-plex is not running"
+                    "plexmediaserver service is active"
+                    if service_running
+                    else "plexmediaserver service is not active"
                 ),
             }
         )
     except FileNotFoundError:
         checks.append(
-            {"name": "plex_container_running", "passed": False, "detail": "podman not installed"}
+            {"name": "plex_service_running", "passed": False, "detail": "systemctl not found"}
         )
     except TimeoutError:
         checks.append(
             {
-                "name": "plex_container_running",
+                "name": "plex_service_running",
                 "passed": False,
-                "detail": "podman inspect timed out",
+                "detail": "systemctl check timed out",
             }
         )
 

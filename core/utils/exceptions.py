@@ -49,3 +49,7 @@ class PipelineError(OsMENError):
 
 class SetupError(OsMENError):
     """Raised when the first-run setup wizard encounters a non-recoverable error."""
+
+
+class SecretsError(OsMENError):
+    """Raised when a secrets audit, rotation, or resolution operation fails."""
