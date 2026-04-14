@@ -1,0 +1,15 @@
+# user-osmen-background.slice
+# cgroup v2 resource slice for background/maintenance workloads (cron agents, backup, sync).
+# Applied to background containers via Slice= in their [Service] section.
+
+[Unit]
+Description=OsMEN-OC Background Tasks Slice
+Documentation=https://github.com/dwilli15/OsMEN-OC
+
+[Slice]
+# 1 GiB — background tasks should never significantly impact foreground work.
+MemoryMax=1G
+MemoryHigh=768M
+# 1 full core maximum.
+CPUQuota=100%
+IOWeight=25

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Claude OSMEN
+Comment=Claude Code + OpenCode launcher for the OsMEN workspace
+Exec=/home/dwill/dev/OsMEN-OC/scripts/appdrawer/start-claude-osmen.sh --launch-tabs --project-dir /home/dwill/dev
+Terminal=false
+Type=Application
+Categories=Development;IDE;
+Icon=utilities-terminal
+StartupNotify=true
+Keywords=claude;osmen;ai;agent;opencode;

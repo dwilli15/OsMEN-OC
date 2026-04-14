@@ -1,0 +1,15 @@
+# user-osmen-media.slice
+# cgroup v2 resource slice for media workloads (Plex, Jellyfin, media conversion).
+# Applied to media containers via Slice= in their [Service] section.
+
+[Unit]
+Description=OsMEN-OC Media Services Slice
+Documentation=https://github.com/dwilli15/OsMEN-OC
+
+[Slice]
+# 4 GiB — sufficient for Plex/Jellyfin transcoding plus buffer.
+MemoryMax=4G
+MemoryHigh=3G
+# 2 full cores — media transcode is background-priority work.
+CPUQuota=200%
+IOWeight=50
