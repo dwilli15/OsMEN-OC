@@ -37,9 +37,11 @@ HealthStartPeriod=20s
 
 # Chroma writes a log file at /chroma/chroma.log during startup.
 # Keep the dedicated data volume for persistence, but allow container-local writes.
+# ReadOnly removed: ChromaDB's uvicorn logging handler needs to write /chroma/chroma.log
+# and /tmp for temp files. The data volume handles persistence.
 SecurityLabelDisable=true
 NoNewPrivileges=true
-ReadOnly=true
+Tmpfs=/tmp
 
 [Service]
 Restart=always

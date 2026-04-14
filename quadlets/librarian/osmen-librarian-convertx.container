@@ -10,7 +10,7 @@ After=osmen-core-network.service
 Requires=osmen-core-network.service
 
 [Container]
-Image=docker.io/c4illin/convertx:1.5.0
+Image=docker.io/c4illin/convertx:latest
 ContainerName=osmen-librarian-convertx
 
 PublishPort=127.0.0.1:3000:3000
@@ -27,7 +27,7 @@ HealthStartPeriod=15s
 
 SecurityLabelDisable=true
 NoNewPrivileges=true
-ReadOnly=true
+Tmpfs=/tmp
 
 [Service]
 Restart=always

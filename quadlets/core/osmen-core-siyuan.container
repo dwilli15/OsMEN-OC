@@ -10,7 +10,7 @@ After=osmen-core-network.service
 Requires=osmen-core-network.service
 
 [Container]
-Image=docker.io/b3log/siyuan:3.1.26
+Image=docker.io/b3log/siyuan:v3.6.4
 ContainerName=osmen-core-siyuan
 
 PublishPort=127.0.0.1:6806:6806
@@ -23,8 +23,8 @@ Volume=%h/dev/pkm:/siyuan/workspace
 # Auth code via Podman secret.
 Secret=osmen-siyuan-auth,type=env,target=SIYUAN_ACCESS_AUTH_CODE
 
-# Run as current user to avoid permission mismatches on bind mount.
-UserNS=keep-id
+# SiYuan's entrypoint does chown on /opt/siyuan — needs root inside container.
+# Rootless Podman maps container root → host user (dwill), so this is safe.
 
 HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:6806 || exit 1"
 HealthInterval=30s
@@ -33,8 +33,7 @@ HealthRetries=5
 HealthStartPeriod=20s
 
 SecurityLabelDisable=true
-NoNewPrivileges=true
-ReadOnly=true
+Tmpfs=/tmp
 
 [Service]
 Restart=always

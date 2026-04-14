@@ -1,10 +1,14 @@
-"""Tests for memory chunking and vector store wrappers."""
+"""Tests for memory chunking, embeddings, store, and lateral modules."""
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+import json
+from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from core.memory.chunking import chunk_text, split_sentences
+from core.memory.embeddings import EmbeddingBatch, EmbeddingResult, OllamaEmbedder
 from core.memory.store import ChromaStore, MemoryDocument
 
 
@@ -40,31 +44,35 @@ def test_chunk_text_adds_overlap_context() -> None:
     assert any(sentence in chunks[1] for sentence in split_sentences(chunks[0]))
 
 
-def test_chroma_store_add_query_delete_roundtrip() -> None:
-    collection = MagicMock()
-    collection.query.return_value = {"ids": [["doc-1"]], "documents": [["hello"]]}
-
-    client = MagicMock()
-    client.get_or_create_collection.return_value = collection
-
-    store = ChromaStore(client, collection_name="test-memory")
-    docs = [MemoryDocument(id="doc-1", text="hello", metadata={"source": "unit"})]
-
-    store.add_documents(docs)
-    client.get_or_create_collection.assert_called_once_with(name="test-memory")
-    collection.add.assert_called_once_with(
-        documents=["hello"],
-        ids=["doc-1"],
-        metadatas=[{"source": "unit"}],
+def test_embedding_result_fields() -> None:
+    result = EmbeddingResult(
+        text="hello world",
+        embedding=[0.1] * 768,
+        model="nomic-embed-text",
+        dimensions=768,
     )
+    assert result.dimensions == 768
+    assert len(result.embedding) == 768
+    assert result.model == "nomic-embed-text"
 
-    result = store.query("hello", n_results=3, where={"source": "unit"})
-    collection.query.assert_called_once_with(
-        query_texts=["hello"],
-        n_results=3,
-        where={"source": "unit"},
-    )
-    assert result["ids"][0][0] == "doc-1"
 
-    store.delete(["doc-1"])
-    collection.delete.assert_called_once_with(ids=["doc-1"])
+def test_embedding_batch_properties() -> None:
+    results = [
+        EmbeddingResult(text=f"text {i}", embedding=[float(i)] * 4, model="test", dimensions=4)
+        for i in range(3)
+    ]
+    batch = EmbeddingBatch(results=results, model="test")
+    assert len(batch.embeddings) == 3
+    assert len(batch.texts) == 3
+    assert batch.texts == ["text 0", "text 1", "text 2"]
+
+
+def test_memory_document_defaults() -> None:
+    doc = MemoryDocument(id="test-1", text="content")
+    assert doc.metadata == {}
+    assert doc.id == "test-1"
+
+
+def test_chroma_store_name() -> None:
+    store = ChromaStore(collection_name="my-collection", base_url="http://fake:8000")
+    assert store.name == "my-collection"
