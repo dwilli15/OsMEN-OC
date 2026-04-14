@@ -21,7 +21,7 @@ Environment=PGID=1000
 Environment=TZ=America/Chicago
 
 Volume=osmen-readarr-config.volume:/config
-Volume=%h/downloads:/downloads
+Volume=%h/Downloads:/downloads
 Volume=%h/media/books:/media/books
 
 HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:8787/ping || exit 1"

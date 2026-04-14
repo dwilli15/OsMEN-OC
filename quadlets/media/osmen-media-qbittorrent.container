@@ -20,7 +20,7 @@ Environment=TZ=America/Chicago
 Environment=WEBUI_PORT=9090
 
 Volume=osmen-qbit-config.volume:/config
-Volume=%h/downloads:/downloads
+Volume=%h/Downloads:/downloads
 
 HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:9090 || exit 1"
 HealthInterval=30s

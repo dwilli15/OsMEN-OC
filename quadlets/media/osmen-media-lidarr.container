@@ -21,7 +21,7 @@ Environment=PGID=1000
 Environment=TZ=America/Chicago
 
 Volume=osmen-lidarr-config.volume:/config
-Volume=%h/downloads:/downloads
+Volume=%h/Downloads:/downloads
 Volume=%h/media/music:/media/music
 
 HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:8686/ping || exit 1"

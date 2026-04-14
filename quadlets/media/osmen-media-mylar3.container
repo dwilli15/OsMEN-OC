@@ -21,7 +21,7 @@ Environment=PGID=1000
 Environment=TZ=America/Chicago
 
 Volume=osmen-mylar3-config.volume:/config
-Volume=%h/downloads:/downloads
+Volume=%h/Downloads:/downloads
 Volume=%h/media/comics:/media/comics
 
 HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:8090 || exit 1"

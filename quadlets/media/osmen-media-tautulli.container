@@ -10,7 +10,7 @@ After=osmen-media-network.service
 Requires=osmen-media-network.service
 
 [Container]
-Image=docker.io/tautulli/tautulli:2.15.1
+Image=docker.io/tautulli/tautulli:v2.17.0
 ContainerName=osmen-media-tautulli
 
 PublishPort=127.0.0.1:8181:8181

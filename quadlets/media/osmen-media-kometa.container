@@ -10,7 +10,7 @@ After=osmen-media-network.service
 Requires=osmen-media-network.service
 
 [Container]
-Image=docker.io/kometateam/kometa:2.2.1
+Image=docker.io/kometateam/kometa:v2.3.1
 ContainerName=osmen-media-kometa
 
 Network=osmen-media.network
