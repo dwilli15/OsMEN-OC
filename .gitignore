@@ -45,3 +45,4 @@ temp_1st_install/
 
 # SOPS age key
 *.age
+scripts/appdrawer/*.bak.*
