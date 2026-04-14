@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "updatedAt": "2026-04-14T09:11:18.908Z",
+  "entries": {
+    "memory:memory/2026-04-11.md:1:7": {
+      "key": "memory:memory/2026-04-11.md:1:7",
+      "path": "memory/2026-04-11.md",
+      "startLine": 1,
+      "endLine": 7,
+      "source": "memory",
+      "snippet": "# 2026-04-11 - First boot. Daniel set me up as **Jarvis**, the main UI for OsMEN-OC. - Identity: sharp, efficient, dry humor. 🤖 - Primary channels: Telegram + Discord. Heavy browser automation on Linux. - SOUL.md revisit planned.",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.3924491316080093,
+      "maxScore": 0.3924491316080093,
+      "firstRecalledAt": "2026-04-14T09:11:18.908Z",
+      "lastRecalledAt": "2026-04-14T09:11:18.908Z",
+      "queryHashes": [
+        "5ca3b2aae40a"
+      ],
+      "recallDays": [
+        "2026-04-14"
+      ],
+      "conceptTags": [
+        "osmen-oc",
+        "soul.md",
+        "first",
+        "boot",
+        "daniel",
+        "set",
+        "jarvis",
+        "the"
+      ]
+    }
+  }
+}
