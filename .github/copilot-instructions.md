@@ -45,7 +45,8 @@ Data flow: User → OpenClaw (Telegram/Discord) → WebSocket `ws://127.0.0.1:18
 
 ## Naming Conventions
 
-- Podman containers: `osmen-{profile}-{service}` (e.g. `osmen-core-postgres`, `osmen-media-plex`)
+- Podman containers: `osmen-{profile}-{service}` (e.g. `osmen-core-postgres`, `osmen-media-sonarr`)
+  - **Exception:** Plex runs natively via `.deb` package (`plexmediaserver` systemd service), not in a container.
 - Podman networks: `osmen-{profile}.network` (e.g. `osmen-core.network`, `osmen-media.network`)
 - Podman slices: `user-osmen-{slice}.slice` (e.g. `user-osmen-inference.slice`)
 - Redis stream keys: `events:{domain}:{category}` (e.g. `events:media:download_complete`)

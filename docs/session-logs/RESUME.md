@@ -1,7 +1,7 @@
 # OsMEN-OC Session Resume Pointer
 
-**Last handoff**: 2026-04-12 00:02:41 CDT  
-**Report**: [2026-04-12_000241_handoff.md](2026-04-12/2026-04-12_000241_handoff.md)
+**Last handoff**: 2026-04-14 05:29:32 CDT  
+**Report**: [2026-04-14_052932_handoff.md](2026-04-14/2026-04-14_052932_handoff.md)
 
 ## How to Resume
 
@@ -11,14 +11,13 @@
 
 ## State at Pause
 
-- **Branch**: `install/fresh-setup-20260407` (dirty — untracked files to commit in P2.12)
-- **Phases done**: P0, P1, P2 (pending P2.12 commit), P4
-- **Next immediate action**: `git add ... && git commit` for P2.12, then start Phase 3 (Python venv)
-- **Phase 3 entry point**: `uv venv /home/dwill/dev/.venv --python 3.13`
-- **OpenClaw**: 2026.4.10, Telegram up, Discord not yet configured
-- **Ollama**: running with `nomic-embed-text` for local memory search
-- **Podman**: 5.7.0 rootless ✅, 5 cgroup slices deployed ✅
+- **Branch**: `install/fresh-setup-20260407`
+- **This session verified**: `gog` Google OAuth now works for minimal Calendar read-only scope; first read-only Calendar API call succeeded
+- **Still missing**: local encrypted OAuth backup, `GOOGLE_CALENDAR_CREDENTIALS_PATH` env wiring, plaintext download cleanup, and dirty-tree provenance triage
+- **Repo state**: dirty working tree includes prior session changes not re-validated here
+- **Next**: finish Google OAuth local backup/env/cleanup, run the handoff's mess-cleanup triage buckets, then resume broader install work from the prior handoff chain
 
 ## Previous Handoff
 
+- **2026-04-12 21:55:00 CDT** — [2026-04-12_215500_handoff.md](2026-04-12/2026-04-12_215500_handoff.md)
 - **2026-04-07 14:11:37 CDT** — [2026-04-07_141137_handoff.md](2026-04-07/2026-04-07_141137_handoff.md)
