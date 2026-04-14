@@ -10,10 +10,10 @@ After=osmen-core-postgres.service osmen-core-redis.service osmen-core-network.se
 Requires=osmen-core-network.service
 
 [Container]
-Image=docker.io/library/nextcloud:31.0.5-fpm
+Image=docker.io/library/nextcloud:31.0.5-apache
 ContainerName=osmen-core-nextcloud
 
-# Using FPM variant (lightweight, no bundled Apache).
+# Using Apache variant (serves HTTP on port 80 directly).
 PublishPort=127.0.0.1:8080:80
 
 Network=osmen-core.network
@@ -29,8 +29,9 @@ Secret=osmen-nextcloud-postgres-password,type=env,target=POSTGRES_PASSWORD
 
 # Redis for caching and locking.
 Environment=REDIS_HOST=osmen-core-redis
+Secret=osmen-redis-password,type=env,target=REDIS_HOST_PASSWORD
 
-# Nextcloud FPM entrypoint needs root to write PHP config, then drops to www-data.
+# Nextcloud entrypoint needs root to write PHP config, then drops to www-data.
 # Do NOT use UserNS=keep-id:uid=33 — breaks entrypoint.
 
 HealthCmd=/bin/sh -c "curl -sf http://127.0.0.1/status.php | grep -q '\"installed\":true' || exit 1"
