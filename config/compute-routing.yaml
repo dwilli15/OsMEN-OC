@@ -93,15 +93,16 @@ rules:
       fallback: amd_vulkan
     priority: 8
 
-  - id: transcription_nvidia
+  - id: transcription_npu
     description: >
-      Audio transcription (Whisper) is routed to NVIDIA CUDA for speed.
-      Falls back to amd_vulkan when NVIDIA is unavailable.
+      Audio transcription (Whisper v3 Turbo) runs on the NPU via FLM for
+      power-efficient always-on transcription. The whisper-v3:turbo FLM
+      model is preloaded. Falls back to NVIDIA CUDA if NPU is unavailable.
     trigger:
       task_type: transcription
     action:
-      target_compute: nvidia
-      fallback: amd_vulkan
+      target_compute: npu
+      fallback: nvidia
     priority: 10
 
   - id: rendering_amd_vulkan
@@ -127,51 +128,377 @@ rules:
       provider: lemonade
     priority: 1
 
-# Provider endpoint map — used by core/utils/config.py route resolution.
+# ─── Provider endpoint map ──────────────────────────────────────────────
+# Used by core/inference/router.py for endpoint resolution.
+# All providers expose OpenAI-compatible APIs (/v1/chat/completions,
+# /v1/embeddings, /v1/audio/transcriptions, /v1/audio/speech).
+
 providers:
   ollama:
     base_url: "http://127.0.0.1:11434"
     api_style: ollama
     compute: nvidia
-    models:
-      - gemma4:latest          # 9.6 GB — primary large model
-      - llama3.2:3b            # 2.0 GB
-      - qwen3.5:2b             # 2.7 GB
-      - nomic-embed-text       # 0.3 GB — embedding model, 768-dim
 
   lm_studio:
     base_url: "http://127.0.0.1:1234"
     api_style: openai
     compute: amd_vulkan
-    models:
-      - zai-org/glm-4.7-flash
-      - google/gemma-4-26b-a4b
-      - liquid/lfm2-24b-a2b
-      - liquidai/lfm2.5-1.2b-instruct
-      - text-embedding-nomic-embed-text-v1.5
 
   lemonade:
     base_url: "http://127.0.0.1:13305"
     api_style: openai
     backends:
-      vulkan:
-        compute: amd_vulkan
-        recipe: llamacpp
-        benchmark: "77.96 tok/s decode (Qwen3-0.6B)"
-      npu:
-        compute: npu
-        recipe: flm
-        benchmark: "73.35 tok/s decode, 56.40 tok/s prefill (Qwen3-0.6B)"
-      cpu:
-        compute: cpu
-        recipe: llamacpp
-    models_pulled:
-      # --- GGUF (llamacpp: vulkan/cpu) ---
-      - Qwen3-Coder-30B-A3B-Instruct-GGUF
-      - Qwen3.5-4B-GGUF
-      # --- FLM (flm: npu) ---
-      - qwen3.5-4b-FLM         # primary NPU chat (4B, thinking)
-      - qwen3-0.6b-FLM         # fast NPU chat (0.6B)
-      - qwen3-tk-4b-FLM        # NPU tool calling
-      - embed-gemma-300m-FLM   # NPU embeddings (RAG ingest)
-      - whisper-v3-turbo-FLM   # NPU transcription (Whisper v3 Turbo)
+      vulkan:  { compute: amd_vulkan, recipe: llamacpp }
+      npu:     { compute: npu, recipe: flm }
+      cpu:     { compute: cpu, recipe: llamacpp }
+      kokoro:  { compute: cpu, recipe: kokoro }
+
+  cloud_zai:
+    base_url: "https://api.z.ai/api/coding/paas/v4"
+    api_style: openai
+    compute: cloud
+
+# ─── Model Storage ──────────────────────────────────────────────────────
+# Four independent storage silos (formats are not interchangeable):
+#   /usr/share/ollama/.ollama/models/       14 GB   GGUF blobs       (user: ollama)
+#   /var/lib/lemonade/.config/flm/models/   10 GB   FLM/NPU2 compiled (user: lemonade)
+#   /var/lib/lemonade/.cache/huggingface/   22 GB   GGUF + ONNX files (user: lemonade)
+#   ~/.lmstudio/models/                     52 GB   GGUF files        (user: dwill)
+
+# ─── Model Tiers ────────────────────────────────────────────────────────
+# Each capability type has Small / Medium / Large tiers mapped to
+# hardware backends. The inference router selects a model based on:
+#   1. Task type (chat, code, embed, transcribe, tts, vision)
+#   2. Required capability tier (S/M/L based on quality needs)
+#   3. Available compute (NPU > Vulkan > CUDA > CPU, unless task demands GPU)
+#
+# Columns: model, params, format, footprint, compute backends, status
+#
+# Legend:
+#   ✓ = downloaded & ready    ○ = available in catalog (not downloaded)
+#   NPU = XDNA2 via FLM      VK = Vulkan via llamacpp
+#   CUDA = RTX 5070 via Ollama  CPU = llamacpp:cpu
+#   ONNX = ONNX Runtime (CPU/CUDA)
+
+model_tiers:
+
+  # ── Chat / Reasoning ──────────────────────────────────────────────────
+  chat:
+    small:
+      # Swarm tier: tagging, dedup detection, summary compression, watchdog
+      # Budget: < 50ms/call, always-warm on NPU
+      - id: qwen3-0.6b-FLM
+        params: 0.6B
+        quant: none
+        footprint_gb: 0.66
+        backends: [npu]
+        status: installed
+        provider: lemonade
+      - id: qwen3.5:2b
+        params: 2.3B
+        quant: Q8_0
+        footprint_gb: 2.7
+        backends: [cuda]
+        status: installed
+        provider: ollama
+
+    medium:
+      # Worker tier: drafting, structured critique, evidence extraction, tool calls
+      - id: qwen3-tk-4b-FLM
+        params: 4B
+        quant: Q4_1
+        footprint_gb: 3.1
+        labels: [reasoning, tool-calling]
+        backends: [npu]
+        status: installed
+        provider: lemonade
+      - id: qwen3.5-4b-FLM
+        params: 4B
+        quant: Q4_1
+        footprint_gb: 5.2
+        labels: [vision, reasoning, tool-calling]
+        backends: [npu]
+        status: installed
+        provider: lemonade
+      - id: llama3.2:3b
+        params: 3.2B
+        quant: Q4_K_M
+        footprint_gb: 2.0
+        backends: [cuda]
+        status: installed
+        provider: ollama
+        note: "outclassed by qwen3.5:2b — candidate for removal"
+
+    large:
+      # Heavy local tier: synthesis, complex reasoning, code generation
+      - id: gemma4:latest
+        params: 8B
+        quant: Q4_K_M
+        footprint_gb: 9.6
+        backends: [cuda]
+        status: installed
+        provider: ollama
+      - id: Qwen3-Coder-30B-A3B-Instruct-GGUF
+        params: 30B-MoE
+        quant: Q4_K_M
+        footprint_gb: 18.6
+        labels: [coding, tool-calling]
+        backends: [vulkan, cpu]
+        status: installed
+        provider: lemonade
+      - id: GLM-4.7-Flash-GGUF
+        params: 9B
+        quant: Q4_K_M
+        footprint_gb: 18.1
+        backends: [vulkan]
+        status: installed
+        provider: lm_studio
+      - id: gemma-4-26B-A4B-it-GGUF
+        params: 26B-MoE
+        quant: Q4_K_M
+        footprint_gb: 16.8
+        labels: [vision]
+        backends: [vulkan]
+        status: installed
+        provider: lm_studio
+      - id: LFM2-24B-A2B-GGUF
+        params: 24B-MoE
+        quant: Q4_K_M
+        footprint_gb: 14.4
+        backends: [vulkan]
+        status: installed
+        provider: lm_studio
+
+  # ── Chat: available but not downloaded ─────────────────────────────
+  chat_available:
+    small:
+      - { id: qwen3.5-0.8b-FLM,    params: 0.8B,  backends: [npu],    provider: lemonade }
+      - { id: gemma3-1b-FLM,        params: 1B,    backends: [npu],    provider: lemonade }
+      - { id: llama3.2-1b-FLM,      params: 1B,    backends: [npu],    provider: lemonade }
+      - { id: lfm2.5-it-1.2b-FLM,   params: 1.2B,  backends: [npu],    provider: lemonade }
+      - { id: lfm2.5-tk-1.2b-FLM,   params: 1.2B,  backends: [npu],    provider: lemonade }
+    medium:
+      - { id: qwen3-1.7b-FLM,       params: 1.7B,  backends: [npu],    provider: lemonade }
+      - { id: qwen3.5-2b-FLM,       params: 2B,    backends: [npu],    provider: lemonade }
+      - { id: llama3.2-3b-FLM,      params: 3B,    backends: [npu],    provider: lemonade }
+      - { id: nanbeige4.1-3b-FLM,   params: 3B,    backends: [npu],    provider: lemonade }
+      - { id: qwen3-4b-FLM,         params: 4B,    backends: [npu],    provider: lemonade }
+      - { id: phi4-mini-it-4b-FLM,  params: 4B,    backends: [npu],    provider: lemonade }
+      - { id: gemma3-4b-FLM,        params: 4B,    backends: [npu],    provider: lemonade }
+    large:
+      - { id: qwen3.5-9b-FLM,       params: 9B,    backends: [npu],    provider: lemonade }
+      - { id: qwen3-8b-FLM,         params: 8B,    backends: [npu],    provider: lemonade }
+      - { id: deepseek-r1-8b-FLM,   params: 8B,    backends: [npu],    provider: lemonade }
+      - { id: llama3.1-8b-FLM,      params: 8B,    backends: [npu],    provider: lemonade }
+      - { id: gpt-oss-20b-FLM,      params: 20B,   backends: [npu],    provider: lemonade }
+
+  # ── Code ───────────────────────────────────────────────────────────
+  code:
+    small:
+      - id: qwen3-tk-4b-FLM
+        note: "tool-calling variant doubles as code assistant on NPU"
+        backends: [npu]
+        status: installed
+        provider: lemonade
+    medium:
+      - id: Qwen3-Coder-30B-A3B-Instruct-GGUF
+        params: 30B-MoE
+        quant: Q4_K_M
+        footprint_gb: 18.6
+        backends: [vulkan, cpu]
+        status: installed
+        provider: lemonade
+    large:
+      - id: cloud_zai_glm51
+        note: "ZAI GLM 5.1 cloud — strategic/complex code tasks only"
+        backends: [cloud]
+        provider: cloud_zai
+
+  # ── Embeddings ─────────────────────────────────────────────────────
+  embedding:
+    small:
+      - id: embed-gemma-300m-FLM
+        params: 300M
+        footprint_gb: 0.62
+        dims: 256
+        backends: [npu]
+        status: installed
+        provider: lemonade
+      - id: nomic-embed-text:latest
+        params: 137M
+        quant: F16
+        footprint_gb: 0.3
+        dims: 768
+        backends: [cuda]
+        status: installed
+        provider: ollama
+    medium:
+      # Available but not downloaded
+      - { id: nomic-embed-text-v2-moe-GGUF, backends: [vulkan, cpu], provider: lemonade }
+      - { id: Qwen3-Embedding-0.6B-GGUF,    backends: [vulkan, cpu], provider: lemonade }
+    large:
+      - { id: Qwen3-Embedding-4B-GGUF,      backends: [vulkan, cpu], provider: lemonade }
+      - { id: Qwen3-Embedding-8B-GGUF,      backends: [vulkan, cpu], provider: lemonade }
+
+  # ── Transcription (STT) ───────────────────────────────────────────
+  transcription:
+    small:
+      - id: whisper-v3-turbo-FLM
+        params: 809M
+        quant: Q4_1
+        footprint_gb: 0.62
+        backends: [npu]
+        status: installed
+        provider: lemonade
+        note: "primary — power-efficient always-on transcription"
+    medium:
+      # Available but not downloaded
+      - { id: Whisper-Small,     params: 244M, backends: [cpu],  provider: lemonade, recipe: whispercpp }
+      - { id: Whisper-Medium,    params: 769M, backends: [cpu],  provider: lemonade, recipe: whispercpp }
+    large:
+      - { id: Whisper-Large-v3,  params: 1.5B, backends: [cpu],  provider: lemonade, recipe: whispercpp }
+
+  # ── Text-to-Speech (TTS) ──────────────────────────────────────────
+  tts:
+    small:
+      - id: kokoro-v1
+        params: 82M
+        format: onnx
+        footprint_gb: 0.34
+        sample_rate: 24000
+        multi_voice: true
+        multi_language: true
+        backends: [cpu]
+        status: installed
+        provider: lemonade
+        api: "/v1/audio/speech"
+        note: "primary TTS — replaces piper-tts and pocket-tts pip packages"
+
+  # ── Vision ─────────────────────────────────────────────────────────
+  vision:
+    small:
+      - id: qwen3.5-4b-FLM
+        params: 4B
+        backends: [npu]
+        status: installed
+        provider: lemonade
+        note: "VLM — vision + reasoning + tool-calling on NPU"
+    medium:
+      # Available but not downloaded
+      - { id: qwen3vl-it-4b-FLM,            backends: [npu],    provider: lemonade }
+      - { id: qwen2.5vl-it-3b-FLM,          backends: [npu],    provider: lemonade }
+      - { id: Qwen2.5-VL-3B-Instruct-GGUF,  backends: [vulkan, cpu], provider: lemonade }
+    large:
+      - id: gemma-4-26B-A4B-it-GGUF
+        params: 26B-MoE
+        backends: [vulkan]
+        status: installed
+        provider: lm_studio
+
+  # ── Audio (speech-in + speech-out) ─────────────────────────────────
+  audio:
+    small:
+      # Available but not downloaded
+      - { id: LFM2.5-Audio-1.5B-GGUF, params: 1.5B, backends: [vulkan, cpu], provider: lm_studio, status: installed, note: "LiquidAI audio model with vocoder" }
+
+  # ── Reranking ──────────────────────────────────────────────────────
+  reranking:
+    small:
+      - { id: jina-reranker-v1-tiny-en-GGUF, backends: [vulkan, cpu], provider: lemonade }
+    medium:
+      - { id: bge-reranker-v2-m3-GGUF,       backends: [vulkan, cpu], provider: lemonade }
+
+  # ── Translation ────────────────────────────────────────────────────
+  translation:
+    small:
+      - { id: translategemma-4b-FLM, params: 4B, backends: [npu], provider: lemonade }
+
+  # ── Image Generation ───────────────────────────────────────────────
+  image:
+    small:
+      - { id: Flux-2-Klein-4B,   backends: [cpu], provider: lemonade, recipe: sd-cpp }
+    large:
+      - { id: Flux-2-Klein-9B-GGUF, backends: [cpu], provider: lemonade, recipe: sd-cpp }
+
+# ─── Backend Allocation Strategy ────────────────────────────────────────
+# Maps the four-tier hierarchy from the orchestration codex to concrete
+# provider endpoints and models. The inference router matches task
+# requirements to the cheapest sufficient tier.
+#
+# Tier definitions (from orchestration handoff):
+#   swarm_local_fast:    0.6-1B models, NPU, <50ms/call, 3-5 calls/task
+#   worker_local_medium: 2-4B models, NPU preferred (fallback Vulkan), 1-5s/call
+#   gpu_local_large:     7-9B+ on RTX 5070 CUDA, local fallback synthesis
+#   cloud_elite:         ZAI GLM 5.1 / GLM 4.7, strategic tasks only
+
+backend_tiers:
+  swarm_local_fast:
+    target_compute: npu
+    fallback: cpu
+    models:
+      - qwen3-0.6b-FLM         # tagging, dedup, contradiction hints
+      - embed-gemma-300m-FLM   # continuous embedding
+    max_latency_ms: 50
+    calls_per_task: 3-5
+
+  worker_local_medium:
+    target_compute: npu
+    fallback: amd_vulkan
+    models:
+      - qwen3-tk-4b-FLM        # reasoning + tool calling
+      - qwen3.5-4b-FLM         # vision + reasoning + tool calling
+      - whisper-v3-turbo-FLM   # transcription
+      - kokoro-v1              # TTS
+    max_latency_ms: 5000
+    calls_per_task: 5-10
+
+  gpu_local_large:
+    target_compute: nvidia
+    fallback: amd_vulkan
+    models:
+      - gemma4:latest           # 8B CUDA
+      - Qwen3-Coder-30B-A3B-Instruct-GGUF  # 30B MoE Vulkan
+      - GLM-4.7-Flash-GGUF     # 9B Vulkan
+      - gemma-4-26B-A4B-it-GGUF  # 26B MoE vision Vulkan
+      - LFM2-24B-A2B-GGUF      # 24B MoE Vulkan
+    max_latency_ms: 30000
+    calls_per_task: 1-3
+
+  cloud_elite:
+    target_compute: cloud
+    models:
+      - glm-5.1                 # strategic decomposition, tie-break, final answer
+      - glm-4.7                 # fallback cloud
+    max_latency_ms: 30000
+    calls_per_task: 0-1
+    cost_target_per_10_turns: 0.01
+
+# ─── NPU Queue Discipline ──────────────────────────────────────────────
+# The NPU is a serialized specialist. Lemonade max_loaded_models=1.
+# Keep one or two models warm. Many cold starts > short wait for warm model.
+# The router should maintain a hot-model LRU and prefer warm models.
+npu_policy:
+  max_loaded_models: 1
+  warm_priority:
+    - qwen3-tk-4b-FLM         # default hot model (reasoning + tools)
+    - embed-gemma-300m-FLM    # swap in for embedding bursts
+    - whisper-v3-turbo-FLM    # swap in for transcription
+  cold_start_penalty_ms: 3000
+  prefer_warm_over_optimal: true
+
+# ─── Deprecated / Superseded Models ────────────────────────────────────
+# These models remain on disk but should not be routed to by default.
+# Marked for cleanup to reclaim storage.
+deprecated:
+  - id: Qwen3.5-4B-GGUF
+    reason: "Duplicate of qwen3.5-4b-FLM — same base model, GGUF format is redundant when NPU variant exists"
+    saves_gb: 3.4
+    provider: lemonade
+  - id: faster-whisper-small
+    reason: "Superseded by whisper-v3-turbo-FLM on NPU (v3 Turbo > small, NPU > CPU)"
+    saves_gb: 0.5
+    location: "~/.cache/huggingface/hub/models--Systran--faster-whisper-small"
+  - id: LFM2.5-1.2B-Instruct-Q8_0 (lmstudio-community duplicate)
+    reason: "Exact duplicate of LiquidAI/LFM2.5-1.2B-Instruct-GGUF"
+    saves_gb: 1.2
+    provider: lm_studio
