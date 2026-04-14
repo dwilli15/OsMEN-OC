@@ -1,0 +1,14 @@
+# TTS Configuration
+tts:
+  default_engine: piper  # piper | pocket
+  
+  piper:
+    model_path: ${HOME}/.local/share/osmen/models/piper/en_US-lessac-medium.onnx
+    use_cuda: false
+  
+  pocket:
+    device: cpu  # cpu | cuda
+    # speaker_wav: null  # Path to reference audio for voice cloning
+
+  # Kokoro TTS excluded — requires Python <3.13 (incompatible)
+  # Will re-evaluate when kokoro supports Python 3.13+

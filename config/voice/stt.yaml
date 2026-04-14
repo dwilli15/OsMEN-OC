@@ -1,0 +1,9 @@
+# STT Configuration
+stt:
+  engine: whisper
+  model_size: small
+  device: cpu  # cpu | cuda | auto
+  compute_type: int8  # int8 | float16 | float32
+  language: null  # null = auto-detect, or "en", "fr", etc.
+  beam_size: 5
+  vad_filter: true
