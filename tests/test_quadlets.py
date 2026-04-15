@@ -76,6 +76,7 @@ _READ_ONLY_EXEMPT = {
     "osmen-librarian-audiobookshelf.container",  # app writes runtime config outside volumes
     "osmen-librarian-convertx.container",  # file conversion writes to app directory
     "osmen-librarian-kavita.container",  # app writes runtime config outside volumes
+    "osmen-librarian-whisper.container",  # NVIDIA CDI hook needs writable rootfs for GPU device files
 }
 
 

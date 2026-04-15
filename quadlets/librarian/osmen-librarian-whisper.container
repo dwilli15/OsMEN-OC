@@ -14,7 +14,7 @@ Documentation=https://github.com/dwilli15/OsMEN-OC
 Image=docker.io/fedirz/faster-whisper-server:0.6.0-rc.3-cuda
 ContainerName=osmen-librarian-whisper
 
-PublishPort=127.0.0.1:9000:8000
+PublishPort=127.0.0.1:9001:8000
 
 # NVIDIA GPU passthrough for CUDA-accelerated transcription.
 AddDevice=nvidia.com/gpu=all
@@ -32,7 +32,7 @@ HealthStartPeriod=60s
 
 SecurityLabelDisable=true
 NoNewPrivileges=true
-ReadOnly=true
+# ReadOnly disabled: NVIDIA CDI hook needs to write device files into container fs.
 
 [Service]
 Restart=always

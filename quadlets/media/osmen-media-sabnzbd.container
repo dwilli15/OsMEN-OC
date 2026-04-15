@@ -21,7 +21,7 @@ Environment=TZ=America/Chicago
 Volume=osmen-sab-config.volume:/config
 Volume=%h/Downloads:/downloads
 
-HealthCmd=wget -q --spider http://127.0.0.1:8082
+HealthCmd=wget -q --spider http://127.0.0.1:8080
 HealthInterval=30s
 HealthTimeout=10s
 HealthRetries=5

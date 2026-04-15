@@ -35,7 +35,7 @@ Secret=osmen-vpn-wireguard-addresses,type=env,target=WIREGUARD_ADDRESSES
 AddCapability=NET_ADMIN
 AddDevice=/dev/net/tun
 
-HealthCmd=wget -q --spider http://ifconfig.me
+HealthCmd=wget -q -O /dev/null http://127.0.0.1:9999
 HealthInterval=60s
 HealthTimeout=15s
 HealthRetries=5
