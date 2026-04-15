@@ -8,7 +8,7 @@ Description=OsMEN-OC Monitoring — Portall
 Documentation=https://github.com/dwilli15/OsMEN-OC
 
 [Container]
-Image=docker.io/need4swede/portall:latest
+Image=docker.io/need4swede/portall:2.0.4
 ContainerName=osmen-monitoring-portall
 
 PublishPort=127.0.0.1:3080:3080

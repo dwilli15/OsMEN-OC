@@ -1438,7 +1438,7 @@ class TestAssessPlexReadiness:
         ctx = HandlerContext(agent_id="media_organization")
         with patch(
             "core.gateway.builtin_handlers._anyio.run_process",
-            new=AsyncMock(return_value=_make_completed(0, b"false\n")),
+            new=AsyncMock(return_value=_make_completed(3, b"")),
         ):
             with patch(
                 "core.gateway.builtin_handlers._shutil.disk_usage",
@@ -1451,7 +1451,7 @@ class TestAssessPlexReadiness:
         assert result["ready"] is False
         container_check = next(c for c in result["checks"] if c["name"] == "plex_service_running")
         assert container_check["passed"] is False
-        assert "not running" in container_check["detail"]
+        assert "not active" in container_check["detail"]
 
     @pytest.mark.anyio
     async def test_podman_not_installed(self, tmp_path) -> None:
@@ -1478,7 +1478,7 @@ class TestAssessPlexReadiness:
         assert result["ready"] is False
         container_check = next(c for c in result["checks"] if c["name"] == "plex_service_running")
         assert container_check["passed"] is False
-        assert "podman not installed" in container_check["detail"]
+        assert "systemctl not found" in container_check["detail"]
 
     @pytest.mark.anyio
     async def test_checks_include_all_expected_names(self, tmp_path) -> None:

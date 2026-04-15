@@ -13,16 +13,19 @@ Wants=osmen-core-postgres.service osmen-core-redis.service
 
 [Service]
 Type=oneshot
-# Decrypted env file written by scripts/deploy_quadlets.sh (SOPS → plain env).
-EnvironmentFile=%h/.config/osmen/secrets/db-backup.env
+# Restic credentials — decrypted env file from P18.1.
+EnvironmentFile=%h/.config/osmen/secrets/restic-backup.env
+# Main env file provides POSTGRES_DSN and other runtime vars.
+EnvironmentFile=%h/.config/osmen/env
 
 # Step 1: pg_dump via podman exec into the running postgres container.
-# The entire pipeline must be wrapped in sh -c because systemd does not
-# support shell pipes natively in ExecStart directives.
+# Env vars (POSTGRES_USER, POSTGRES_DB) are expanded inside the container
+# where they are set via Podman secrets.  \$$ produces a literal $ after
+# systemd ($$→$) and host shell (\$→$) expansion layers.
 ExecStart=/usr/bin/sh -c '/usr/bin/podman exec osmen-core-postgres \
-    pg_dump -U "${POSTGRES_USER}" "${POSTGRES_DB}" \
+    sh -c "pg_dump -U \$$POSTGRES_USER \$$POSTGRES_DB" \
     | /usr/bin/restic backup --stdin \
-        --stdin-filename "postgres-${POSTGRES_DB}.sql" \
+        --stdin-filename "postgres-dump.sql" \
         --tag osmen,postgres,nightly'
 
 # Step 2: trigger a Redis BGSAVE and poll until it completes by comparing

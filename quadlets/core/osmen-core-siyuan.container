@@ -33,6 +33,7 @@ HealthRetries=5
 HealthStartPeriod=20s
 
 SecurityLabelDisable=true
+NoNewPrivileges=true
 Tmpfs=/tmp
 
 [Service]

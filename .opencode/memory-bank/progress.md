@@ -1,36 +1,25 @@
 # Progress
 
+**Taskwarrior is the execution ledger. This file is a summary table only.**
+
 ## Completed Phases
 
-- **P0-P6**: Core install, configuration, credential management, container setup
-- **Phase 7** (April 8): ACP bridge proof-of-concept (Claude Code → curl → OpenCode → GLM-4.6)
-- **Phase 8** (April 10-12): Wave Terminal AI configuration, ZAI API debugging, compute routing verification
-- **Phase 9** (April 13-14): Multi-agent architecture design
+P0-P7, P9, P11, P12, and P15 are mechanically verified complete.
+P18 is functionally complete with one future NTFS mount task left open.
 
-### Phase 9 Deliverables
+## Phase 9 (April 14): Architecture Design
 
-- Agent Departments Manifesto (5 drafts, final at `roundtable/AGENT-DEPARTMENTS-MANIFESTO.md`)
-- Full engineering specification review (codex spec at `Downloads/temp/Integrate_os/agent discussion/codex_.txt.md`)
-- Security/architecture critique integrated into build directives
-- Memory system audit (four systems identified, none connected)
-- Memory bank files updated to reflect actual project state
-- Comprehensive handoff report at `docs/session-logs/2026-04-14/2026-04-14_234500_handoff.md`
+Complete. Manifesto, codex review, security critique, resource audit, and full TW reconciliation.
 
-## Next Execution Target
+## Active Fronts
 
-**Phase 10: Build `core/orchestration/`**
-
-Six sub-phases in dependency order:
-
-1. Foundation (registry, session, ledger, migrations)
-2. Communication (discord_adapter, bridge protocol extension, watchdogs)
-3. Inference routing (router, compute routing wiring, SwarmNote/DecisionPacket)
-4. Workflow engine (WorkflowGraph, DiscussionNode, Mode A/B mechanics)
-5. Memory integration (handoff ingestion, memory bank sync, four-layer stack)
-6. ACP enforcement (deterministic urgency, interrupt hierarchy, receipts)
-
-## Known Blockers
-
-- Need additional Discord bot tokens for multi-agent identity model
-- PostgreSQL must be running for MemoryHub and new ledger tables
-- Ollama/LM Studio/Lemonade must be running for inference routing verification
+| Front                  | Pending / State                      | Blocker                                | Next                                      |
+| ---------------------- | ------------------------------------ | -------------------------------------- | ----------------------------------------- |
+| Tier 1 stabilization   | 5 verified quick wins                | none                                   | clear timer, quadlet, test, env-path gaps |
+| P19 orchestration      | 23 pending                           | stabilization tranche first            | create package + typed models             |
+| P17 taskwarrior        | 6 pending                            | missing runtime + calendar policy      | wire handlers once runtime entry exists   |
+| P14 + P14m memory/voice| 25 pending combined                  | partial migrations / Lemonade followup | decide migration order after stabilization|
+| P13 Plex ecosystem     | 4 pending                            | Plex host address + library setup      | fix Tautulli/Kometa routing               |
+| P16 infra              | 7 pending                            | healthchecks + user actions            | repair checks, then finish Nextcloud/hosts|
+| P10 bridge             | 7 pending                            | live credentials / channel config      | run Telegram/Discord end-to-end later     |
+| P22 verification       | 39 pending                           | stabilization + P19                    | wait                                      |

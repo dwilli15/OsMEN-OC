@@ -1,37 +1,47 @@
-# OsMEN-OC Session Resume Pointer
+# OsMEN-OC Resume Dispatcher
 
-**Last handoff**: 2026-04-14 23:59 CDT  
-**Report**: [2026-04-14/2026-04-14_235950_handoff.md](2026-04-14/2026-04-14_235950_handoff.md)
+**Taskwarrior is the source of truth.** Use this file to choose the right lane, then switch to the lane pointer plus the live Taskwarrior query for execution truth.
 
-## How to Resume
+## Active Lanes
 
-1. Open this repo in your AI tool (OpenCode, Claude Code, Wave Terminal)
-2. Read the new direction handoff: `docs/session-logs/2026-04-14/2026-04-14_235950_handoff.md`
-3. Read the prior architecture handoff for artifact inventory and background: `docs/session-logs/2026-04-14/2026-04-14_234500_handoff.md`
-4. Read the memory bank: `.opencode/memory-bank/` (all 6 files)
-5. Begin building `core/orchestration/` — start with `registry.py`, `ledger.py`, and `router.py`
+- **Primary build lane — orchestration spine (`osmen.install.p19`)**
+  Read [RESUME.osmen.install.p19.md](RESUME.osmen.install.p19.md)
+  Taskwarrior: `task project:osmen.install.p19 list`
 
-## State at Pause
+- **Supporting build lane — Taskwarrior ingress and operator workflow (`osmen.install.p17`)**
+  Read [RESUME.osmen.install.p17.md](RESUME.osmen.install.p17.md)
+  Taskwarrior: `task project:osmen.install.p17 list`
+
+- **Parallel execution lane — media cleanup and transfer automation (`osmen.media`)**
+  Read [RESUME.osmen.media.md](RESUME.osmen.media.md)
+  Taskwarrior: `task project:osmen.media list`
+
+- **Parallel audit lane — resource consolidation and repo hygiene (`osmen.audit`)**
+  Read [RESUME.osmen.audit.md](RESUME.osmen.audit.md)
+  Taskwarrior: `task project:osmen.audit list`
+
+## Shared State
 
 - **Branch**: `install/fresh-setup-20260407`
-- **This session completed**: Repo-scoped clarification of the orchestration build.
-  The architecture handoff was narrowed into a concrete inference flow and a concrete
-  multi-agent conversation model rooted in the current gateway, event bus, memory,
-  Taskwarrior, and agent-manifest code.
-- **Build target**: `core/orchestration/` as the workflow-centered spine behind all
-  ingress paths.
-- **Primary direction**: build structured internal note/claim/receipt flow first,
-  public Discord/Telegram presentation second.
-- **Critical correction**: Taskwarrior reshaping is downstream of the new handoff,
-  not the lead artifact.
-- **Repo state**: dirty — do not assume a clean worktree; read `git status --short`
-  before making implementation decisions.
-- **Next**: start with orchestration identity/ledger/router wiring, then bridge and
-  conversation gating.
+- **Repo state**: run `git status --short` before acting
+- **Live services**: OpenClaw `:18789`, Lemonade `:13305`, Ollama `:11434`
+- **Latest reconciliation ledger**: [RECONCILIATION_LEDGER.md](../../temp_1st_install/RECONCILIATION_LEDGER.md)
+- **Latest orchestration direction**: [2026-04-14_235950_handoff.md](2026-04-14/2026-04-14_235950_handoff.md)
+- **Latest orchestration build handoff**: [2026-04-14_234500_handoff.md](2026-04-14/2026-04-14_234500_handoff.md)
+- **Latest media recon handoff**: [handoff_2026-04-14_144435/handoff.md](2026-04-14/handoff_2026-04-14_144435/handoff.md)
+- **Audit dispatch surface**: [install-audit-dispatch.md](/home/dwill/dev/OsMEN-OC/openclaw/state/install-audit-dispatch.md)
 
-## Previous Handoffs
+## Resume Rule
 
-- **2026-04-14 23:45:00 CDT** — [2026-04-14_234500_handoff.md](2026-04-14/2026-04-14_234500_handoff.md) — architecture research / directives / artifacts
-- **2026-04-14 05:29:32 CDT** — [2026-04-14_052932_handoff.md](2026-04-14/2026-04-14_052932_handoff.md) — Google OAuth verification
-- **2026-04-12 21:55:00 CDT** — [2026-04-12_215500_handoff.md](2026-04-12/2026-04-12_215500_handoff.md)
-- **2026-04-07 14:11:37 CDT** — [2026-04-07_141137_handoff.md](2026-04-07/2026-04-07_141137_handoff.md)
+1. Pick one lane.
+2. Read that lane file before older handoffs.
+3. Run the matching Taskwarrior query.
+4. Update the lane file when pausing.
+5. Only rewrite this root dispatcher when the primary lane changes or a lane is added/retired.
+
+## Current Priority
+
+- **Primary lane remains P19**, but the next executable tranche is the verified Tier 1 stabilization work in the reconciliation ledger.
+- **Clear or explicitly defer the five quick wins first**: timer service definitions, quadlet hardening, Plex handler tests, and the backup env-path mismatch.
+- **Resume package/model work in P19 immediately after that tranche**, starting with `core/orchestration/` and typed models.
+- **P17 stays supporting work** and should not outrun the runtime that P19 creates.

@@ -10,7 +10,7 @@ After=osmen-core-network.service
 Requires=osmen-core-network.service
 
 [Container]
-Image=docker.io/c4illin/convertx:latest
+Image=docker.io/c4illin/convertx:v0.17.0
 ContainerName=osmen-librarian-convertx
 
 PublishPort=127.0.0.1:3000:3000

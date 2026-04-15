@@ -23,7 +23,7 @@ After=osmen-media-network.service
 Requires=osmen-media-network.service
 
 [Container]
-Image=docker.io/plexinc/pms-docker:latest
+Image=docker.io/plexinc/pms-docker:1.43.1
 ContainerName=osmen-media-plex
 
 # LAN-accessible for streaming clients.
