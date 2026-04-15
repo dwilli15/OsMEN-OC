@@ -9,7 +9,7 @@ After=osmen-media-network.service
 Requires=osmen-media-network.service
 
 [Container]
-Image=docker.io/linuxserver/lidarr:2.11.0
+Image=docker.io/linuxserver/lidarr:3.1.0
 ContainerName=osmen-media-lidarr
 
 PublishPort=127.0.0.1:8686:8686

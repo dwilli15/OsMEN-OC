@@ -11,7 +11,7 @@ Description=OsMEN-OC Librarian — faster-whisper (GPU transcription)
 Documentation=https://github.com/dwilli15/OsMEN-OC
 
 [Container]
-Image=docker.io/fedirz/faster-whisper-server:0.4.1-cuda
+Image=docker.io/fedirz/faster-whisper-server:0.6.0-rc.3-cuda
 ContainerName=osmen-librarian-whisper
 
 PublishPort=127.0.0.1:9000:8000
