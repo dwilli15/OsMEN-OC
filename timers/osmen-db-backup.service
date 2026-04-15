@@ -30,17 +30,21 @@ ExecStart=/usr/bin/sh -c '/usr/bin/podman exec osmen-core-postgres \
 
 # Step 2: trigger a Redis BGSAVE and poll until it completes by comparing
 # the LASTSAVE timestamp before and after the BGSAVE call.
+# redis-cli runs inside the container (sh -c) so REDIS_PASSWORD expands
+# from the container's own environment — same pattern as the healthcheck.
 ExecStart=/usr/bin/sh -c '\
-    before=$(/usr/bin/podman exec osmen-core-redis redis-cli LASTSAVE); \
-    /usr/bin/podman exec osmen-core-redis redis-cli BGSAVE; \
+    before=$(/usr/bin/podman exec osmen-core-redis sh -c "redis-cli --no-auth-warning -a \"\$REDIS_PASSWORD\" LASTSAVE"); \
+    /usr/bin/podman exec osmen-core-redis sh -c "redis-cli --no-auth-warning -a \"\$REDIS_PASSWORD\" BGSAVE"; \
     for i in $(seq 1 30); do \
-      after=$(/usr/bin/podman exec osmen-core-redis redis-cli LASTSAVE); \
+      after=$(/usr/bin/podman exec osmen-core-redis sh -c "redis-cli --no-auth-warning -a \"\$REDIS_PASSWORD\" LASTSAVE"); \
       [ "$after" -gt "$before" ] && break; \
       sleep 2; \
     done'
 
 # Forget snapshots older than 7 daily / 4 weekly / 3 monthly.
+# --retry-lock waits up to 30s if another restic process holds the lock.
 ExecStartPost=/usr/bin/restic forget \
+    --retry-lock 30s \
     --keep-daily 7 \
     --keep-weekly 4 \
     --keep-monthly 3 \
