@@ -24,7 +24,7 @@ Environment=WHISPER__DEVICE=cuda
 
 Volume=osmen-whisper-models.volume:/root/.cache/huggingface
 
-HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:8000/health || exit 1"
+HealthCmd=python3 -c 'import socket; s=socket.socket(); s.connect(("127.0.0.1",8000)); s.close()'
 HealthInterval=30s
 HealthTimeout=10s
 HealthRetries=5

@@ -23,7 +23,7 @@ Environment=TZ=America/Chicago
 Volume=osmen-bazarr-config.volume:/config
 Volume=%h/media/plex:/media/plex
 
-HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:6767/api || exit 1"
+HealthCmd=wget -q --spider http://127.0.0.1:6767/api
 HealthInterval=30s
 HealthTimeout=10s
 HealthRetries=5

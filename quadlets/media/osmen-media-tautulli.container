@@ -23,7 +23,7 @@ Environment=TZ=America/Chicago
 
 Volume=osmen-tautulli-config.volume:/config
 
-HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:8181/status || exit 1"
+HealthCmd=curl -sf http://127.0.0.1:8181/status
 HealthInterval=30s
 HealthTimeout=10s
 HealthRetries=5

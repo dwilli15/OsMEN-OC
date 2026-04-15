@@ -52,7 +52,7 @@ Environment=TZ=America/Chicago
 # Rootless Podman currently errors with: unresolvable CDI devices nvidia.com/gpu=all
 # Re-enable after CDI/toolkit setup is fixed.
 
-HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:32400/identity || exit 1"
+HealthCmd=curl -sf http://127.0.0.1:32400/identity
 HealthInterval=60s
 HealthTimeout=15s
 HealthRetries=5

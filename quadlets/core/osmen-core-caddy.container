@@ -26,7 +26,7 @@ Volume=%h/dev/OsMEN-OC/config/Caddyfile:/etc/caddy/Caddyfile:ro
 Volume=osmen-caddy-data.volume:/data
 Volume=osmen-caddy-config.volume:/config
 
-HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:80 || exit 1"
+HealthCmd=wget -q --spider http://127.0.0.1:80
 HealthInterval=30s
 HealthTimeout=10s
 HealthRetries=5

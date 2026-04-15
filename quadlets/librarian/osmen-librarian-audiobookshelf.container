@@ -28,7 +28,7 @@ Volume=osmen-audiobookshelf-metadata.volume:/metadata
 Volume=%h/media/audiobooks:/audiobooks:ro
 Volume=%h/media/podcasts:/podcasts:ro
 
-HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:80/healthcheck || exit 1"
+HealthCmd=wget -q --spider http://127.0.0.1:80/healthcheck
 HealthInterval=30s
 HealthTimeout=10s
 HealthRetries=5

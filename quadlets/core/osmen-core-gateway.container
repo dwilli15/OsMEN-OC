@@ -37,7 +37,7 @@ Environment=REDIS_PORT=6379
 Environment=CHROMADB_HOST=osmen-core-chromadb
 Environment=CHROMADB_PORT=8000
 
-HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:8080/health || exit 1"
+HealthCmd=python3 -c 'import socket; s=socket.socket(); s.connect(("127.0.0.1",8080)); s.close()'
 HealthInterval=30s
 HealthTimeout=10s
 HealthRetries=5

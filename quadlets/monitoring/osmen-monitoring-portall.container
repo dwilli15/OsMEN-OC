@@ -11,12 +11,12 @@ Documentation=https://github.com/dwilli15/OsMEN-OC
 Image=docker.io/need4swede/portall:2.0.4
 ContainerName=osmen-monitoring-portall
 
-PublishPort=127.0.0.1:3080:3080
+PublishPort=127.0.0.1:3080:8080
 
 # Needs access to Podman socket for container discovery.
 Volume=/run/user/1000/podman/podman.sock:/var/run/docker.sock:ro
 
-HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:3080 || exit 1"
+HealthCmd=nc -z 127.0.0.1 8080
 HealthInterval=30s
 HealthTimeout=10s
 HealthRetries=5

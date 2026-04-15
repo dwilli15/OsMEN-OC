@@ -19,7 +19,7 @@ Network=osmen-core.network
 
 Volume=osmen-uptimekuma-data.volume:/app/data
 
-HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:3001 || exit 1"
+HealthCmd=curl -sf http://127.0.0.1:3001
 HealthInterval=30s
 HealthTimeout=10s
 HealthRetries=5

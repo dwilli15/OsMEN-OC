@@ -24,7 +24,7 @@ Volume=osmen-readarr-config.volume:/config
 Volume=%h/Downloads:/downloads
 Volume=%h/media/books:/media/books
 
-HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:8787/ping || exit 1"
+HealthCmd=wget -q --spider http://127.0.0.1:8787/ping
 HealthInterval=30s
 HealthTimeout=10s
 HealthRetries=5

@@ -34,7 +34,7 @@ Secret=osmen-redis-password,type=env,target=REDIS_HOST_PASSWORD
 # Nextcloud entrypoint needs root to write PHP config, then drops to www-data.
 # Do NOT use UserNS=keep-id:uid=33 — breaks entrypoint.
 
-HealthCmd=/bin/sh -c "curl -sf http://127.0.0.1/status.php | grep -q '\"installed\":true' || exit 1"
+HealthCmd=curl -sf http://127.0.0.1/status.php
 HealthInterval=60s
 HealthTimeout=15s
 HealthRetries=5

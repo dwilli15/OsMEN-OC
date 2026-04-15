@@ -22,7 +22,7 @@ Environment=TZ=America/Chicago
 
 Volume=osmen-prowlarr-config.volume:/config
 
-HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:9696/ping || exit 1"
+HealthCmd=wget -q --spider http://127.0.0.1:9696/ping
 HealthInterval=30s
 HealthTimeout=10s
 HealthRetries=5

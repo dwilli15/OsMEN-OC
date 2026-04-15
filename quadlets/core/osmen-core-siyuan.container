@@ -26,7 +26,7 @@ Secret=osmen-siyuan-auth,type=env,target=SIYUAN_ACCESS_AUTH_CODE
 # SiYuan's entrypoint does chown on /opt/siyuan — needs root inside container.
 # Rootless Podman maps container root → host user (dwill), so this is safe.
 
-HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:6806 || exit 1"
+HealthCmd=wget -q --spider http://127.0.0.1:6806
 HealthInterval=30s
 HealthTimeout=10s
 HealthRetries=5

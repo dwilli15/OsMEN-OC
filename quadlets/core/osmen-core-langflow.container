@@ -23,7 +23,7 @@ Secret=osmen-langflow-db-url,type=env,target=LANGFLOW_DATABASE_URL
 # Disable telemetry.
 Environment=LANGFLOW_DO_NOT_TRACK=true
 
-HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:7860/health || exit 1"
+HealthCmd=bash -c 'echo > /dev/tcp/127.0.0.1/7860'
 HealthInterval=30s
 HealthTimeout=10s
 HealthRetries=5

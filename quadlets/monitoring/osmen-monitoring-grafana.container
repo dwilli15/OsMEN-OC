@@ -21,7 +21,7 @@ Volume=osmen-grafana-data.volume:/var/lib/grafana
 Environment=GF_SECURITY_ADMIN_PASSWORD__FILE=/run/secrets/osmen-grafana-admin-password
 Secret=osmen-grafana-admin-password,type=mount
 
-HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:3000/api/health || exit 1"
+HealthCmd=wget -q --spider http://127.0.0.1:3000/api/health
 HealthInterval=30s
 HealthTimeout=10s
 HealthRetries=5

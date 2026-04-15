@@ -26,7 +26,7 @@ Volume=%h/media/books:/books:ro
 Volume=%h/media/comics:/comics:ro
 Volume=%h/media/manga:/manga:ro
 
-HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:5000 || exit 1"
+HealthCmd=curl -sf http://127.0.0.1:5000
 HealthInterval=30s
 HealthTimeout=10s
 HealthRetries=5

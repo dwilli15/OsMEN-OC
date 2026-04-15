@@ -24,7 +24,7 @@ Volume=osmen-sonarr-config.volume:/config
 Volume=%h/Downloads:/downloads
 Volume=%h/media/plex:/media/plex
 
-HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:8989/ping || exit 1"
+HealthCmd=wget -q --spider http://127.0.0.1:8989/ping
 HealthInterval=30s
 HealthTimeout=10s
 HealthRetries=5

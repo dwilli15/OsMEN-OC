@@ -24,7 +24,7 @@ Volume=osmen-mylar3-config.volume:/config
 Volume=%h/Downloads:/downloads
 Volume=%h/media/comics:/media/comics
 
-HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:8090 || exit 1"
+HealthCmd=wget -q --spider http://127.0.0.1:8090
 HealthInterval=30s
 HealthTimeout=10s
 HealthRetries=5
