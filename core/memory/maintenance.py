@@ -550,7 +550,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    anyio.run(run_maintenance, dry_run=args.dry_run, promote_only=args.promote_only, decay_only=args.decay_only, expire_only=args.expire_only)
+    anyio.run(lambda: run_maintenance(dry_run=args.dry_run, promote_only=args.promote_only, decay_only=args.decay_only, expire_only=args.expire_only))
 
 
 if __name__ == "__main__":

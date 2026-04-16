@@ -5,10 +5,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Taskwarrior CLI for /tasks/* endpoints.
 RUN apt-get update && apt-get install -y --no-install-recommends taskwarrior && rm -rf /var/lib/apt/lists/*
 
-# Install only gateway runtime dependencies used by core.gateway.app.
 RUN pip install --no-cache-dir \
     "fastapi>=0.115,<1" \
     "uvicorn[standard]>=0.29,<1" \
@@ -23,7 +21,9 @@ RUN pip install --no-cache-dir \
     "redis[hiredis]>=5.0,<6" \
     "asyncpg>=0.29,<1"
 
-COPY . /app/core
+# Build: podman build -t osmen-gateway:dev -f core/Containerfile .
+# The .dockerignore excludes .git, .venv, node_modules etc.
+COPY . /app/
 
 EXPOSE 8080
 
