@@ -53,3 +53,11 @@ class SetupError(OsMENError):
 
 class SecretsError(OsMENError):
     """Raised when a secrets audit, rotation, or resolution operation fails."""
+
+
+class VisionError(OsMENError):
+    """Raised when vision/multimodal inference fails."""
+
+
+class ImageGenError(OsMENError):
+    """Raised when image generation fails."""

@@ -116,6 +116,35 @@ rules:
       target_compute: amd_vulkan
     priority: 18
 
+  - id: vision_npu
+    description: >
+      Multimodal vision (image analysis, OCR, visual Q&A) runs on the NPU
+      via qwen3.5-4b-FLM. Falls back to GLM-4.5V cloud if NPU unavailable
+      or local inference fails.
+    trigger:
+      task_type: vision
+    action:
+      target_compute: npu
+      fallback: cloud
+      provider: lemonade
+      model: qwen3.5-4b-FLM
+      cloud_fallback_model: glm-4.5v
+    priority: 10
+
+  - id: image_generation_cpu
+    description: >
+      Image generation via sd-cpp runs on CPU. On-demand only — the server
+      starts when needed and stops after idle timeout. SD-Turbo is the
+      default model for speed; Flux-2-Klein-4B for quality.
+    trigger:
+      task_type: image_generation
+    action:
+      target_compute: cpu
+      provider: lemonade
+      recipe: sd-cpp
+      model: SD-Turbo
+    priority: 5
+
   - id: cpu_fallback
     description: >
       When all GPU/NPU resources are at capacity or unavailable, fall back
@@ -394,6 +423,14 @@ model_tiers:
         backends: [vulkan]
         status: installed
         provider: lm_studio
+    cloud_fallback:
+      - id: glm-4.5v
+        backends: [cloud]
+        provider: cloud_zai
+        cost_per_m_in: 0.60
+        cost_per_m_out: 1.80
+        context_window: 64000
+        note: "Cloud standby — used when local vision fails or quality requirements are high"
 
   # ── Audio (speech-in + speech-out) ─────────────────────────────────
   audio:
