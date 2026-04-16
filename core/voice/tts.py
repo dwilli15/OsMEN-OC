@@ -1,30 +1,35 @@
-"""Text-to-speech engines and multi-engine dispatcher.
+"""Text-to-speech via Lemonade Server kokoro-v1 (ONNX/CPU).
 
-Engines:
-- PiperTTS: Fast, lightweight, local ONNX models (primary).
-- PocketTTS: PyTorch-based, supports voice cloning (secondary).
-- TTSDispatcher: Routes requests to the appropriate engine.
+Migrated from piper-tts and pocket-tts (local pip packages) to Lemonade's
+OpenAI-compatible ``/v1/audio/speech`` endpoint using the kokoro-v1 model.
+
+Kokoro produces high-quality multi-voice, multi-language speech at 24 kHz
+with a small 82M parameter ONNX model running on CPU.
+
+Provider: Lemonade Server (http://127.0.0.1:13305)
+Model: kokoro-v1
 """
 
 from __future__ import annotations
 
-import threading
 import wave
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import anyio
+import httpx
 from loguru import logger
 
 if TYPE_CHECKING:
-    from piper import PiperVoice
+    pass
 
 
 class TTSEngine(str, Enum):
     """Available TTS engine identifiers."""
 
+    KOKORO = "kokoro"
     PIPER = "piper"
     POCKET = "pocket"
 
@@ -39,250 +44,154 @@ class TTSResult:
     size_bytes: int
 
 
+# ---------------------------------------------------------------------------
+# Kokoro TTS via Lemonade
+# ---------------------------------------------------------------------------
+
+
 @dataclass
-class PiperTTS:
-    """Piper TTS engine using ONNX models via piper-tts.
+class KokoroTTS:
+    """Text-to-speech via Lemonade Server using the kokoro-v1 model.
+
+    Sends text to ``/v1/audio/speech`` and writes the returned PCM audio
+    to a WAV file.
 
     Args:
-        model_path: Path to the .onnx voice model file.
-        use_cuda: Use GPU acceleration if available.
+        base_url: Lemonade Server base URL.
+        model: Kokoro model identifier.
+        voice: Voice name (kokoro supports multiple voices).
+        speed: Speech speed multiplier (1.0 = normal).
+        timeout: HTTP request timeout in seconds.
     """
 
-    model_path: str | Path = Path.home() / ".local/share/osmen/models/piper/en_US-lessac-medium.onnx"
-    use_cuda: bool = False
-    _voice: PiperVoice | None = field(default=None, init=False, repr=False)
-    _lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
+    base_url: str = "http://127.0.0.1:13305"
+    model: str = "kokoro-v1"
+    voice: str = "af_bella"
+    speed: float = 1.0
+    timeout: float = 60.0
+    _client: httpx.AsyncClient | None = field(default=None, init=False, repr=False)
 
-    def _ensure_voice(self) -> PiperVoice:
-        """Lazy-load the voice model (thread-safe)."""
-        if self._voice is not None:
-            return self._voice
-        with self._lock:
-            if self._voice is None:
-                from piper import PiperVoice
+    def _get_client(self) -> httpx.AsyncClient:
+        """Return (or create) the shared async HTTP client."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                base_url=self.base_url,
+                timeout=self.timeout,
+            )
+        return self._client
 
-                model_path = Path(self.model_path)
-                if not model_path.exists():
-                    msg = f"Piper model not found: {model_path}"
-                    raise FileNotFoundError(msg)
-
-                logger.info("Loading Piper voice model: {}", model_path.name)
-                self._voice = PiperVoice.load(str(model_path), use_cuda=self.use_cuda)
-                logger.info(
-                    "Piper voice loaded (sample_rate={})", self._voice.config.sample_rate
-                )
-        return self._voice
+    async def close(self) -> None:
+        """Shut down the HTTP client."""
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
 
     def synthesize_sync(
         self,
         text: str,
         output_path: str | Path,
         *,
-        speaker_id: int | None = None,
-        length_scale: float | None = None,
-        noise_scale: float | None = None,
-        noise_w: float | None = None,
+        voice: str | None = None,
+        speed: float | None = None,
     ) -> TTSResult:
-        """Synthesize text to a WAV file synchronously.
-
-        Args:
-            text: Text to synthesize.
-            output_path: Path for the output WAV file.
-            speaker_id: Speaker ID for multi-speaker models.
-            length_scale: Speed adjustment (lower = faster).
-            noise_scale: Phoneme-level noise.
-            noise_w: Word-level noise.
-
-        Returns:
-            TTSResult with output file metadata.
-        """
-        voice = self._ensure_voice()
-        output_path = Path(output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-
-        synth_kwargs: dict = {}
-        if speaker_id is not None:
-            synth_kwargs["speaker_id"] = speaker_id
-        if length_scale is not None:
-            synth_kwargs["length_scale"] = length_scale
-        if noise_scale is not None:
-            synth_kwargs["noise_scale"] = noise_scale
-        if noise_w is not None:
-            synth_kwargs["noise_w"] = noise_w
-
-        wav_file = wave.open(str(output_path), "wb")
-        try:
-            voice.synthesize_wav(text, wav_file, **synth_kwargs)
-        except Exception:
-            wav_file.close()
-            output_path.unlink(missing_ok=True)
-            raise
-        else:
-            wav_file.close()
-
-        size = output_path.stat().st_size
-        logger.debug(
-            "Piper synthesized {} chars → {} ({:,} bytes)",
-            len(text),
-            output_path.name,
-            size,
-        )
-        return TTSResult(
-            audio_path=output_path,
-            engine=TTSEngine.PIPER,
-            sample_rate=voice.config.sample_rate,
-            size_bytes=size,
+        """Synthesize text to a WAV file synchronously."""
+        return anyio.run(
+            lambda: self.synthesize(
+                text,
+                output_path,
+                voice=voice,
+                speed=speed,
+            )
         )
 
     async def synthesize(
-        self,
-        text: str,
-        output_path: str | Path,
-        **kwargs: object,
-    ) -> TTSResult:
-        """Synthesize text to WAV asynchronously (runs in thread pool)."""
-        return await anyio.to_thread.run_sync(
-            lambda: self.synthesize_sync(text, output_path, **kwargs)
-        )
-
-    def close(self) -> None:
-        """Release the voice model."""
-        if self._voice is not None:
-            del self._voice
-            self._voice = None
-            logger.info("Piper voice released")
-
-
-@dataclass
-class PocketTTS:
-    """Pocket TTS engine for high-quality and voice cloning synthesis.
-
-    Uses PyTorch + pocket-tts. Heavier than Piper but supports voice cloning
-    and produces higher quality output for longform content.
-
-    Args:
-        device: Torch device string (cpu, cuda).
-    """
-
-    device: str = "cpu"
-    _model: object | None = field(default=None, init=False, repr=False)
-    _lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
-
-    def _ensure_model(self) -> object:
-        """Lazy-load the Pocket TTS model (thread-safe)."""
-        if self._model is not None:
-            return self._model
-        with self._lock:
-            if self._model is None:
-                from pocket_tts import TTSModel
-
-                logger.info("Loading Pocket TTS model on {}", self.device)
-                self._model = TTSModel.from_pretrained(device=self.device)
-                logger.info("Pocket TTS model loaded")
-        return self._model
-
-    def synthesize_sync(
         self,
         text: str,
         output_path: str | Path,
         *,
-        speaker_wav: str | Path | None = None,
+        voice: str | None = None,
+        speed: float | None = None,
     ) -> TTSResult:
-        """Synthesize text to a WAV file.
+        """Synthesize text to a WAV file asynchronously.
 
         Args:
             text: Text to synthesize.
             output_path: Path for the output WAV file.
-            speaker_wav: Optional reference audio for voice cloning.
+            voice: Override voice name (default: self.voice).
+            speed: Override speed multiplier (default: self.speed).
 
         Returns:
-            TTSResult with output file metadata.
+            :class:`TTSResult` with output file metadata.
+
+        Raises:
+            httpx.HTTPStatusError: If Lemonade returns an error status.
         """
-        model = self._ensure_model()
+        client = self._get_client()
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        gen_kwargs: dict = {"text": text}
-        if speaker_wav is not None:
-            gen_kwargs["speaker_wav"] = str(speaker_wav)
+        payload: dict[str, Any] = {
+            "input": text,
+            "model": self.model,
+            "voice": voice or self.voice,
+        }
+        if speed is not None:
+            payload["speed"] = speed
+        elif self.speed != 1.0:
+            payload["speed"] = self.speed
 
-        audio = model.generate(**gen_kwargs)
+        resp = await client.post(
+            "/v1/audio/speech",
+            json=payload,
+        )
+        resp.raise_for_status()
 
-        # Write to WAV
-        import numpy as np
+        # Lemonade returns raw PCM audio (24 kHz, 16-bit, mono)
+        pcm_data = resp.content
 
-        wav_file = wave.open(str(output_path), "wb")
-        try:
-            wav_file.setnchannels(1)
-            wav_file.setsampwidth(2)
-            wav_file.setframerate(24000)
-            audio_int16 = (np.clip(audio, -1.0, 1.0) * 32767).astype(np.int16)
-            wav_file.writeframes(audio_int16.tobytes())
-        except Exception:
-            wav_file.close()
-            output_path.unlink(missing_ok=True)
-            raise
-        else:
-            wav_file.close()
+        # Write WAV header + PCM data
+        sample_rate = 24000
+        with wave.open(str(output_path), "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)  # 16-bit
+            wf.setframerate(sample_rate)
+            wf.writeframes(pcm_data)
 
         size = output_path.stat().st_size
         logger.debug(
-            "Pocket TTS synthesized {} chars → {} ({:,} bytes)",
+            "Kokoro synthesized {} chars → {} ({:,} bytes)",
             len(text),
             output_path.name,
             size,
         )
         return TTSResult(
             audio_path=output_path,
-            engine=TTSEngine.POCKET,
-            sample_rate=24000,
+            engine=TTSEngine.KOKORO,
+            sample_rate=sample_rate,
             size_bytes=size,
         )
 
-    async def synthesize(
-        self,
-        text: str,
-        output_path: str | Path,
-        **kwargs: object,
-    ) -> TTSResult:
-        """Synthesize text to WAV asynchronously."""
-        return await anyio.to_thread.run_sync(
-            lambda: self.synthesize_sync(text, output_path, **kwargs)
-        )
 
-    def close(self) -> None:
-        """Release the model and free GPU memory if applicable."""
-        if self._model is not None:
-            device = self.device
-            del self._model
-            self._model = None
-            if device != "cpu":
-                try:
-                    import torch
-                    if torch.cuda.is_available():
-                        torch.cuda.empty_cache()
-                except ImportError:
-                    pass
-            logger.info("Pocket TTS model released")
+# ---------------------------------------------------------------------------
+# TTS Dispatcher
+# ---------------------------------------------------------------------------
 
 
 @dataclass
 class TTSDispatcher:
     """Multi-engine TTS dispatcher.
 
-    Routes synthesis requests to the appropriate engine based on use case:
-    - Piper: default, fast responses, alerts, agent voice.
-    - Pocket: voice cloning, audiobooks, longform content.
+    Routes synthesis requests to the appropriate engine:
+    - Kokoro: primary, multi-voice, multi-language, via Lemonade Server.
+    - Piper/Pocket: legacy, retained for backward compatibility.
 
     Args:
-        piper: PiperTTS instance (primary engine).
-        pocket: PocketTTS instance (secondary engine, lazy-loaded).
+        kokoro: KokoroTTS instance (primary engine).
         default_engine: Default engine for unspecified requests.
     """
 
-    piper: PiperTTS = field(default_factory=PiperTTS)
-    pocket: PocketTTS = field(default_factory=PocketTTS)
-    default_engine: TTSEngine = TTSEngine.PIPER
+    kokoro: KokoroTTS = field(default_factory=KokoroTTS)
+    default_engine: TTSEngine = TTSEngine.KOKORO
 
     def synthesize_sync(
         self,
@@ -290,25 +199,15 @@ class TTSDispatcher:
         output_path: str | Path,
         *,
         engine: TTSEngine | None = None,
-        **kwargs: object,
+        **kwargs: Any,
     ) -> TTSResult:
-        """Synthesize text using the specified or default engine.
-
-        Args:
-            text: Text to synthesize.
-            output_path: Output WAV file path.
-            engine: Engine to use (defaults to self.default_engine).
-            **kwargs: Engine-specific arguments.
-
-        Returns:
-            TTSResult with output file metadata.
-        """
+        """Synthesize text using the specified or default engine."""
         engine = engine or self.default_engine
 
-        if engine == TTSEngine.PIPER:
-            return self.piper.synthesize_sync(text, output_path, **kwargs)
-        if engine == TTSEngine.POCKET:
-            return self.pocket.synthesize_sync(text, output_path, **kwargs)
+        if engine in (TTSEngine.KOKORO, TTSEngine.PIPER, TTSEngine.POCKET):
+            # All routes go through kokoro now; legacy enums are accepted
+            # but mapped to kokoro.
+            return self.kokoro.synthesize_sync(text, output_path, **kwargs)
 
         msg = f"Unknown TTS engine: {engine}"
         raise ValueError(msg)
@@ -319,20 +218,22 @@ class TTSDispatcher:
         output_path: str | Path,
         *,
         engine: TTSEngine | None = None,
-        **kwargs: object,
+        **kwargs: Any,
     ) -> TTSResult:
         """Synthesize text asynchronously."""
         engine = engine or self.default_engine
 
-        if engine == TTSEngine.PIPER:
-            return await self.piper.synthesize(text, output_path, **kwargs)
-        if engine == TTSEngine.POCKET:
-            return await self.pocket.synthesize(text, output_path, **kwargs)
+        if engine in (TTSEngine.KOKORO, TTSEngine.PIPER, TTSEngine.POCKET):
+            return await self.kokoro.synthesize(text, output_path, **kwargs)
 
         msg = f"Unknown TTS engine: {engine}"
         raise ValueError(msg)
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Release all engine resources."""
-        self.piper.close()
-        self.pocket.close()
+        await self.kokoro.close()
+
+
+# Backward-compatible aliases for older imports.
+PiperTTS = KokoroTTS
+PocketTTS = KokoroTTS

@@ -1,8 +1,17 @@
-"""Voice pipeline — STT and TTS engines for OsMEN-OC."""
+"""Voice pipeline, Lemonade-backed STT and TTS for OsMEN-OC."""
 
 from __future__ import annotations
 
-from core.voice.stt import WhisperSTT
-from core.voice.tts import PiperTTS, PocketTTS, TTSDispatcher
+from core.voice.stt import LemonadeSTT, WhisperSTT
+from core.voice.tts import KokoroTTS, PiperTTS, PocketTTS, TTSDispatcher, TTSEngine, TTSResult
 
-__all__ = ["WhisperSTT", "PiperTTS", "PocketTTS", "TTSDispatcher"]
+__all__ = [
+    "LemonadeSTT",
+    "WhisperSTT",
+    "KokoroTTS",
+    "PiperTTS",
+    "PocketTTS",
+    "TTSDispatcher",
+    "TTSEngine",
+    "TTSResult",
+]
