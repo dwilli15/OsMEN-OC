@@ -213,3 +213,4 @@ class LateralBridge:
             n_results=n_results,
             collections=search_collections,
         )
+# DEPRECATED: See core/memory/hub.py (MemoryHub) for new vector storage.

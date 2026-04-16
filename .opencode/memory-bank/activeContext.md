@@ -3,20 +3,40 @@
 **Taskwarrior is the source of truth.** This file answers "what's going on?"
 Run `task list project:osmen` to answer "what happens next?"
 
-## Current State
+## Current State (2026-04-16)
 
 - **Branch**: install/fresh-setup-20260407
-- **TW**: reconciliation ledger verified 370 install tasks total, 127 pending across 14 install sub-projects
-- **Immediate execution gate**: Tier 1 stabilization tranche from `temp_1st_install/RECONCILIATION_LEDGER.md`
-- **Primary build lane after stabilization**: P19 orchestration — 23 tasks, `core/orchestration/` doesn't exist yet
-- **Blocked**: P22 verification (39 tasks) waiting on stabilization + P19
-- **Partially ready**: P14m voice/models and P17 ingress wiring exist, but both still depend on missing runtime or migrations
-- **Operational findings**: 12 failing tests, 20 unhealthy containers, 6 failing user services are catalogued and task-shaped
+- **HEAD**: c31a44e — fix(gateway): podman-only runtime + vision MCP handler wiring
+- **TW**: 119 pending / 251 completed across 14 install sub-projects (67% complete)
+- **Tests**: 671 passed, 0 failed (as of 2026-04-16)
+- **Services**: 27 running, 1 failed (osmen-memory-maintenance.service), 0 inactive
+- **Primary build lane**: P19 orchestration — 24 tasks pending, `core/orchestration/` doesn't exist yet
+- **Blocked**: P22 verification (39 tasks) waiting on P19
+- **User-blocked**: P10.6/P10.8 (Telegram/Discord creds), P13.8 (Plex libraries), P16.4 (Nextcloud admin), P17.5 (Calendar sync), P20.1 (Steam)
 
-## Verified This Session
+## Recent Session Work (2026-04-16)
 
-- full reconciliation ledger written to `temp_1st_install/RECONCILIATION_LEDGER.md`
-- P0-P7, P9, P11, P12, and P15 mechanically verified green; P18 is functionally complete with one future mount task
-- Redis auth was verified via in-container env expansion; literal host CLI password passing is unsafe for the current base64 secret
-- healthcheck failures, timer/service gaps, and test regressions were reduced to a Tier 1 stabilization tranche ahead of new P19 code
-- resume surfaces now point at the reconciled order instead of the pre-audit build order
+- Gateway crash-loop fixed: Image resolution, port conflict (8080→18788), missing secret
+- Vision MCP handlers wired: analyze_image, ocr_extract, generate_image callable via /mcp/tools/*/invoke
+- NoopAuditTrail fallback added for containerized gateway without pg_pool
+- Portall socket-proxy fixed: DOCKER_HOST env + User=1000:1000
+- Podman-only: Dockerfile removed, Containerfile created
+- Tasks 264 (gateway build) and 263 (portall socket-proxy) completed in TW
+- Test suite grew from 664→671 (vision handler tests added)
+
+## Phase Breakdown (Pending)
+
+| Phase | Pending | Notes |
+|-------|---------|-------|
+| P22   | 39      | verification — blocked on P19 |
+| P19   | 24      | orchestration spine — primary lane |
+| P14m  | 13      | voice/model migration |
+| P14   | 10      | memory hub completion |
+| P10   | 7       | bridge — user-blocked (creds) |
+| P21   | 6       | hardening/polish |
+| P20   | 6       | desktop integration |
+| P17   | 6       | taskwarrior ingress |
+| P16   | 3       | infra (Nextcloud, hosts) |
+| P13   | 2       | Plex ecosystem |
+| P8    | 2       | inference routing |
+| P18   | 1       | backup (NTFS mount) |

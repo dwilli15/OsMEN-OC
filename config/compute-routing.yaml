@@ -539,3 +539,22 @@ deprecated:
     reason: "Exact duplicate of LiquidAI/LFM2.5-1.2B-Instruct-GGUF"
     saves_gb: 1.2
     provider: lm_studio
+
+# ---------------------------------------------------------------------------
+# Gaming GPU Rules (P20.6)
+# ---------------------------------------------------------------------------
+# When Steam/Proton or XIVLauncher is running, the NVIDIA dGPU should be
+# available for gaming.  OsMEN inference workloads should fall back to
+# Vulkan/AMD or CPU during active gaming sessions.
+#
+# compute-routing already defines a priority system:
+#   1. nvidia (CUDA) — highest priority for ML workloads
+#   2. amd_vulkan — fallback
+#   3. cpu — lowest priority
+#
+# When a game is detected running (via system_monitor), the routing
+# engine should temporarily deprioritize nvidia to avoid VRAM contention
+# with the game's GPU usage.
+#
+# Manual override: set environment variable OSMEN_COMPUTE=vulkan to force
+# Vulkan-only inference during gaming sessions.

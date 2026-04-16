@@ -1,0 +1,73 @@
+# DEPRECATED — Plex now runs natively via .deb package.
+# Retained for reference only. Do not deploy this quadlet.
+# See: systemctl status plexmediaserver
+#
+# osmen-media-plex.container
+# Rootless Podman Quadlet — Plex Media Server.
+# Exposure: 0.0.0.0:32400 (LAN-accessible for streaming clients).
+# GPU: NVIDIA passthrough for hardware transcoding.
+#
+# SETUP NOTES:
+# - Rootless Podman Quadlet, NOT .deb install
+# - Media slice with NVIDIA HW transcoding passthrough from the start
+# - Media dirs mounted read-only where possible, with stable paths
+# - Separate persistent Plex config (NOT mixed with media)
+# - Sources: plex/ and TV_Anime_OFlow/ dirs
+# - No /dev/sdX paths, no metadata on media drives
+# - Kometa+Tautulli run beside it as separate containers
+
+[Unit]
+Description=OsMEN-OC Media — Plex Media Server
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-media-network.service
+Requires=osmen-media-network.service
+
+[Container]
+Image=docker.io/plexinc/pms-docker:latest
+ContainerName=osmen-media-plex
+
+# LAN-accessible for streaming clients.
+PublishPort=32400:32400
+
+Network=osmen-media.network
+
+# Persistent Plex config/state — separate from media.
+Volume=osmen-plex-config.volume:/config
+
+# Media library mounts (read-only, stable paths to external drives).
+Volume=/run/media/dwill/plex/Media/Movies:/data/Movies:ro
+Volume=/run/media/dwill/plex/Media/TV:/data/TV:ro
+Volume=/run/media/dwill/plex/Media/Anime:/data/Anime:ro
+Volume=/run/media/dwill/TV_Anime_OFlow/Media/TV:/data/TV_overflow:ro
+Volume=/run/media/dwill/Other_Media/Media/Other/Comics:/data/Comics:ro
+
+# Claim token for initial server setup (one-time, via secret).
+Secret=osmen-plex-claim,type=env,target=PLEX_CLAIM
+
+Environment=PUID=1000
+Environment=PGID=1000
+Environment=TZ=America/Chicago
+
+# NVIDIA GPU passthrough temporarily disabled.
+# Rootless Podman currently errors with: unresolvable CDI devices nvidia.com/gpu=all
+# Re-enable after CDI/toolkit setup is fixed.
+
+HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:32400/identity || exit 1"
+HealthInterval=60s
+HealthTimeout=15s
+HealthRetries=5
+HealthStartPeriod=60s
+
+SecurityLabelDisable=true
+NoNewPrivileges=true
+ReadOnly=true
+
+[Service]
+Restart=always
+RestartSec=10s
+Slice=user-osmen-media.slice
+MemoryMax=4G
+CPUQuota=400%
+
+[Install]
+WantedBy=default.target

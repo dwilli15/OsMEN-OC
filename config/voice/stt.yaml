@@ -1,9 +1,16 @@
-# STT Configuration
+# STT Configuration (post-lemonade migration)
 stt:
-  engine: whisper
+  # Primary engine: KokoroTTS (lemonade-based)
+  engine: kokoro
   model_size: small
-  device: cpu  # cpu | cuda | auto
-  compute_type: int8  # int8 | float16 | float32
-  language: null  # null = auto-detect, or "en", "fr", etc.
+  device: cuda  # Prefer NVIDIA for speed
+  compute_type: float16
+  language: null  # Auto-detect
   beam_size: 5
   vad_filter: true
+
+  # Legacy engine options (still available via aliases)
+  whisper:
+    model_size: small
+    device: cpu
+    compute_type: int8
