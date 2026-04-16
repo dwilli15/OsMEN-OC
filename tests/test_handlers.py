@@ -1427,11 +1427,8 @@ class TestAssessPlexReadiness:
         assert all("missing" in c["detail"].lower() for c in subdir_checks)
 
     @pytest.mark.anyio
-<<<<<<< HEAD
     async def test_plex_service_not_running(self, tmp_path) -> None:
-=======
-    async def test_plex_container_not_running(self, tmp_path) -> None:
->>>>>>> origin/main
+
         from core.gateway.builtin_handlers import _PLEX_MEDIA_TYPES, handle_assess_plex_readiness
 
         library_root = tmp_path / "plex"
@@ -1442,11 +1439,8 @@ class TestAssessPlexReadiness:
         ctx = HandlerContext(agent_id="media_organization")
         with patch(
             "core.gateway.builtin_handlers._anyio.run_process",
-<<<<<<< HEAD
             new=AsyncMock(return_value=_make_completed(3, b"")),
-=======
-            new=AsyncMock(return_value=_make_completed(0, b"false\n")),
->>>>>>> origin/main
+
         ):
             with patch(
                 "core.gateway.builtin_handlers._shutil.disk_usage",
@@ -1457,15 +1451,10 @@ class TestAssessPlexReadiness:
 
         assert result["status"] == "ok"
         assert result["ready"] is False
-<<<<<<< HEAD
         container_check = next(c for c in result["checks"] if c["name"] == "plex_service_running")
         assert container_check["passed"] is False
         assert "not active" in container_check["detail"]
-=======
-        container_check = next(c for c in result["checks"] if c["name"] == "plex_container_running")
-        assert container_check["passed"] is False
-        assert "not running" in container_check["detail"]
->>>>>>> origin/main
+
 
     @pytest.mark.anyio
     async def test_podman_not_installed(self, tmp_path) -> None:
@@ -1490,15 +1479,10 @@ class TestAssessPlexReadiness:
 
         assert result["status"] == "ok"
         assert result["ready"] is False
-<<<<<<< HEAD
         container_check = next(c for c in result["checks"] if c["name"] == "plex_service_running")
         assert container_check["passed"] is False
         assert "systemctl not found" in container_check["detail"]
-=======
-        container_check = next(c for c in result["checks"] if c["name"] == "plex_container_running")
-        assert container_check["passed"] is False
-        assert "podman not installed" in container_check["detail"]
->>>>>>> origin/main
+
 
     @pytest.mark.anyio
     async def test_checks_include_all_expected_names(self, tmp_path) -> None:
@@ -1525,11 +1509,8 @@ class TestAssessPlexReadiness:
         assert "plex_library_root_configured" in check_names
         assert "plex_library_root_exists" in check_names
         assert "disk_space" in check_names
-<<<<<<< HEAD
         assert "plex_service_running" in check_names
-=======
-        assert "plex_container_running" in check_names
->>>>>>> origin/main
+
         for media_type in _PLEX_MEDIA_TYPES:
             assert f"library_dir_{media_type}" in check_names
 

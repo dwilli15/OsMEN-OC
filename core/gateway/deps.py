@@ -30,22 +30,6 @@ class _NoopEventBus:
         raise EventBusError("Event bus not configured")
 
 
-<<<<<<< HEAD
-class _NoopAuditTrail:
-    """Fallback audit trail when PostgreSQL is not configured."""
-
-    async def insert(self, _record: Any) -> str:
-        return "noop"
-
-    async def query(self, **_kwargs: Any) -> list[Any]:
-        return []
-
-    async def archive(self, **_kwargs: Any) -> int:
-        return 0
-
-
-=======
->>>>>>> origin/main
 def get_mcp_registry(request: Request) -> dict[str, Any]:
     """Return the MCP tool registry stored in app state.
 
@@ -64,27 +48,6 @@ def get_approval_gate(request: Request) -> ApprovalGate:
     return getattr(request.app.state, "approval_gate", ApprovalGate())
 
 
-<<<<<<< HEAD
-def get_audit_trail(request: Request) -> AuditTrail | _NoopAuditTrail:
-    """Return an :class:`~core.audit.trail.AuditTrail` backed by the app's pg pool.
-
-    Falls back to a no-op implementation when ``app.state.pg_pool``
-    is unavailable.
-    """
-    pg_pool = getattr(request.app.state, "pg_pool", None)
-    if pg_pool is None:
-        return _NoopAuditTrail()
-    return AuditTrail(pg_pool)
-=======
-def get_audit_trail(request: Request) -> AuditTrail:
-    """Return an :class:`~core.audit.trail.AuditTrail` backed by the app's pg pool.
-
-    The pool must be stored in ``app.state.pg_pool`` before any invoke
-    requests are handled (set during the ``lifespan`` startup phase or
-    overridden via ``app.dependency_overrides`` in tests).
-    """
-    return AuditTrail(request.app.state.pg_pool)
->>>>>>> origin/main
 
 
 def get_event_bus(request: Request) -> EventBus | _NoopEventBus:
@@ -96,11 +59,12 @@ def get_event_bus(request: Request) -> EventBus | _NoopEventBus:
     return getattr(request.app.state, "event_bus", _NoopEventBus())
 
 
+def get_audit_trail(request: Request) -> AuditTrail | None:
+    """Return the AuditTrail from app state, or None if not configured."""
+    return getattr(request.app.state, "audit_trail", None)
+
+
 MCPRegistry = Annotated[dict[str, Any], Depends(get_mcp_registry)]
 ApprovalGateDep = Annotated[ApprovalGate, Depends(get_approval_gate)]
-<<<<<<< HEAD
-AuditTrailDep = Annotated[AuditTrail | _NoopAuditTrail, Depends(get_audit_trail)]
-=======
-AuditTrailDep = Annotated[AuditTrail, Depends(get_audit_trail)]
->>>>>>> origin/main
+AuditTrailDep = Annotated[AuditTrail | None, Depends(get_audit_trail)]
 EventBusDep = Annotated[EventBus | _NoopEventBus, Depends(get_event_bus)]

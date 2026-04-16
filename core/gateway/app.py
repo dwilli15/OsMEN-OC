@@ -22,12 +22,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-<<<<<<< HEAD
-from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import PlainTextResponse
-=======
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
->>>>>>> origin/main
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Query
 from loguru import logger
 from pydantic import BaseModel
 
@@ -174,30 +169,15 @@ async def lifespan(app: FastAPI):
 
     bridge_section = openclaw_cfg.get("bridge", {})
     if not bridge_url:
-<<<<<<< HEAD
-        bridge_url = bridge_section.get("endpoint") or bridge_section.get("ws_url")
-=======
-        bridge_url = bridge_section.get("endpoint")
->>>>>>> origin/main
+        bridge_url = bridge_section.get("endpoint", "")
 
     if bridge_url:
         from core.bridge.ws_client import OpenClawBridgeClient
 
         reconnect = bridge_section.get("reconnect", {})
-<<<<<<< HEAD
-        backoff_seconds = reconnect.get("max_backoff_seconds")
-        if backoff_seconds is None:
-            backoff_seconds = bridge_section.get("reconnect_interval_seconds", 60.0)
         bridge_client = OpenClawBridgeClient(
             endpoint=bridge_url,
             on_message=lambda msg: _bridge_message_handler(app, msg),
-            max_backoff_seconds=float(backoff_seconds),
-=======
-        bridge_client = OpenClawBridgeClient(
-            endpoint=bridge_url,
-            on_message=lambda msg: _bridge_message_handler(app, msg),
-            max_backoff_seconds=float(reconnect.get("max_backoff_seconds", 60.0)),
->>>>>>> origin/main
         )
         app.state.bridge_client = bridge_client
         bridge_task = asyncio.create_task(bridge_client.run_forever())
@@ -222,51 +202,27 @@ async def lifespan(app: FastAPI):
         except Exception as exc:
             logger.warning("Pipeline runner failed to start: {}", exc)
 
-<<<<<<< HEAD
-    # --- Taskwarrior sync worker (optional, requires event bus) ---
-    task_sync_worker = None
-    if hasattr(app.state, "event_bus") and not isinstance(app.state.event_bus, type(None)):
-        try:
-            from core.tasks.sync import TaskSyncWorker
-
-            task_sync_worker = TaskSyncWorker(
-                event_bus=app.state.event_bus,
-                poll_interval=2.0,
-            )
-            asyncio.create_task(task_sync_worker.run())
-            app.state.task_sync_worker = task_sync_worker
-            logger.info("Taskwarrior sync worker started")
-        except Exception as exc:
-            logger.warning("Taskwarrior sync worker failed to start: {}", exc)
-
-    # --- Orchestration engine (optional, requires pg_pool) ---
+    # --- Orchestration init (optional) ---
     try:
-        from core.orchestration.gateway import init_orchestration, shutdown_orchestration
-
-        await init_orchestration(app)
+        from core.orchestration import init_orchestration
+        await init_orchestration(app.state, pg_pool)
+        logger.info("Orchestration engine initialized")
     except Exception as exc:
-        logger.warning("Orchestration engine failed to initialise: {}", exc)
+        logger.debug("Orchestration init skipped: {}", exc)
 
-    yield
-
-    # --- Shutdown ---
-    # Stop task sync worker
-    if hasattr(app.state, "task_sync_worker") and app.state.task_sync_worker is not None:
-        app.state.task_sync_worker.stop()
-        logger.info("Taskwarrior sync worker stopped")
-
+    # --- Taskwarrior sync worker (optional) ---
     try:
-        from core.orchestration.gateway import shutdown_orchestration
+        from core.tasks.sync import TaskSyncWorker
+        tw_worker = TaskSyncWorker()
+        app.state.task_sync_worker = tw_worker
+        asyncio.create_task(tw_worker.run_forever())
+        logger.info("Taskwarrior sync worker started")
+    except Exception as exc:
+        logger.debug("Taskwarrior sync skipped: {}", exc)
 
-        await shutdown_orchestration(app)
-    except Exception:
-        pass
-
-=======
-    yield
+    yield  # ← FastAPI serves requests here
 
     # --- Shutdown ---
->>>>>>> origin/main
     if pipeline_runner is not None:
         await pipeline_runner.stop()
         logger.info("Pipeline runner stopped")
@@ -363,123 +319,6 @@ async def readiness() -> dict[str, Any]:
     return {"status": "ready" if all_ok else "degraded", "checks": checks}
 
 
-<<<<<<< HEAD
-@app.get("/metrics", tags=["ops"])
-async def metrics() -> PlainTextResponse:
-    """Prometheus-style metrics endpoint for orchestration and gateway state."""
-    mcp_count = len(getattr(app.state, "mcp_registry", {}) or {})
-    registry = getattr(app.state, "agent_registry", None)
-    agent_count = len(getattr(registry, "agent_ids", []) or []) if registry is not None else 0
-    pg_pool = getattr(app.state, "pg_pool", None)
-    event_bus = getattr(app.state, "event_bus", None)
-    bridge_client = getattr(app.state, "bridge_client", None)
-    pipeline_runner = getattr(app.state, "pipeline_runner", None)
-    coop = getattr(app.state, "cooperative_engine", None)
-    discussion = getattr(app.state, "discussion_engine", None)
-    lines = [
-        '# HELP osmen_gateway_up Gateway liveness (1 = up).',
-        '# TYPE osmen_gateway_up gauge',
-        'osmen_gateway_up 1',
-        '# HELP osmen_gateway_mcp_tools Number of MCP tools loaded.',
-        '# TYPE osmen_gateway_mcp_tools gauge',
-        f'osmen_gateway_mcp_tools {mcp_count}',
-        '# HELP osmen_gateway_agents Number of orchestration agents registered.',
-        '# TYPE osmen_gateway_agents gauge',
-        f'osmen_gateway_agents {agent_count}',
-        '# HELP osmen_gateway_event_bus_configured Event bus configured (1 = yes).',
-        '# TYPE osmen_gateway_event_bus_configured gauge',
-        f'osmen_gateway_event_bus_configured {1 if event_bus is not None else 0}',
-        '# HELP osmen_gateway_postgres_configured PostgreSQL pool configured (1 = yes).',
-        '# TYPE osmen_gateway_postgres_configured gauge',
-        f'osmen_gateway_postgres_configured {1 if pg_pool is not None else 0}',
-        '# HELP osmen_gateway_bridge_connected Bridge client connected (1 = yes).',
-        '# TYPE osmen_gateway_bridge_connected gauge',
-        f'osmen_gateway_bridge_connected {1 if getattr(bridge_client, "is_connected", False) else 0}',
-        '# HELP osmen_gateway_pipeline_runner_active Pipeline runner active (1 = yes).',
-        '# TYPE osmen_gateway_pipeline_runner_active gauge',
-        f'osmen_gateway_pipeline_runner_active {1 if pipeline_runner is not None else 0}',
-        '# HELP osmen_gateway_workflow_engines_active Workflow engines active (count).',
-        '# TYPE osmen_gateway_workflow_engines_active gauge',
-        f'osmen_gateway_workflow_engines_active {sum(x is not None for x in (coop, discussion))}',
-    ]
-    return PlainTextResponse('\n'.join(lines) + '\n', media_type='text/plain; version=0.0.4')
-
-
-# ---------------------------------------------------------------------------
-# Taskwarrior reports / filters
-# ---------------------------------------------------------------------------
-
-
-@app.get("/tasks/summary", tags=["tasks"])
-async def tasks_summary() -> dict[str, Any]:
-    """Return a summary of Taskwarrior tasks grouped by project and status.
-
-    Requires ``task`` binary available in the container.  If not installed,
-    returns a placeholder response.  For production use, mount the host
-    ``/usr/bin/task`` and ``~/.task`` into the container.
-    """
-    import shutil
-    import subprocess
-
-    if not shutil.which("task"):
-        return {
-            "total": 0,
-            "by_project": {},
-            "note": "taskwarrior binary not available in container; mount /usr/bin/task and ~/.taskrc",
-        }
-
-    try:
-        result = subprocess.run(
-            ["task", "rc:/root/.taskrc", "rc.json.array=on", "export"],
-            capture_output=True, text=True, timeout=10,
-        )
-        tasks = _json.loads(result.stdout) if result.stdout.strip() else []
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-    by_project: dict[str, dict[str, int]] = {}
-    for t in tasks:
-        proj = t.get("project", "(none)")
-        status = t.get("status", "unknown")
-        by_project.setdefault(proj, {"pending": 0, "completed": 0, "waiting": 0, "deleted": 0})
-        by_project[proj][status] = by_project[proj].get(status, 0) + 1
-
-    return {
-        "total": len(tasks),
-        "by_project": by_project,
-    }
-
-
-@app.get("/tasks/pending", tags=["tasks"])
-async def tasks_pending(
-    project: str | None = None,
-    limit: int = 50,
-) -> list[dict[str, Any]]:
-    """Return pending Taskwarrior tasks, optionally filtered by project.
-
-    Requires ``task`` binary available in the container.
-    """
-    import shutil
-    import subprocess
-
-    if not shutil.which("task"):
-        return [{"note": "taskwarrior binary not available in container"}]
-
-    cmd = ["task", "rc:/root/.taskrc", "rc.json.array=on", "status:pending"]
-    if project:
-        cmd.append(f"project:{project}")
-    cmd.append("export")
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-        tasks = _json.loads(result.stdout) if result.stdout.strip() else []
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-    return tasks[:limit]
-
-
-=======
->>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Dead-letter queue management
 # ---------------------------------------------------------------------------
@@ -780,60 +619,6 @@ async def invoke_tool(
 
 
 # ---------------------------------------------------------------------------
-<<<<<<< HEAD
-# Tautulli webhook receiver
-# ---------------------------------------------------------------------------
-
-
-class WebhookResponse(BaseModel):
-    status: str = "ok"
-    event: str = ""
-
-
-@app.post(
-    "/webhooks/tautulli",
-    response_model=WebhookResponse,
-    tags=["webhooks"],
-)
-async def tautulli_webhook(
-    request: Request,
-    event_bus: EventBusDep,
-) -> WebhookResponse:
-    """Receive Tautulli webhook notifications and publish as events.
-
-    Tautulli POSTs form-encoded data here on play, stop, watched, and
-    newly-added events.  We normalize the payload into an
-    :class:`~core.events.envelope.EventEnvelope` and publish it on the
-    event bus so downstream consumers (dashboard, notifications, etc.)
-    can react.
-    """
-    form = await request.form()
-    event_type = str(form.get("event_type", "unknown"))
-    payload = {k: str(v) for k, v in form.items()}
-
-    event = EventEnvelope(
-        domain="media",
-        category="tautulli",
-        source="tautulli",
-        correlation_id=f"tautulli-{event_type}-{payload.get('rating_key', 'unknown')}",
-        priority=EventPriority.LOW,
-        payload=payload,
-    )
-    try:
-        await event_bus.publish(event)
-    except EventBusError as exc:
-        logger.error("Event bus publish failed for Tautulli webhook: {}", exc)
-        raise HTTPException(
-            status_code=500,
-            detail={"error": "event_bus_error", "detail": str(exc)},
-        )
-
-    return WebhookResponse(event=event_type)
-
-
-# ---------------------------------------------------------------------------
-=======
->>>>>>> origin/main
 # WebSocket bridge (OpenClaw → OsMEN-OC)
 # ---------------------------------------------------------------------------
 

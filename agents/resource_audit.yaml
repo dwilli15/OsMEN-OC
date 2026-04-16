@@ -23,7 +23,7 @@ tools:
         items:
           type: string
         required: false
-        description: Specific paths to scan (default: repo root + ~/.config/opencode/ + ~/.claude/)
+        description: "Specific paths to scan (default: repo root + ~/.config/opencode/ + ~/.claude/)"
       check_symlinks:
         type: boolean
         required: false

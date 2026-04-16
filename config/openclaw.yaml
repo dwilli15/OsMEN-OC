@@ -11,18 +11,6 @@
 
 bridge:
   # WebSocket address that OpenClaw listens on (control-plane side).
-<<<<<<< HEAD
-  endpoint: "ws://127.0.0.1:18789"
-  # Backward-compatible alias for older runtime code.
-  ws_url: "ws://127.0.0.1:18789"
-  # Reconnect policy, expressed in the schema used by core/gateway/app.py.
-  reconnect:
-    max_backoff_seconds: 5
-  # Backward-compatible flat reconnect interval used by older code.
-=======
-  ws_url: "ws://127.0.0.1:18789"
-  # Seconds between reconnect attempts when the bridge drops.
->>>>>>> origin/main
   reconnect_interval_seconds: 5
   # Maximum inbound message size (bytes) — messages over this limit are dropped.
   max_message_bytes: 65536
