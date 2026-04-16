@@ -252,9 +252,12 @@ def test_interactive_default_accepted_on_empty_input(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # Provide required fields via env; press Enter for everything else (accepts defaults).
+    # Clear service DSN env vars so the wizard falls back to defaults.
     monkeypatch.setenv("ZAI_API_KEY", "test-key")
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "tg-token")
     monkeypatch.setenv("TELEGRAM_CHAT_ID", "12345")
+    monkeypatch.delenv("POSTGRES_DSN", raising=False)
+    monkeypatch.delenv("REDIS_URL", raising=False)
     wizard, _ = _make_wizard(tmp_path, stdin_text="\n" * 20)
     wizard.run()
 

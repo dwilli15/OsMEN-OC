@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import PlainTextResponse
 from loguru import logger
 from pydantic import BaseModel
 
@@ -169,16 +170,19 @@ async def lifespan(app: FastAPI):
 
     bridge_section = openclaw_cfg.get("bridge", {})
     if not bridge_url:
-        bridge_url = bridge_section.get("endpoint")
+        bridge_url = bridge_section.get("endpoint") or bridge_section.get("ws_url")
 
     if bridge_url:
         from core.bridge.ws_client import OpenClawBridgeClient
 
         reconnect = bridge_section.get("reconnect", {})
+        backoff_seconds = reconnect.get("max_backoff_seconds")
+        if backoff_seconds is None:
+            backoff_seconds = bridge_section.get("reconnect_interval_seconds", 60.0)
         bridge_client = OpenClawBridgeClient(
             endpoint=bridge_url,
             on_message=lambda msg: _bridge_message_handler(app, msg),
-            max_backoff_seconds=float(reconnect.get("max_backoff_seconds", 60.0)),
+            max_backoff_seconds=float(backoff_seconds),
         )
         app.state.bridge_client = bridge_client
         bridge_task = asyncio.create_task(bridge_client.run_forever())
@@ -315,6 +319,47 @@ async def readiness() -> dict[str, Any]:
     _ok_values = {"ok", "noop", "not_configured", "connected", "available"}
     all_ok = all(v in _ok_values for v in checks.values())
     return {"status": "ready" if all_ok else "degraded", "checks": checks}
+
+
+@app.get("/metrics", tags=["ops"])
+async def metrics() -> PlainTextResponse:
+    """Prometheus-style metrics endpoint for orchestration and gateway state."""
+    mcp_count = len(getattr(app.state, "mcp_registry", {}) or {})
+    registry = getattr(app.state, "agent_registry", None)
+    agent_count = len(getattr(registry, "agent_ids", []) or []) if registry is not None else 0
+    pg_pool = getattr(app.state, "pg_pool", None)
+    event_bus = getattr(app.state, "event_bus", None)
+    bridge_client = getattr(app.state, "bridge_client", None)
+    pipeline_runner = getattr(app.state, "pipeline_runner", None)
+    coop = getattr(app.state, "cooperative_engine", None)
+    discussion = getattr(app.state, "discussion_engine", None)
+    lines = [
+        '# HELP osmen_gateway_up Gateway liveness (1 = up).',
+        '# TYPE osmen_gateway_up gauge',
+        'osmen_gateway_up 1',
+        '# HELP osmen_gateway_mcp_tools Number of MCP tools loaded.',
+        '# TYPE osmen_gateway_mcp_tools gauge',
+        f'osmen_gateway_mcp_tools {mcp_count}',
+        '# HELP osmen_gateway_agents Number of orchestration agents registered.',
+        '# TYPE osmen_gateway_agents gauge',
+        f'osmen_gateway_agents {agent_count}',
+        '# HELP osmen_gateway_event_bus_configured Event bus configured (1 = yes).',
+        '# TYPE osmen_gateway_event_bus_configured gauge',
+        f'osmen_gateway_event_bus_configured {1 if event_bus is not None else 0}',
+        '# HELP osmen_gateway_postgres_configured PostgreSQL pool configured (1 = yes).',
+        '# TYPE osmen_gateway_postgres_configured gauge',
+        f'osmen_gateway_postgres_configured {1 if pg_pool is not None else 0}',
+        '# HELP osmen_gateway_bridge_connected Bridge client connected (1 = yes).',
+        '# TYPE osmen_gateway_bridge_connected gauge',
+        f'osmen_gateway_bridge_connected {1 if getattr(bridge_client, "is_connected", False) else 0}',
+        '# HELP osmen_gateway_pipeline_runner_active Pipeline runner active (1 = yes).',
+        '# TYPE osmen_gateway_pipeline_runner_active gauge',
+        f'osmen_gateway_pipeline_runner_active {1 if pipeline_runner is not None else 0}',
+        '# HELP osmen_gateway_workflow_engines_active Workflow engines active (count).',
+        '# TYPE osmen_gateway_workflow_engines_active gauge',
+        f'osmen_gateway_workflow_engines_active {sum(x is not None for x in (coop, discussion))}',
+    ]
+    return PlainTextResponse('\n'.join(lines) + '\n', media_type='text/plain; version=0.0.4')
 
 
 # ---------------------------------------------------------------------------

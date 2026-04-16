@@ -17,6 +17,8 @@ ContainerName=osmen-monitoring-grafana
 PublishPort=127.0.0.1:3002:3000
 
 Volume=osmen-grafana-data.volume:/var/lib/grafana
+Volume=%h/dev/OsMEN-OC/config/grafana/provisioning:/etc/grafana/provisioning:ro
+Volume=%h/dev/OsMEN-OC/config/grafana/dashboards:/var/lib/grafana/dashboards:ro
 
 Environment=GF_SECURITY_ADMIN_PASSWORD__FILE=/run/secrets/osmen-grafana-admin-password
 Secret=osmen-grafana-admin-password,type=mount
