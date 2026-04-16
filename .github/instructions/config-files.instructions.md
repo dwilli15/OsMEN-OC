@@ -12,6 +12,7 @@ applyTo: "config/**/*.yaml"
 
 ### Secret Config
 
+<<<<<<< HEAD
 Files in `config/secrets/` are public-safe templates only.
 
 - Use `.template.yaml` for committed files that define expected keys and placeholder values.
@@ -26,6 +27,14 @@ When adding a new secret-bearing integration:
 4. Verify the repo still contains templates only.
 
 Never put plaintext secrets in any repo config file.
+=======
+Files in `config/secrets/` use `.enc.yaml` extension (SOPS + age encrypted).
+
+- `api-keys.enc.yaml` — LLM provider keys, service API keys
+- `service-creds.enc.yaml` — database passwords, VPN credentials
+
+Never put plaintext secrets in any config file. Use `${ENV_VAR}` or SOPS encryption.
+>>>>>>> origin/main
 
 ### Config Loading Pattern
 

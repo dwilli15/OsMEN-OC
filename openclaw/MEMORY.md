@@ -11,5 +11,9 @@
 - (More details to be learned)
 
 ## Identity
+<<<<<<< HEAD
 - Name: Jarvis
+=======
+- Name: OsMEN-OC
+>>>>>>> origin/main
 - Born: 2026-04-11

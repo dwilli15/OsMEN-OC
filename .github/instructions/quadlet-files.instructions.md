@@ -41,6 +41,7 @@ WantedBy=default.target
 - **Secrets via Podman Secrets**: Use `Secret=` directive, never env vars with plaintext
 - **Nextcloud UID mapping**: `UserNS=keep-id:uid=33,gid=33` for www-data
 - **Download stack**: Must be a `.pod` file where gluetun provides the network namespace for qBittorrent and SABnzbd
+<<<<<<< HEAD
 
 ### Container Organization Model
 
@@ -66,3 +67,5 @@ Before merging a new container:
 3. Prove health, restart persistence, and dependency readiness.
 4. Record any new port allocation, dependency edges, and backup requirements.
 5. Update memory/instructions so the next operator can extend it safely.
+=======
+>>>>>>> origin/main

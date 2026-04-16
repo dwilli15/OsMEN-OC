@@ -13,14 +13,22 @@ This repo contains the execution engine; OpenClaw (Node.js, `npm install -g open
 | Agents       | `agents/`     | YAML manifests + thin Python runners                          |
 | Gateway      | `gateway/`    | FastAPI app (REST + MCP + WebSocket bridge)                   |
 | Quadlets     | `quadlets/`   | Rootless Podman systemd unit files                            |
+<<<<<<< HEAD
 | Config       | `config/`     | YAML config and public-safe secret templates; live secrets stay local under `~/.config/osmen/secrets/` |
+=======
+| Config       | `config/`     | YAML config, SOPS-encrypted secrets                           |
+>>>>>>> origin/main
 | Scripts      | `scripts/`    | bootstrap.sh, deploy.sh, maintenance cron                     |
 | Tests        | `tests/`      | pytest suite, one test per module minimum                     |
 | Migrations   | `migrations/` | Numbered SQL files (001*, 002*, ...)                          |
 
 ## Key Architectural Decisions
 
+<<<<<<< HEAD
 1. **Rootless Podman only** — no Docker, no docker-compose. All containers run as user `armad` via systemd Quadlets.
+=======
+1. **Rootless Podman only** — no Docker, no docker-compose. All containers run as a rootless user via systemd Quadlets.
+>>>>>>> origin/main
 2. **Single Python package** — everything imports from `core.*`. No util/ grab-bags. No circular imports.
 3. **Agent manifests are YAML** — agents are data (YAML), not code. Each manifest declares tools, risk level, model tier, schedule.
 4. **MCP auto-registration** — gateway reads agent YAML manifests at startup and exposes their tools as MCP endpoints automatically.

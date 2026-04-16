@@ -1,15 +1,23 @@
+<<<<<<< HEAD
 """Typed wrapper for ChromaDB vector store via REST API (v1).
 
 Uses httpx against the ChromaDB v1 REST API directly, avoiding
 client library version mismatches.
 """
+=======
+"""Typed wrapper for a Chroma-style vector store client."""
+>>>>>>> origin/main
 
 from __future__ import annotations
 
 from typing import Any
 
+<<<<<<< HEAD
 import httpx
 from loguru import logger
+=======
+import anyio
+>>>>>>> origin/main
 from pydantic import BaseModel, Field
 
 
@@ -22,6 +30,7 @@ class MemoryDocument(BaseModel):
 
 
 class ChromaStore:
+<<<<<<< HEAD
     """HTTP-based ChromaDB store using the v1 REST API.
 
     Args:
@@ -139,6 +148,34 @@ class ChromaStore:
             json=payload,
         )
         resp.raise_for_status()
+=======
+    """Thin wrapper around a Chroma-like collection API.
+
+    The provided client is expected to expose:
+    - get_or_create_collection(name=...)
+
+    And the resulting collection should expose:
+    - add(documents=[...], ids=[...], metadatas=[...])
+    - query(query_texts=[...], n_results=..., where=...)
+    - delete(ids=[...])
+    """
+
+    def __init__(self, client: Any, collection_name: str = "osmen-memory") -> None:
+        self._client = client
+        self._collection = client.get_or_create_collection(name=collection_name)
+
+    def add_documents(self, documents: list[MemoryDocument]) -> None:
+        if not documents:
+            return
+        self._collection.add(
+            documents=[d.text for d in documents],
+            ids=[d.id for d in documents],
+            metadatas=[d.metadata for d in documents],
+        )
+
+    async def add_documents_async(self, documents: list[MemoryDocument]) -> None:
+        await anyio.to_thread.run_sync(self.add_documents, documents)
+>>>>>>> origin/main
 
     def query(
         self,
@@ -146,6 +183,7 @@ class ChromaStore:
         *,
         n_results: int = 5,
         where: dict[str, Any] | None = None,
+<<<<<<< HEAD
         query_embeddings: list[list[float]] | None = None,
     ) -> dict[str, Any]:
         coll_id = self._ensure_collection()
@@ -163,6 +201,14 @@ class ChromaStore:
         )
         resp.raise_for_status()
         return resp.json()
+=======
+    ) -> dict[str, Any]:
+        return self._collection.query(
+            query_texts=[query_text],
+            n_results=n_results,
+            where=where,
+        )
+>>>>>>> origin/main
 
     async def query_async(
         self,
@@ -170,6 +216,7 @@ class ChromaStore:
         *,
         n_results: int = 5,
         where: dict[str, Any] | None = None,
+<<<<<<< HEAD
         query_embeddings: list[list[float]] | None = None,
     ) -> dict[str, Any]:
         coll_id = await self._ensure_collection_async()
@@ -215,10 +262,17 @@ class ChromaStore:
         )
         resp.raise_for_status()
         return resp.json()
+=======
+    ) -> dict[str, Any]:
+        return await anyio.to_thread.run_sync(
+            lambda: self.query(query_text, n_results=n_results, where=where),
+        )
+>>>>>>> origin/main
 
     def delete(self, ids: list[str]) -> None:
         if not ids:
             return
+<<<<<<< HEAD
         coll_id = self._ensure_collection()
         resp = self._client.post(
             f"{self._base_url}/api/v1/collections/{coll_id}/delete",
@@ -252,3 +306,9 @@ class ChromaStore:
 # PostgreSQL + pgvector for vector storage.
 # ChromaDB remains available for backward compatibility during migration.
 # ---------------------------------------------------------------------------
+=======
+        self._collection.delete(ids=ids)
+
+    async def delete_async(self, ids: list[str]) -> None:
+        await anyio.to_thread.run_sync(self.delete, ids)
+>>>>>>> origin/main

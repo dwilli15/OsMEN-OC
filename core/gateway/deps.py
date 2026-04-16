@@ -30,6 +30,7 @@ class _NoopEventBus:
         raise EventBusError("Event bus not configured")
 
 
+<<<<<<< HEAD
 class _NoopAuditTrail:
     """Fallback audit trail when PostgreSQL is not configured."""
 
@@ -43,6 +44,8 @@ class _NoopAuditTrail:
         return 0
 
 
+=======
+>>>>>>> origin/main
 def get_mcp_registry(request: Request) -> dict[str, Any]:
     """Return the MCP tool registry stored in app state.
 
@@ -61,6 +64,7 @@ def get_approval_gate(request: Request) -> ApprovalGate:
     return getattr(request.app.state, "approval_gate", ApprovalGate())
 
 
+<<<<<<< HEAD
 def get_audit_trail(request: Request) -> AuditTrail | _NoopAuditTrail:
     """Return an :class:`~core.audit.trail.AuditTrail` backed by the app's pg pool.
 
@@ -71,6 +75,16 @@ def get_audit_trail(request: Request) -> AuditTrail | _NoopAuditTrail:
     if pg_pool is None:
         return _NoopAuditTrail()
     return AuditTrail(pg_pool)
+=======
+def get_audit_trail(request: Request) -> AuditTrail:
+    """Return an :class:`~core.audit.trail.AuditTrail` backed by the app's pg pool.
+
+    The pool must be stored in ``app.state.pg_pool`` before any invoke
+    requests are handled (set during the ``lifespan`` startup phase or
+    overridden via ``app.dependency_overrides`` in tests).
+    """
+    return AuditTrail(request.app.state.pg_pool)
+>>>>>>> origin/main
 
 
 def get_event_bus(request: Request) -> EventBus | _NoopEventBus:
@@ -84,5 +98,9 @@ def get_event_bus(request: Request) -> EventBus | _NoopEventBus:
 
 MCPRegistry = Annotated[dict[str, Any], Depends(get_mcp_registry)]
 ApprovalGateDep = Annotated[ApprovalGate, Depends(get_approval_gate)]
+<<<<<<< HEAD
 AuditTrailDep = Annotated[AuditTrail | _NoopAuditTrail, Depends(get_audit_trail)]
+=======
+AuditTrailDep = Annotated[AuditTrail, Depends(get_audit_trail)]
+>>>>>>> origin/main
 EventBusDep = Annotated[EventBus | _NoopEventBus, Depends(get_event_bus)]

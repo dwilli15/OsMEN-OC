@@ -24,11 +24,18 @@ dependencies = [
 runtime = [
     "redis[hiredis]>=5.0,<6",
     "asyncpg>=0.29,<1",
+<<<<<<< HEAD
+=======
+    "chromadb>=0.5,<1",
+>>>>>>> origin/main
 ]
 dev = [
     "pytest>=8.2,<9",
     "pytest-cov>=5.0,<6",
+<<<<<<< HEAD
     "pytest-timeout>=2.3,<3",
+=======
+>>>>>>> origin/main
     "anyio[trio]>=4.4,<5",
     "ruff>=0.4,<1",
     "mypy>=1.10,<2",
@@ -52,11 +59,19 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 100
+<<<<<<< HEAD
 target-version = "py314"
+=======
+target-version = "py313"
+>>>>>>> origin/main
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
 
 [tool.mypy]
+<<<<<<< HEAD
 python_version = "3.14"
+=======
+python_version = "3.13"
+>>>>>>> origin/main
 ignore_missing_imports = true

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """Tests for memory chunking, embeddings, store, and lateral modules."""
 
 from __future__ import annotations
@@ -9,6 +10,15 @@ import pytest
 
 from core.memory.chunking import chunk_text, split_sentences
 from core.memory.embeddings import EmbeddingBatch, EmbeddingResult, OllamaEmbedder
+=======
+"""Tests for memory chunking and vector store wrappers."""
+
+from __future__ import annotations
+
+from unittest.mock import MagicMock
+
+from core.memory.chunking import chunk_text, split_sentences
+>>>>>>> origin/main
 from core.memory.store import ChromaStore, MemoryDocument
 
 
@@ -44,6 +54,7 @@ def test_chunk_text_adds_overlap_context() -> None:
     assert any(sentence in chunks[1] for sentence in split_sentences(chunks[0]))
 
 
+<<<<<<< HEAD
 def test_embedding_result_fields() -> None:
     result = EmbeddingResult(
         text="hello world",
@@ -76,3 +87,33 @@ def test_memory_document_defaults() -> None:
 def test_chroma_store_name() -> None:
     store = ChromaStore(collection_name="my-collection", base_url="http://fake:8000")
     assert store.name == "my-collection"
+=======
+def test_chroma_store_add_query_delete_roundtrip() -> None:
+    collection = MagicMock()
+    collection.query.return_value = {"ids": [["doc-1"]], "documents": [["hello"]]}
+
+    client = MagicMock()
+    client.get_or_create_collection.return_value = collection
+
+    store = ChromaStore(client, collection_name="test-memory")
+    docs = [MemoryDocument(id="doc-1", text="hello", metadata={"source": "unit"})]
+
+    store.add_documents(docs)
+    client.get_or_create_collection.assert_called_once_with(name="test-memory")
+    collection.add.assert_called_once_with(
+        documents=["hello"],
+        ids=["doc-1"],
+        metadatas=[{"source": "unit"}],
+    )
+
+    result = store.query("hello", n_results=3, where={"source": "unit"})
+    collection.query.assert_called_once_with(
+        query_texts=["hello"],
+        n_results=3,
+        where={"source": "unit"},
+    )
+    assert result["ids"][0][0] == "doc-1"
+
+    store.delete(["doc-1"])
+    collection.delete.assert_called_once_with(ids=["doc-1"])
+>>>>>>> origin/main

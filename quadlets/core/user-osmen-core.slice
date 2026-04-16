@@ -4,7 +4,11 @@
 
 [Unit]
 Description=OsMEN-OC Core Services Slice
+<<<<<<< HEAD
 Documentation=https://github.com/dwilli15/OsMEN-OC
+=======
+Documentation=https://github.com/OsMEN-OC/OsMEN-OC
+>>>>>>> origin/main
 
 [Slice]
 # Cap combined memory for core data services at 4 GiB.

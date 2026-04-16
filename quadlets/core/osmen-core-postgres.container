@@ -5,7 +5,11 @@
 
 [Unit]
 Description=OsMEN-OC Core — PostgreSQL 17 + pgvector
+<<<<<<< HEAD
 Documentation=https://github.com/dwilli15/OsMEN-OC
+=======
+Documentation=https://github.com/OsMEN-OC/OsMEN-OC
+>>>>>>> origin/main
 After=osmen-core-network.service
 Requires=osmen-core-network.service
 
@@ -30,8 +34,12 @@ Secret=osmen-postgres-db,type=env,target=POSTGRES_DB
 # Enable WAL-level logical replication for future CDC use.
 Exec=postgres -c wal_level=logical -c max_connections=200
 
+<<<<<<< HEAD
 # Use fixed identifiers here so Quadlet can emit a direct health command cleanly.
 HealthCmd=pg_isready -U osmen -d osmen
+=======
+HealthCmd=/bin/sh -c "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"
+>>>>>>> origin/main
 HealthInterval=30s
 HealthTimeout=10s
 HealthRetries=5

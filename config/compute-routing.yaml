@@ -7,6 +7,7 @@
 # First matching rule wins. If no rule matches, the default_compute is used.
 #
 # target_compute values:
+<<<<<<< HEAD
 #   nvidia     — NVIDIA dGPU via CUDA (Ollama, port 11434)
 #   amd_vulkan — AMD iGPU via Vulkan (LM Studio port 1234, Lemonade llamacpp:vulkan port 13305)
 #   npu        — AMD XDNA 2 NPU via FLM (Lemonade flm:npu port 13305)
@@ -25,6 +26,15 @@
 # Hardware: RTX 5070 8GB CUDA | Radeon 780M Vulkan | XDNA2 NPU | Ryzen AI 9 365
 
 version: 2
+=======
+#   nvidia     — NVIDIA dGPU via CUDA
+#   amd_rocm   — AMD GPU via ROCm
+#   amd_vulkan — AMD GPU via Vulkan (llama.cpp / compute shaders)
+#   npu        — AMD XDNA 2 NPU (experimental)
+#   cpu        — CPU-only (system RAM)
+
+version: 1
+>>>>>>> origin/main
 
 # Fallback when no rule matches.
 default_compute: cpu
@@ -93,6 +103,7 @@ rules:
       fallback: amd_vulkan
     priority: 8
 
+<<<<<<< HEAD
   - id: transcription_npu
     description: >
       Audio transcription (Whisper v3 Turbo) runs on the NPU via FLM for
@@ -103,6 +114,17 @@ rules:
     action:
       target_compute: npu
       fallback: nvidia
+=======
+  - id: transcription_nvidia
+    description: >
+      Audio transcription (Whisper) is routed to NVIDIA CUDA for speed.
+      Falls back to amd_vulkan when NVIDIA is unavailable.
+    trigger:
+      task_type: transcription
+    action:
+      target_compute: nvidia
+      fallback: amd_vulkan
+>>>>>>> origin/main
     priority: 10
 
   - id: rendering_amd_vulkan
@@ -116,6 +138,7 @@ rules:
       target_compute: amd_vulkan
     priority: 18
 
+<<<<<<< HEAD
   - id: vision_npu
     description: >
       Multimodal vision (image analysis, OCR, visual Q&A) runs on the NPU
@@ -149,11 +172,18 @@ rules:
     description: >
       When all GPU/NPU resources are at capacity or unavailable, fall back
       to CPU-only inference via Lemonade llamacpp:cpu backend.
+=======
+  - id: cpu_fallback
+    description: >
+      When all GPU/NPU resources are at capacity or unavailable, fall back
+      to CPU-only inference via llama.cpp CPU backend.
+>>>>>>> origin/main
     trigger:
       task_type: inference
       condition: all_gpu_busy
     action:
       target_compute: cpu
+<<<<<<< HEAD
       provider: lemonade
     priority: 1
 
@@ -558,3 +588,6 @@ deprecated:
 #
 # Manual override: set environment variable OSMEN_COMPUTE=vulkan to force
 # Vulkan-only inference during gaming sessions.
+=======
+    priority: 1
+>>>>>>> origin/main

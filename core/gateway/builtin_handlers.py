@@ -19,7 +19,11 @@ media_organization
 - ``audit_vpn`` — verify gluetun VPN container is connected.
 - ``list_downloads`` — aggregate qBittorrent + SABnzbd download lists.
 - ``purge_completed`` — delete old staged downloads from DOWNLOAD_STAGING_DIR.
+<<<<<<< HEAD
 - ``assess_plex_readiness`` — check library root, disk space, subdirs, and service health.
+=======
+- ``assess_plex_readiness`` — check library root, disk space, subdirs, and container health.
+>>>>>>> origin/main
 
 system_monitor
 - ``get_hardware_metrics`` — CPU/GPU/fan metrics via lm-sensors, nvidia-smi, rocm-smi.
@@ -55,8 +59,11 @@ from loguru import logger
 
 from core.gateway.handlers import HandlerContext, register_handler
 from core.memory.chunking import chunk_text
+<<<<<<< HEAD
 from core.vision import ImageGenClient, VisionClient
 from core.vision.client import VisionBackend
+=======
+>>>>>>> origin/main
 
 _MAX_FETCH_BYTES = 10 * 1024 * 1024  # 10 MiB
 _MAX_REDIRECT_HOPS = 5
@@ -852,7 +859,11 @@ async def handle_assess_plex_readiness(
     - ``disk_space`` — at least 10 GiB free at the library root.
       This check includes a ``free_gib`` field with the measured free space in GiB.
     - ``library_dir_<media_type>`` — per-media-type subdirectory exists.
+<<<<<<< HEAD
     - ``plex_service_running`` — ``plexmediaserver`` systemd service is running.
+=======
+    - ``plex_container_running`` — ``osmen-media-plex`` Podman container is running.
+>>>>>>> origin/main
 
     Returns:
         A dict with ``status``, ``ready`` (overall bool), and ``checks`` list.
@@ -943,6 +954,7 @@ async def handle_assess_plex_readiness(
                 }
             )
 
+<<<<<<< HEAD
     # --- Check 5: plexmediaserver systemd service is running ---
     try:
         with _anyio.fail_after(10):
@@ -964,19 +976,53 @@ async def handle_assess_plex_readiness(
                     "plexmediaserver service is active"
                     if service_running
                     else "plexmediaserver service is not active"
+=======
+    # --- Check 5: osmen-media-plex container is running ---
+    try:
+        with _anyio.fail_after(10):
+            inspect_result = await _anyio.run_process(
+                [
+                    "podman",
+                    "inspect",
+                    "--format",
+                    "{{.State.Running}}",
+                    "osmen-media-plex",
+                ],
+                check=False,
+            )
+        container_running = inspect_result.stdout.decode().strip().lower() == "true"
+        checks.append(
+            {
+                "name": "plex_container_running",
+                "passed": container_running,
+                "detail": (
+                    "osmen-media-plex is running"
+                    if container_running
+                    else "osmen-media-plex is not running"
+>>>>>>> origin/main
                 ),
             }
         )
     except FileNotFoundError:
         checks.append(
+<<<<<<< HEAD
             {"name": "plex_service_running", "passed": False, "detail": "systemctl not found"}
+=======
+            {"name": "plex_container_running", "passed": False, "detail": "podman not installed"}
+>>>>>>> origin/main
         )
     except TimeoutError:
         checks.append(
             {
+<<<<<<< HEAD
                 "name": "plex_service_running",
                 "passed": False,
                 "detail": "systemctl check timed out",
+=======
+                "name": "plex_container_running",
+                "passed": False,
+                "detail": "podman inspect timed out",
+>>>>>>> origin/main
             }
         )
 
@@ -2088,6 +2134,7 @@ async def handle_get_npu_status(
         base["driver_loaded"] = False
 
     return base
+<<<<<<< HEAD
 
 
 @register_handler("analyze_image")
@@ -2355,3 +2402,5 @@ async def _sync_tasks(params: dict) -> dict:
         "message": "Calendar sync deferred until OAuth is configured.",
         "direction": direction,
     }
+=======
+>>>>>>> origin/main

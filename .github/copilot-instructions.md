@@ -45,8 +45,12 @@ Data flow: User → OpenClaw (Telegram/Discord) → WebSocket `ws://127.0.0.1:18
 
 ## Naming Conventions
 
+<<<<<<< HEAD
 - Podman containers: `osmen-{profile}-{service}` (e.g. `osmen-core-postgres`, `osmen-media-sonarr`)
   - **Exception:** Plex runs natively via `.deb` package (`plexmediaserver` systemd service), not in a container.
+=======
+- Podman containers: `osmen-{profile}-{service}` (e.g. `osmen-core-postgres`, `osmen-media-plex`)
+>>>>>>> origin/main
 - Podman networks: `osmen-{profile}.network` (e.g. `osmen-core.network`, `osmen-media.network`)
 - Podman slices: `user-osmen-{slice}.slice` (e.g. `user-osmen-inference.slice`)
 - Redis stream keys: `events:{domain}:{category}` (e.g. `events:media:download_complete`)
@@ -77,6 +81,7 @@ gpus:
     }
 npu: { model: "XDNA 2", driver: amdxdna, status: experimental, fallback: cpu }
 storage:
+<<<<<<< HEAD
   nvme0n1:
     size: 954GB
     label: Windows
@@ -86,6 +91,9 @@ storage:
       nvme0n1p3: { size: 256G, type: NTFS, label: "Windows OS", policy: DO_NOT_TOUCH }
       nvme0n1p4: { size: 697G, type: NTFS, label: "Data", policy: OSMEN_BACKUP, role: "secondary restic repo, model storage" }
       nvme0n1p5: { size: 735M, type: Recovery, policy: DO_NOT_TOUCH }
+=======
+  nvme0n1: { size: 954GB, label: Windows, policy: DO_NOT_TOUCH }
+>>>>>>> origin/main
   nvme1n1:
     {
       size: 932GB,
@@ -98,7 +106,11 @@ gpu_conflict_rule: "if ffxiv_dx11 on nvidia → route inference to amd_vulkan or
 
 ## What to NEVER Create
 
+<<<<<<< HEAD
 - `.env` files (use local SOPS-encrypted YAML under `~/.config/osmen/secrets/`; commit only templates in `config/secrets/`)
+=======
+- `.env` files (use SOPS-encrypted YAML in `config/secrets/`)
+>>>>>>> origin/main
 - `data/` or `logs/` directories (created at runtime)
 - Actual secrets or age private keys
 - Docker Compose files

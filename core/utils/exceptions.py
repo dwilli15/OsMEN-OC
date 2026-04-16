@@ -49,6 +49,7 @@ class PipelineError(OsMENError):
 
 class SetupError(OsMENError):
     """Raised when the first-run setup wizard encounters a non-recoverable error."""
+<<<<<<< HEAD
 
 
 class SecretsError(OsMENError):
@@ -61,3 +62,5 @@ class VisionError(OsMENError):
 
 class ImageGenError(OsMENError):
     """Raised when image generation fails."""
+=======
+>>>>>>> origin/main

@@ -65,6 +65,7 @@ def test_container_quadlets_enforce_no_new_privileges() -> None:
         assert value == "true", f"{path} must set NoNewPrivileges=true"
 
 
+<<<<<<< HEAD
 # Containers with documented reasons for not using ReadOnly=true.
 # Each entry corresponds to a comment in the quadlet file explaining why.
 _READ_ONLY_EXEMPT = {
@@ -84,6 +85,10 @@ def test_container_quadlets_enforce_read_only_rootfs() -> None:
     for path in _container_files():
         if path.name in _READ_ONLY_EXEMPT:
             continue
+=======
+def test_container_quadlets_enforce_read_only_rootfs() -> None:
+    for path in _container_files():
+>>>>>>> origin/main
         parser = _parse_ini(path)
         assert parser.has_section("Container"), f"{path} missing [Container] section"
         value = parser.get("Container", "ReadOnly", fallback="").strip().lower()

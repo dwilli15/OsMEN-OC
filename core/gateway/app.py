@@ -22,8 +22,12 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
+<<<<<<< HEAD
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import PlainTextResponse
+=======
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+>>>>>>> origin/main
 from loguru import logger
 from pydantic import BaseModel
 
@@ -170,12 +174,17 @@ async def lifespan(app: FastAPI):
 
     bridge_section = openclaw_cfg.get("bridge", {})
     if not bridge_url:
+<<<<<<< HEAD
         bridge_url = bridge_section.get("endpoint") or bridge_section.get("ws_url")
+=======
+        bridge_url = bridge_section.get("endpoint")
+>>>>>>> origin/main
 
     if bridge_url:
         from core.bridge.ws_client import OpenClawBridgeClient
 
         reconnect = bridge_section.get("reconnect", {})
+<<<<<<< HEAD
         backoff_seconds = reconnect.get("max_backoff_seconds")
         if backoff_seconds is None:
             backoff_seconds = bridge_section.get("reconnect_interval_seconds", 60.0)
@@ -183,6 +192,12 @@ async def lifespan(app: FastAPI):
             endpoint=bridge_url,
             on_message=lambda msg: _bridge_message_handler(app, msg),
             max_backoff_seconds=float(backoff_seconds),
+=======
+        bridge_client = OpenClawBridgeClient(
+            endpoint=bridge_url,
+            on_message=lambda msg: _bridge_message_handler(app, msg),
+            max_backoff_seconds=float(reconnect.get("max_backoff_seconds", 60.0)),
+>>>>>>> origin/main
         )
         app.state.bridge_client = bridge_client
         bridge_task = asyncio.create_task(bridge_client.run_forever())
@@ -207,6 +222,7 @@ async def lifespan(app: FastAPI):
         except Exception as exc:
             logger.warning("Pipeline runner failed to start: {}", exc)
 
+<<<<<<< HEAD
     # --- Taskwarrior sync worker (optional, requires event bus) ---
     task_sync_worker = None
     if hasattr(app.state, "event_bus") and not isinstance(app.state.event_bus, type(None)):
@@ -246,6 +262,11 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
 
+=======
+    yield
+
+    # --- Shutdown ---
+>>>>>>> origin/main
     if pipeline_runner is not None:
         await pipeline_runner.stop()
         logger.info("Pipeline runner stopped")
@@ -342,6 +363,7 @@ async def readiness() -> dict[str, Any]:
     return {"status": "ready" if all_ok else "degraded", "checks": checks}
 
 
+<<<<<<< HEAD
 @app.get("/metrics", tags=["ops"])
 async def metrics() -> PlainTextResponse:
     """Prometheus-style metrics endpoint for orchestration and gateway state."""
@@ -456,6 +478,8 @@ async def tasks_pending(
     return tasks[:limit]
 
 
+=======
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Dead-letter queue management
 # ---------------------------------------------------------------------------
@@ -756,6 +780,7 @@ async def invoke_tool(
 
 
 # ---------------------------------------------------------------------------
+<<<<<<< HEAD
 # Tautulli webhook receiver
 # ---------------------------------------------------------------------------
 
@@ -807,6 +832,8 @@ async def tautulli_webhook(
 
 
 # ---------------------------------------------------------------------------
+=======
+>>>>>>> origin/main
 # WebSocket bridge (OpenClaw → OsMEN-OC)
 # ---------------------------------------------------------------------------
 
