@@ -1,0 +1,168 @@
+Architectural Blueprint: Multi-Agent Discord Roundtable (OsMEN/OpenClaw)
+1. Executive Summary
+
+This document outlines the technical architecture for deploying a multi-agent AI roundtable within a Discord environment. The system enables multiple distinct AI entities to collaborate, debate, brainstorm, and interrupt each other in real-time. Moving away from monolithic, ground-up orchestration, this system leverages the existing OpenClaw infrastructure as a central hub, surrounded by lightweight, independent Node.js bridge bots acting as spokes.
+
+This architecture guarantees agent independence, shared contextual memory, and robust network security, all while maintaining a streamlined development workflow optimized for rapid natural language script generation.
+2. Core Architecture: The Hub-and-Spoke Model
+
+The fundamental design principle is to separate the shared memory and orchestration from the individual agent execution layers.
+The Hub: OpenClaw & Jarvis
+
+OpenClaw serves as the foundational persistence layer and primary orchestrator.
+
+    Jarvis (main agent): Runs natively within OpenClaw. It does not require a separate bridge. Jarvis acts as the coordinator and project manager, prioritizing the big picture, continuity, and decision tracking.
+
+    Responsibilities: Managing the shared SQLite session data, executing embedding searches via nomic-embed-text for long-term memory retrieval, and maintaining the daily logs.
+
+The Spokes: Node.js Bridge Bots
+
+The remaining agents operate as independent Discord bot applications powered by lightweight Node.js services (bot.mjs).
+
+    Independence: Each bridge bot has its own Discord token, its own package.json, and runs as a separate process.
+
+    Execution: Instead of relying on a shared API router, these bots connect directly to their native environments. For example, the Claude bridge bot actively spawns a claude -p subprocess to execute code, granting it full ACP (Agent Control Protocol) runtime capabilities and persistent CLI sessions.
+
+3. Agent Profiles and Workspaces
+
+Each agent requires a strictly defined isolated workspace to ensure distinct personalities and prevent "role-blurring" during complex debates.
+
+    Jarvis (The Orchestrator)
+
+        Model: zai/glm-5-turbo
+
+        Role: Context management and historical continuity.
+
+        Workspace: OpenClaw native (~/.openclaw/agents/main/)
+
+    Claude (The Execution Authority)
+
+        Model: anthropic/claude-opus-4.6
+
+        Role: Deep analysis, writing functional code, and verifying technical claims.
+
+        Workspace: ~/dev/OsMEN-OC/openclaw-claude/
+
+    GLM / OpenCode (The Architect)
+
+        Model: zai/glm-5.1
+
+        Role: System architecture, planning, trade-off analysis, and documentation.
+
+        Workspace: ~/dev/OsMEN-OC/openclaw-glm/
+
+    Copilot (The IDE Specialist)
+
+        Model: github-copilot/gpt-5.4
+
+        Role: Refactoring, edge-case analysis, and IDE context integration.
+
+        Workspace: ~/dev/OsMEN-OC/openclaw-copilot/
+
+Configuration Files per Workspace
+
+Each spoke requires three critical markdown files to govern behavior:
+
+    IDENTITY.md: Defines the agent's name, role, and absolute accountabilities.
+
+    SOUL.md: Governs the personality, the "vibe," and the strict rules for when to speak and when to remain silent.
+
+    AGENTS.md: The "team awareness" document, ensuring the agent knows the capabilities and domains of its peers.
+
+4. Interaction Mechanics: Debate, Brainstorming, and Interruptions
+
+To achieve a natural, free-flowing debate where agents can bounce ideas off each other and interrupt appropriately, the system eschews complex streaming kill-switches in favor of event-driven logic and prompt engineering.
+Debouncing and State Locks
+
+Race conditions—where multiple agents attempt to answer simultaneously—are handled natively via the discord.js library.
+
+    The "Thinking" State: When an agent decides to respond, its Node.js service immediately triggers the Discord "typing" indicator.
+
+    Debouncing Logic: The other bridge bots monitor channel state. If Agent A is typing, Agents B and C engage a debounce protocol. They will wait for Agent A's message to post, read it, and then evaluate if a response is necessary.
+
+Prompt-Driven Interruptions
+
+Agents evaluate the shared channel history and inject themselves into the conversation based on their SOUL.md rules. An agent will "interrupt" the flow if:
+
+    A human directly @mentions them.
+
+    The conversation shifts directly into their defined domain (e.g., GLM jumps in when Claude starts discussing network topology).
+
+    Another agent makes a technical claim that they determine requires verification or a direct challenge.
+
+Loop Prevention and Circuit Breakers
+
+To prevent infinite argumentative loops between LLMs, the system employs layered safety mechanisms:
+
+    Self-Filtering: Node.js services are hard-coded to ignore messages dispatched from their own client IDs.
+
+    Chain Capping: Configurations limit back-and-forth exchanges (e.g., maxPingPongTurns: 3), forcing the agents to pause and wait for human input or Jarvis's orchestration.
+
+    Silence Directives: SOUL.md explicitly instructs agents to use reaction emojis (rather than text replies) if their only contribution would be "I agree."
+
+5. Memory and State Synchronization
+
+The Hub-and-Spoke model requires a hybrid approach to memory to keep all agents aligned without duplicating database entries.
+
+    Short-Term Channel Context: Bridge bots read the last N messages from the Discord channel history to build their immediate prompt context.
+
+    Shared File Context: To manage the context window efficiently, agents write critical outcomes to shared markdown files (recent-summary.md and decisions.md).
+
+    Long-Term Retrieval: When historical context is needed, the bridge bots can query the OpenClaw gateway, allowing Jarvis to pull deep memories via its embedding search architecture.
+
+6. Network Infrastructure and Security Protocol
+
+Deploying multiple autonomous agents that execute code and call various APIs requires strict network isolation.
+
+    The SOCKS5 Proxy Architecture: To ensure secure and organized traffic routing for every autonomous agent, the system utilizes a centralized SOCKS5 proxy method.
+
+    Implementation: Within the Node.js bridge bots, libraries such as socks-proxy-agent are utilized to route all outward HTTP/API requests (including connections to the Claude runtime and OpenCode APIs).
+
+    The Kill Switch: This proxy architecture acts as a highly effective, clean network "kill switch." If an agent begins behaving erratically or executing unsafe loops, its network access can be severed at the proxy level instantly. This entirely replaces earlier, highly complex system-level workarounds like DLL injection, keeping the OS environment clean and stable.
+
+7. Phased Implementation Roadmap
+
+Because the architecture relies heavily on Node.js and standard API integrations, the development workflow is highly suited to "vibe-coding"—utilizing LLMs to rapidly generate the boilerplate JavaScript, leaving the developer to focus on the orchestration logic and system design.
+Phase 1: The Initial Bridge (Claude & Jarvis)
+
+    Generate the bot.mjs Node service to act as the Discord listener.
+
+    Establish the child process connection to claude -p.
+
+    Draft the IDENTITY.md and SOUL.md files for Claude.
+
+    Deploy both bots to the #roundtable channel and verify turn-taking via @mentions.
+
+Phase 2: Expanding the Roundtable (Adding GLM)
+
+    Clone the Phase 1 Node.js boilerplate for the GLM bot.
+
+    Connect the GLM bot to the OpenCode serve API endpoint.
+
+    Implement the debouncing logic and typing indicators across both bridge bots.
+
+    Test natural turn-taking and domain-specific interruptions without human prompting.
+
+Phase 3: Shared Memory and Accountability
+
+    Implement the shared context files (recent-summary.md and decisions.md).
+
+    Configure the OpenClaw gateway to serve as the long-term memory API for the bridge bots.
+
+    Refine prompt instructions requiring agents to log their final architectural decisions.
+
+Phase 4: IDE Context Integration (Copilot)
+
+    Deploy the final bridge bot utilizing the GitHub Copilot API.
+
+    Feed active IDE states (open files, terminal diagnostics) into the Discord channel context.
+
+    Conduct a full 4-agent code review simulation.
+
+Phase 5: System Optimization and Cost Control
+
+    Route all bridge bot traffic cleanly through the SOCKS5 proxy infrastructure.
+
+    Implement token tracking and cost-control measures to prevent excessive API spend during heavy debates.
+
+    Finalize the loop prevention circuit breakers and establish automated, round-robin check-ins.

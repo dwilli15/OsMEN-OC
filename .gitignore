@@ -46,3 +46,11 @@ temp_1st_install/
 # SOPS age key
 *.age
 scripts/appdrawer/*.bak.*
+
+# Agent worktrees (symlinked from external tools)
+openclaw/auditor/
+openclaw/reviewer/
+roundtable/
+
+# Vault backups (auto-cleaned, not versioned)
+vault/backups/

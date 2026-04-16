@@ -1,0 +1,99 @@
+**Comprehensive Multi-Agent Discord Roundtable Architecture (OpenClaw Hub-and-Spoke Model)**
+
+This document represents the finalized, highly detailed blueprint for constructing a real-time, multi-agent Discord roundtable. It merges the core capabilities of the OpenClaw platform with independent Node.js bridge bots, creating an environment where distinct AI personas can debate, collaborate, and execute tasks alongside a human user.
+
+### 1. Architectural Paradigm: The Hub-and-Spoke Model
+Rather than building an entirely new multi-agent orchestration platform from scratch, this architecture leverages **OpenClaw** as the native host. OpenClaw already possesses the necessary multi-agent infrastructure, including isolated workspaces, Discord channel bindings, multi-model routing, and an embedding-based memory system.
+
+The definitive architectural choice is **Option C: OpenClaw as the hub, with bridge bots acting as the spokes**.
+*   **The Hub (OpenClaw):** Runs the primary "Jarvis" agent natively and manages the shared context and long-term memory for the entire roundtable.
+*   **The Spokes (Bridge Bots):** Separate Discord bot applications (Claude, GLM, Copilot) that run as individual Node.js processes. These bots read the `#roundtable` channel history, interact with their specific backend APIs or Command Line Interfaces (CLIs), and post their responses back to Discord.
+*   **Why this wins:** This structure provides the best of both worlds. Each agent is truly independent, utilizing its native backend (e.g., Claude Code gets actual shell access), while OpenClaw's robust memory and persistence serve as the shared backbone. 
+
+### 2. Agent Personas, Roles, and Accountability
+The #roundtable channel will be populated by four distinct AI agents and one human product owner. Each agent operates with a highly specific mandate dictated by its workspace configuration.
+
+**🤖 Jarvis (The Orchestrator)**
+*   **Model:** `zai/glm-5-turbo`.
+*   **Infrastructure:** Runs natively within the OpenClaw gateway.
+*   **Role & Priority:** Acts as the coordinator and memory manager. Jarvis focuses on the big picture, continuity, and asking "What did we decide last time?".
+*   **Accountability:** Responsible for the decisions log and memory continuity.
+
+**🏛️ Claude (The Execution Authority)**
+*   **Model:** `github-copilot/claude-opus-4.6` (fallback: `zai/glm-5-turbo`).
+*   **Infrastructure:** A Node.js bridge bot (`bot.mjs`) that spawns a `claude -p --output-format json --dangerously-skip-permissions` subprocess, passing the channel history as context.
+*   **Role & Priority:** Deep analysis and actual code execution. Claude focuses on correctness, asking "Does this actually work? Show me the code".
+*   **Accountability:** Working code and functional correctness.
+
+**📐 GLM / OpenCode (The Architect)**
+*   **Model:** `zai/glm-5.1` (fallback: `zai/glm-5-turbo`).
+*   **Infrastructure:** A Node.js bridge bot that connects to the `opencode serve` API on port 4321 via a `POST /session/{id}/message` request.
+*   **Role & Priority:** System planning and cost-efficiency. GLM focuses on tradeoffs, asking "Is this the right approach? Is there a simpler way?".
+*   **Accountability:** Architecture decisions and documentation.
+
+**🔬 Copilot (The IDE Specialist)**
+*   **Model:** `github-copilot/gpt-5.4`.
+*   **Infrastructure:** A Node.js bridge bot utilizing OpenClaw's existing GitHub Copilot auth profile to call the Copilot API.
+*   **Role & Priority:** IDE context, refactoring, and edge cases. 
+*   **Accountability:** Code quality.
+
+### 3. Dynamic Interaction Mechanics & Interruptions
+The system relies on natural conversation rules rather than strict round-robin mechanics. This ensures a dynamic, debate-style environment where agents can bounce ideas off one another.
+
+**Turn-Taking and `SOUL.md` Rules:**
+Each agent is governed by rules established in its `SOUL.md` and `AGENTS.md` files. Agents are programmed to actively jump into the discussion if:
+*   They are directly `@mentioned`.
+*   The conversation enters their specific domain (e.g., code execution automatically triggers Claude, architecture triggers GLM).
+*   Another agent makes a claim that needs to be verified or challenged.
+*   They have a genuine objection or a highly relevant addition.
+
+Conversely, agents must stay silent if the topic is outside their domain, if another agent has already provided a satisfactory answer, or if they would simply be agreeing without adding value. 
+
+**Managing Race Conditions and Concurrency:**
+Because all agents read the same channel history, simultaneous responses are a critical technical challenge. The architecture solves this using **Discord typing indicators combined with debouncing**. If Claude begins processing an execution task and triggers its "typing" state in Discord, the other Node.js bots recognize this state change and defer to their "stay silent" rules unless their domain is explicitly required.
+
+### 4. Advanced Loop Prevention Protocol
+When autonomous agents interact, infinite conversational loops are a massive risk. The architecture implements a strict, 5-layer loop prevention system:
+1.  **Built-in:** Each bot explicitly filters out its own generated messages.
+2.  **Configuration:** The `maxPingPongTurns: 3` setting physically caps continuous reply chains between agents.
+3.  **Per-Channel Scope:** In standard channels, bots only respond to explicit mentions (`allowBots: "mentions"`). The `allowBots: true` setting (allowing bots to respond to other bots organically) is strictly restricted to the `#roundtable` channel.
+4.  **Per-Agent Logic:** The `SOUL.md` files contain explicit instructions on when to stay silent.
+5.  **Circuit-Breaker:** The OpenClaw gateway employs a hard `loopDetection.enabled: true` failsafe.
+
+### 5. Memory, Context, and State Management
+Maintaining a coherent shared reality for the agents is crucial for long-term planning and iteration.
+*   **Shared File Context:** The architecture utilizes a specific directory (`shared/context/`) containing `recent-summary.md` and `decisions.md`. After responding, bots write summaries to these shared files to establish a rolling log of accountability.
+*   **OpenClaw Embeddings:** Jarvis utilizes OpenClaw's native embedding search (`nomic-embed-text`) and daily logs to serve as the long-term memory backbone for the entire channel.
+*   **ACP Bindings:** To ensure agents can plan and implement effectively, the Agent Control Protocol (ACP) runtime is enabled (`runtime.type: "acp"`). These persistent ACP bindings allow state to carry across conversations, granting Claude and OpenCode true CLI session continuity rather than isolated API calls.
+
+### 6. Directory Structure and Workspace Configuration
+The overarching project lives in `~/dev/OsMEN-OC/roundtable/`.
+
+**The Configuration modifications (`~/.openclaw/openclaw.json`):**
+To bind this together, the gateway must support multi-account routing.
+*   Add `claude` and `opencode` to the `agents.list`.
+*   Convert `channels.discord` to multi-account, linking `accounts.default`, `accounts.claude`, and `accounts.opencode` to their respective Discord bot tokens.
+*   Establish explicit routing bindings so that the correct Discord account routes to the correct OpenClaw internal agent logic.
+*   Enable inter-agent communication via `tools.agentToAgent.allow: ["main", "claude", "opencode"]`.
+
+**The Agent Workspaces:**
+Each agent requires a dedicated workspace containing identical files tailored to their persona:
+*   `~/.openclaw/workspace-claude/`
+*   `~/.openclaw/workspace-opencode/`
+*   **Files required per workspace:** `IDENTITY.md` (Name and role), `SOUL.md` (When to speak vs. stay silent), `AGENTS.md` (Roundtable team awareness so agents know who their peers are), and `USER.md`.
+
+### 7. Phased Execution Roadmap
+**Phase 1: Minimum Viable Roundtable (~45 min)**
+Create the Discord Bot applications in the Developer Portal (enabling Message Content and Presence intents). Define the agent workspaces and modify `openclaw.json` for multi-account bindings. Create the `#roundtable` channel and verify that Jarvis and Claude can interact.
+
+**Phase 2: Cross-Agent Awareness & GLM Integration (~1-2 days)**
+Introduce the GLM bridge bot via the OpenCode API. Update the `AGENTS.md` files to include the "Roundtable Team" section, detailing each member's role. Implement the shared context protocol where bots summarize their actions into shared files. 
+
+**Phase 3: ACP Integration & Shared Memory (~2-3 days)**
+Activate the ACP runtime for persistent CLI sessions. Position the OpenClaw gateway as the central memory API, allowing bridge bots to read/write long-term memory. Ensure accountability is tracked in the `decisions.md` log.
+
+**Phase 4: Copilot Integration & IDE Context (~2-3 days)**
+Introduce the VS Code bridge bot using the GitHub Copilot API. Feed IDE context, such as open files and diagnostics, directly into the `#roundtable` discussions for code review.
+
+**Phase 5: Orchestration & Cost Control (Ongoing)**
+Implement round-robin timers for check-ins, track token usage across the expensive models (like Opus 4.6), and establish human notification protocols for decisions requiring explicit product owner approval.

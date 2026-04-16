@@ -1,0 +1,212 @@
+agent discussion -claude plan.md
+Here is Claude's plan:
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Multi-Agent Discord Roundtable                         
+
+ Context
+
+ You want multiple AI agents (Jarvis/OpenClaw, Claude Code,
+ OpenCode) to participate in a Discord channel as first-class
+ members — each with its own bot identity, personality, and
+ expertise. They see the same channel history, take turns
+ naturally, and coordinate as a team.
+
+ The key discovery: OpenClaw natively supports this via
+ multi-account Discord bindings. No separate Node scripts
+ needed. One gateway process, three agents, three bot
+ accounts.
+
+ Architecture
+
+ Discord #roundtable channel
+ ├── 🤖 Jarvis  (OpenClaw, zai/glm-5-turbo)     —
+ orchestrator, general intelligence
+ ├── 🏛️  Claude  (github-copilot/claude-opus-4.6) — execution
+ authority, code
+ └── 📐 OpenCode (zai/glm-5.1)                   —
+ architecture, planning
+
+ All three run inside one OpenClaw gateway. Each agent has:
+ - Its own Discord bot token and account
+ - Its own workspace directory (IDENTITY.md, SOUL.md,
+ AGENTS.md)
+ - Its own model routing
+ - Its own session store
+
+ What Already Exists (no building needed)
+
+ - allowBots: true in config — Jarvis already processes bot
+ messages
+ - agentToAgent: { enabled: true } — multi-agent infra enabled
+ - Multi-account support via channels.discord.accounts +
+ bindings
+ - coding-agent skill — already knows how to spawn Claude
+ Code/OpenCode CLIs
+ - Auth profiles for all model providers
+ - Memory system with embeddings
+
+ Phase 1: Minimum Viable Roundtable (~45 min)
+
+ Step 1: Create Discord Bot Applications
+
+ - Create "Claude" and "OpenCode" bot applications in Discord
+ Developer Portal
+ - Enable: Message Content Intent, Server Members Intent,
+ Presence Intent
+ - Invite both to your guild with same permissions as Jarvis
+ - Store tokens as env vars: DISCORD_BOT_TOKEN_CLAUDE,
+ DISCORD_BOT_TOKEN_OPENCODE
+
+ Step 2: Create Agent Workspaces
+
+ Create two new workspace directories:
+
+ ~/.openclaw/workspace-claude/
+   IDENTITY.md  — name "Claude", role: execution authority
+   SOUL.md      — when to respond vs stay silent
+   AGENTS.md    — roundtable team awareness
+   USER.md      — copied from Jarvis workspace
+
+ ~/.openclaw/workspace-opencode/
+   IDENTITY.md  — name "OpenCode", role: architect/planner
+   SOUL.md      — when to respond vs stay silent
+   AGENTS.md    — roundtable team awareness
+   USER.md      — copied from Jarvis workspace
+
+ Step 3: Modify ~/.openclaw/openclaw.json
+
+ a) Expand agents.list — add claude and opencode agents:
+ - Claude: model github-copilot/claude-opus-4.6, fallback
+ zai/glm-5-turbo
+ - OpenCode: model zai/glm-5.1, fallback zai/glm-5-turbo
+ - Each gets subset of skills: coding-agent, discord, github,
+ mcporter, summarize, tmux
+ - Each gets groupChat.mentionPatterns for its name variants
+
+ b) Convert channels.discord to multi-account:
+ - accounts.default — existing Jarvis token (env
+ DISCORD_BOT_TOKEN)
+ - accounts.claude — new token (env DISCORD_BOT_TOKEN_CLAUDE)
+ - accounts.opencode — new token (env
+ DISCORD_BOT_TOKEN_OPENCODE)
+
+ c) Add top-level bindings — route accounts to agents:
+ [
+   { "agentId": "main", "match": { "channel": "discord",
+ "accountId": "default" } },
+   { "agentId": "claude", "match": { "channel": "discord",
+ "accountId": "claude" } },
+   { "agentId": "opencode", "match": { "channel": "discord",
+ "accountId": "opencode" } }
+ ]
+
+ d) Add agent-to-agent + loop protection:
+ - tools.agentToAgent.allow: ["main", "claude", "opencode"]
+ - session.agentToAgent.maxPingPongTurns: 3
+
+ Step 4: Copy Auth Profiles
+
+ cp ~/.openclaw/agents/main/agent/auth-profiles.json
+ ~/.openclaw/agents/claude/agent/
+ cp ~/.openclaw/agents/main/agent/auth-profiles.json
+ ~/.openclaw/agents/opencode/agent/
+
+ Step 5: Create #roundtable Discord Channel
+
+ - Per-channel override: allowBots: true, requireMention:
+ false
+ - Other channels stay strict: allowBots: "mentions" or false
+
+ Step 6: Restart & Verify
+
+ openclaw gateway restart
+ Test: @mention each bot in #roundtable, confirm each responds
+  with its own identity.
+
+ Phase 2: Cross-Agent Awareness (~1 hr)
+
+ - Add "Roundtable Team" section to each agent's AGENTS.md
+ listing all three members and their roles
+ - Tune loop prevention: allowBots: "mentions" on
+ non-roundtable channels, true only on #roundtable
+ - Jarvis SOUL.md gets updated with delegation instructions
+ (when to call Claude vs OpenCode)
+
+ Phase 3: ACP Integration for Full CLI Capabilities (~2-3 hrs)
+
+ - Enable ACP runtime on Claude and OpenCode agents
+ (runtime.type: "acp")
+ - This gives them actual Claude Code and OpenCode CLI
+ sessions, not just model API calls
+ - Persistent ACP bindings per Discord channel so state
+ carries across conversations
+
+ Phase 4: Orchestrator + Shared Memory (future)
+
+ - Jarvis uses sessions_spawn to delegate coding tasks to
+ Claude
+ - Cross-agent memory search (QMD collections pointing to each
+  other's sessions)
+ - Custom roundtable skill for Jarvis with delegation protocol
+
+ Loop Prevention (critical)
+
+ ┌─────────────────┬───────────────────────────────────────┐
+ │      Layer      │               Mechanism               │
+ ├─────────────────┼───────────────────────────────────────┤
+ │ Built-in        │ Each bot filters out its own messages │
+ ├─────────────────┼───────────────────────────────────────┤
+ │ Config          │ maxPingPongTurns: 3 caps reply chains │
+ ├─────────────────┼───────────────────────────────────────┤
+ │ Per-channel     │ allowBots: "mentions" on most         │
+ │                 │ channels, true only on #roundtable    │
+ ├─────────────────┼───────────────────────────────────────┤
+ │ Per-agent       │ SOUL.md "when to stay silent" rules   │
+ ├─────────────────┼───────────────────────────────────────┤
+ │ Circuit-breaker │ loopDetection.enabled: true           │
+ └─────────────────┴───────────────────────────────────────┘
+
+ Files to Create/Modify
+
+ File: ~/.openclaw/openclaw.json
+ Action: Modify — add agents, accounts, bindings
+ ────────────────────────────────────────
+ File: ~/.openclaw/workspace-claude/IDENTITY.md
+ Action: Create
+ ────────────────────────────────────────
+ File: ~/.openclaw/workspace-claude/SOUL.md
+ Action: Create
+ ────────────────────────────────────────
+ File: ~/.openclaw/workspace-claude/AGENTS.md
+ Action: Create
+ ────────────────────────────────────────
+ File: ~/.openclaw/workspace-claude/USER.md
+ Action: Create (copy from Jarvis)
+ ────────────────────────────────────────
+ File: ~/.openclaw/workspace-opencode/IDENTITY.md
+ Action: Create
+ ────────────────────────────────────────
+ File: ~/.openclaw/workspace-opencode/SOUL.md
+ Action: Create
+ ────────────────────────────────────────
+ File: ~/.openclaw/workspace-opencode/AGENTS.md
+ Action: Create
+ ────────────────────────────────────────
+ File: ~/.openclaw/workspace-opencode/USER.md
+ Action: Create (copy from Jarvis)
+ ────────────────────────────────────────
+ File: ~/.openclaw/agents/claude/agent/auth-profiles.json
+ Action: Create (copy from main)
+ ────────────────────────────────────────
+ File: ~/.openclaw/agents/opencode/agent/auth-profiles.json
+ Action: Create (copy from main)
+
+ Verification
+
+ 1. Restart gateway — check for three bot accounts connecting
+ 2. Post "Hello team" in #roundtable — all three should see it
+ 3. @Claude mention — Claude bot responds, others stay silent
+ 4. Ask an architecture question — OpenCode should chime in
+ 5. Ask for code — Claude should respond
+ 6. Test loop prevention: don't @mention anyone, verify bots
+ don't chain infinitely
