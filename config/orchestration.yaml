@@ -1,0 +1,137 @@
+# Orchestration configuration for OsMEN-OC.
+# Controls workflow engines, watchdogs, session classification,
+# and memory bridge behavior.
+#
+# Loaded by core/orchestration/gateway.py during gateway startup.
+
+version: 1
+
+# ── Session Classifier ──────────────────────────────────────────────────────
+
+session:
+  # Seconds of inactivity before a running workflow is considered stale.
+  stale_threshold_seconds: 300
+
+  # Seconds for which a completed workflow's result is considered fresh.
+  # Repeated similar requests within this window reuse the cached result.
+  freshness_window_seconds: 3600
+
+  # Default execution mode when no explicit mode is specified.
+  default_mode: cooperative  # cooperative | discussion
+
+  # Custom classification rules (matched before defaults, first match wins).
+  classification_rules:
+    - pattern: "investigate"
+      request_class: "task"
+    - pattern: "audit"
+      request_class: "task"
+    - pattern: "optimize"
+      request_class: "task"
+    - pattern: "refactor"
+      request_class: "task"
+
+# ── Mode A: Cooperative Workflow ────────────────────────────────────────────
+
+cooperative:
+  # Dispatch loop polling interval (seconds).
+  dispatch_interval_seconds: 2
+
+  # Maximum concurrent work items per workflow.
+  max_concurrent_items: 10
+
+  # Default driver agent for decomposition.
+  default_driver_agent: research
+
+  # How long to wait for a work item to be picked up before re-offering.
+  assignment_timeout_seconds: 120
+
+# ── Mode B: Discussion ─────────────────────────────────────────────────────
+
+discussion:
+  # Maximum ATTACK → REPAIR iterations before forcing synthesis.
+  max_rounds: 3
+
+  # Time to wait for agents to submit claims (seconds).
+  claim_timeout_seconds: 60
+
+  # Time to wait for attack critiques per round (seconds).
+  attack_timeout_seconds: 45
+
+  # Time to wait for claim repairs per round (seconds).
+  repair_timeout_seconds: 45
+
+  # Fraction of claims that must stabilize for convergence.
+  convergence_threshold: 0.7
+
+  # Minimum number of claims required before starting the attack phase.
+  min_claims_to_start: 2
+
+# ── Watchdogs ───────────────────────────────────────────────────────────────
+
+watchdogs:
+  token_budget:
+    # Maximum cumulative input tokens per workflow.
+    max_tokens_in: 200000
+    # Maximum cumulative output tokens per workflow.
+    max_tokens_out: 100000
+    # Emit warning at this percentage of budget.
+    warn_percent: 80
+
+  novelty:
+    # Sliding window of recent notes to evaluate.
+    window_size: 20
+    # Minimum unique/total ratio before triggering.
+    min_novelty_ratio: 0.3
+    # Don't check until at least this many notes produced.
+    min_notes_before_check: 5
+
+  velocity:
+    # Maximum swarm notes per minute.
+    max_notes_per_minute: 30
+    # Maximum receipts per minute.
+    max_receipts_per_minute: 10
+    # Sliding window for rate calculation (seconds).
+    window_seconds: 60
+
+  receipt:
+    # Seconds to wait for a receipt before triggering.
+    timeout_seconds: 120
+
+# ── Memory Bridge ───────────────────────────────────────────────────────────
+
+memory_bridge:
+  # Minimum confidence for swarm notes to be promoted to memory.
+  min_note_confidence: 0.7
+
+  # Maximum notes extracted per completed workflow.
+  max_notes_per_workflow: 10
+
+  # Whether to auto-persist on workflow completion.
+  auto_persist: true
+
+  # Memory types for different artifact kinds.
+  type_mapping:
+    decision: "decision"
+    synthesis: "context"
+    error: "learning"
+    claim_accepted: "fact"
+    high_confidence_note: "observation"
+
+# ── Bridge Adapter ──────────────────────────────────────────────────────────
+
+bridge:
+  # Message types that trigger orchestration workflows.
+  # Other types are logged and dropped.
+  handled_types:
+    - task_request
+    - conversation
+    - approval_response
+
+  # Default mode for task_request messages.
+  task_request_mode: cooperative
+
+  # Default mode for conversation messages.
+  conversation_mode: discussion
+
+  # Whether to emit events on the bus for every routed message.
+  emit_events: true

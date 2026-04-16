@@ -203,9 +203,24 @@ async def lifespan(app: FastAPI):
         except Exception as exc:
             logger.warning("Pipeline runner failed to start: {}", exc)
 
+    # --- Orchestration engine (optional, requires pg_pool) ---
+    try:
+        from core.orchestration.gateway import init_orchestration, shutdown_orchestration
+
+        await init_orchestration(app)
+    except Exception as exc:
+        logger.warning("Orchestration engine failed to initialise: {}", exc)
+
     yield
 
     # --- Shutdown ---
+    try:
+        from core.orchestration.gateway import shutdown_orchestration
+
+        await shutdown_orchestration(app)
+    except Exception:
+        pass
+
     if pipeline_runner is not None:
         await pipeline_runner.stop()
         logger.info("Pipeline runner stopped")
