@@ -55,6 +55,8 @@ from loguru import logger
 
 from core.gateway.handlers import HandlerContext, register_handler
 from core.memory.chunking import chunk_text
+from core.vision import ImageGenClient, VisionClient
+from core.vision.client import VisionBackend
 
 _MAX_FETCH_BYTES = 10 * 1024 * 1024  # 10 MiB
 _MAX_REDIRECT_HOPS = 5
@@ -2086,3 +2088,159 @@ async def handle_get_npu_status(
         base["driver_loaded"] = False
 
     return base
+
+
+@register_handler("analyze_image")
+async def handle_analyze_image(
+    parameters: dict[str, Any], context: HandlerContext
+) -> dict[str, Any]:
+    """Analyze an image via local NPU with optional cloud fallback."""
+    prompt = str(parameters.get("prompt", "")).strip()
+    if not prompt:
+        return {"status": "error", "detail": "Missing required parameter: prompt"}
+
+    image_path_raw = parameters.get("image_path")
+    image_url = parameters.get("image_url")
+    if not image_path_raw and not image_url:
+        return {
+            "status": "error",
+            "detail": "Provide one of: image_path or image_url",
+        }
+
+    force_backend = None
+    force_backend_raw = parameters.get("force_backend")
+    if force_backend_raw:
+        try:
+            force_backend = VisionBackend(str(force_backend_raw))
+        except ValueError:
+            return {
+                "status": "error",
+                "detail": "force_backend must be one of: local_npu, cloud_glm",
+            }
+
+    cloud_api_key = _os.environ.get("ZAI_API_KEY")
+    local_base_url = _os.environ.get(
+        "VISION_LOCAL_BASE_URL", "http://host.containers.internal:8001/v1"
+    )
+    if force_backend is None and not cloud_api_key:
+        # Avoid cloud fallback failure when no API key is configured.
+        force_backend = VisionBackend.LOCAL_NPU
+
+    client = VisionClient(
+        local_base_url=local_base_url,
+        cloud_api_key=cloud_api_key,
+    )
+    image_path = _Path(str(image_path_raw)) if image_path_raw else None
+    try:
+        result = await client.analyze_image(
+            prompt,
+            image_path=image_path,
+            image_url=str(image_url) if image_url else None,
+            force_backend=force_backend,
+        )
+    except Exception as exc:
+        return {"status": "error", "detail": str(exc)}
+    return {
+        "status": "ok",
+        "text": result.text,
+        "backend": result.backend_used.value,
+        "model": result.model,
+        "usage": result.usage,
+    }
+
+
+@register_handler("ocr_extract")
+async def handle_ocr_extract(
+    parameters: dict[str, Any], context: HandlerContext
+) -> dict[str, Any]:
+    """Extract text from an image via the vision stack."""
+    image_path_raw = parameters.get("image_path")
+    image_url = parameters.get("image_url")
+    if not image_path_raw and not image_url:
+        return {
+            "status": "error",
+            "detail": "Provide one of: image_path or image_url",
+        }
+
+    language_hint = str(parameters.get("language_hint", "English"))
+
+    force_backend = None
+    force_backend_raw = parameters.get("force_backend")
+    if force_backend_raw:
+        try:
+            force_backend = VisionBackend(str(force_backend_raw))
+        except ValueError:
+            return {
+                "status": "error",
+                "detail": "force_backend must be one of: local_npu, cloud_glm",
+            }
+
+    cloud_api_key = _os.environ.get("ZAI_API_KEY")
+    local_base_url = _os.environ.get(
+        "VISION_LOCAL_BASE_URL", "http://host.containers.internal:8001/v1"
+    )
+    if force_backend is None and not cloud_api_key:
+        force_backend = VisionBackend.LOCAL_NPU
+
+    client = VisionClient(
+        local_base_url=local_base_url,
+        cloud_api_key=cloud_api_key,
+    )
+    image_path = _Path(str(image_path_raw)) if image_path_raw else None
+    try:
+        result = await client.ocr(
+            image_path=image_path,
+            image_url=str(image_url) if image_url else None,
+            language_hint=language_hint,
+            force_backend=force_backend,
+        )
+    except Exception as exc:
+        return {"status": "error", "detail": str(exc)}
+    return {
+        "status": "ok",
+        "text": result.text,
+        "backend": result.backend_used.value,
+        "model": result.model,
+        "usage": result.usage,
+    }
+
+
+@register_handler("generate_image")
+async def handle_generate_image(
+    parameters: dict[str, Any], context: HandlerContext
+) -> dict[str, Any]:
+    """Generate an image via on-demand sd-cpp and return file path + metadata."""
+    prompt = str(parameters.get("prompt", "")).strip()
+    if not prompt:
+        return {"status": "error", "detail": "Missing required parameter: prompt"}
+
+    model = str(parameters.get("model", "SD-Turbo"))
+    negative_prompt = str(parameters.get("negative_prompt", ""))
+    size = str(parameters.get("size", "512x512"))
+
+    if _shutil.which("lemonade") is None:
+        return {
+            "status": "error",
+            "detail": (
+                "lemonade CLI not available in gateway runtime. "
+                "Install lemonade in the gateway image or route generate_image "
+                "to a host-side image generation service."
+            ),
+        }
+
+    client = ImageGenClient(model=model)
+    try:
+        result = await client.generate(
+            prompt,
+            negative_prompt=negative_prompt,
+            size=size,
+            save=True,
+        )
+    except Exception as exc:
+        return {"status": "error", "detail": str(exc)}
+    return {
+        "status": "ok",
+        "model": result.model,
+        "revised_prompt": result.revised_prompt,
+        "output_path": str(result.output_path) if result.output_path else None,
+    }

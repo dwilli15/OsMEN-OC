@@ -9,6 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
+import core.gateway.builtin_handlers  # noqa: F401
+from core.gateway.handlers import HandlerContext, handler_registry
 from core.utils.exceptions import ImageGenError, VisionError
 from core.vision.client import (
     VisionBackend,
@@ -577,6 +579,65 @@ class TestImageGenClient:
 
         assert path.exists()
         assert image_gen_client._output_dir.exists()
+
+
+# ── Vision MCP handler integration ────────────────────────────────
+
+
+class TestVisionHandlers:
+    def test_handlers_registered(self) -> None:
+        assert handler_registry.has("analyze_image")
+        assert handler_registry.has("ocr_extract")
+        assert handler_registry.has("generate_image")
+
+    @pytest.mark.anyio
+    async def test_analyze_image_handler_missing_prompt(self) -> None:
+        result = await handler_registry.execute(
+            "analyze_image",
+            {"image_url": "https://example.com/image.png"},
+            HandlerContext(agent_id="vision_tools"),
+        )
+        assert result["status"] == "error"
+        assert "prompt" in result["detail"]
+
+    @pytest.mark.anyio
+    async def test_generate_image_handler_missing_prompt(self) -> None:
+        result = await handler_registry.execute(
+            "generate_image",
+            {},
+            HandlerContext(agent_id="vision_tools"),
+        )
+        assert result["status"] == "error"
+        assert "prompt" in result["detail"]
+
+    @pytest.mark.anyio
+    async def test_analyze_image_handler_success(self) -> None:
+        fake_result = VisionResult(
+            text="A test image",
+            backend_used=VisionBackend.LOCAL_NPU,
+            model="qwen3.5-4b-FLM",
+            usage={"prompt_tokens": 10, "completion_tokens": 5},
+        )
+
+        with patch("core.gateway.builtin_handlers.VisionClient") as mock_client_cls:
+            mock_client = MagicMock()
+            mock_client.analyze_image = AsyncMock(return_value=fake_result)
+            mock_client_cls.return_value = mock_client
+
+            result = await handler_registry.execute(
+                "analyze_image",
+                {
+                    "prompt": "describe",
+                    "image_url": "https://example.com/image.png",
+                },
+                HandlerContext(agent_id="vision_tools"),
+            )
+
+        assert result["status"] == "ok"
+        assert result["text"] == "A test image"
+        assert result["backend"] == "local_npu"
+        assert result["model"] == "qwen3.5-4b-FLM"
+        assert result["usage"]["prompt_tokens"] == 10
 
 
 # ── Agent manifest integration ─────────────────────────────────────
