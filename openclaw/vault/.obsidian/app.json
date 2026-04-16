@@ -1,0 +1,10 @@
+{
+  "defaultViewMode": "preview",
+  "livePreview": true,
+  "readableLineLength": true,
+  "showLineNumber": true,
+  "spellcheck": true,
+  "attachmentFolderPath": "attachments",
+  "newFileLocation": "current",
+  "promptDelete": false
+}

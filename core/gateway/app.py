@@ -22,7 +22,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import PlainTextResponse
 from loguru import logger
 from pydantic import BaseModel
@@ -207,6 +207,22 @@ async def lifespan(app: FastAPI):
         except Exception as exc:
             logger.warning("Pipeline runner failed to start: {}", exc)
 
+    # --- Taskwarrior sync worker (optional, requires event bus) ---
+    task_sync_worker = None
+    if hasattr(app.state, "event_bus") and not isinstance(app.state.event_bus, type(None)):
+        try:
+            from core.tasks.sync import TaskSyncWorker
+
+            task_sync_worker = TaskSyncWorker(
+                event_bus=app.state.event_bus,
+                poll_interval=2.0,
+            )
+            asyncio.create_task(task_sync_worker.run())
+            app.state.task_sync_worker = task_sync_worker
+            logger.info("Taskwarrior sync worker started")
+        except Exception as exc:
+            logger.warning("Taskwarrior sync worker failed to start: {}", exc)
+
     # --- Orchestration engine (optional, requires pg_pool) ---
     try:
         from core.orchestration.gateway import init_orchestration, shutdown_orchestration
@@ -218,6 +234,11 @@ async def lifespan(app: FastAPI):
     yield
 
     # --- Shutdown ---
+    # Stop task sync worker
+    if hasattr(app.state, "task_sync_worker") and app.state.task_sync_worker is not None:
+        app.state.task_sync_worker.stop()
+        logger.info("Taskwarrior sync worker stopped")
+
     try:
         from core.orchestration.gateway import shutdown_orchestration
 
@@ -360,6 +381,79 @@ async def metrics() -> PlainTextResponse:
         f'osmen_gateway_workflow_engines_active {sum(x is not None for x in (coop, discussion))}',
     ]
     return PlainTextResponse('\n'.join(lines) + '\n', media_type='text/plain; version=0.0.4')
+
+
+# ---------------------------------------------------------------------------
+# Taskwarrior reports / filters
+# ---------------------------------------------------------------------------
+
+
+@app.get("/tasks/summary", tags=["tasks"])
+async def tasks_summary() -> dict[str, Any]:
+    """Return a summary of Taskwarrior tasks grouped by project and status.
+
+    Requires ``task`` binary available in the container.  If not installed,
+    returns a placeholder response.  For production use, mount the host
+    ``/usr/bin/task`` and ``~/.task`` into the container.
+    """
+    import shutil
+    import subprocess
+
+    if not shutil.which("task"):
+        return {
+            "total": 0,
+            "by_project": {},
+            "note": "taskwarrior binary not available in container; mount /usr/bin/task and ~/.taskrc",
+        }
+
+    try:
+        result = subprocess.run(
+            ["task", "rc:/root/.taskrc", "rc.json.array=on", "export"],
+            capture_output=True, text=True, timeout=10,
+        )
+        tasks = _json.loads(result.stdout) if result.stdout.strip() else []
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    by_project: dict[str, dict[str, int]] = {}
+    for t in tasks:
+        proj = t.get("project", "(none)")
+        status = t.get("status", "unknown")
+        by_project.setdefault(proj, {"pending": 0, "completed": 0, "waiting": 0, "deleted": 0})
+        by_project[proj][status] = by_project[proj].get(status, 0) + 1
+
+    return {
+        "total": len(tasks),
+        "by_project": by_project,
+    }
+
+
+@app.get("/tasks/pending", tags=["tasks"])
+async def tasks_pending(
+    project: str | None = None,
+    limit: int = 50,
+) -> list[dict[str, Any]]:
+    """Return pending Taskwarrior tasks, optionally filtered by project.
+
+    Requires ``task`` binary available in the container.
+    """
+    import shutil
+    import subprocess
+
+    if not shutil.which("task"):
+        return [{"note": "taskwarrior binary not available in container"}]
+
+    cmd = ["task", "rc:/root/.taskrc", "rc.json.array=on", "status:pending"]
+    if project:
+        cmd.append(f"project:{project}")
+    cmd.append("export")
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        tasks = _json.loads(result.stdout) if result.stdout.strip() else []
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return tasks[:limit]
 
 
 # ---------------------------------------------------------------------------
@@ -659,6 +753,57 @@ async def invoke_tool(
         result=handler_result,
         message=gate_result.reason,
     )
+
+
+# ---------------------------------------------------------------------------
+# Tautulli webhook receiver
+# ---------------------------------------------------------------------------
+
+
+class WebhookResponse(BaseModel):
+    status: str = "ok"
+    event: str = ""
+
+
+@app.post(
+    "/webhooks/tautulli",
+    response_model=WebhookResponse,
+    tags=["webhooks"],
+)
+async def tautulli_webhook(
+    request: Request,
+    event_bus: EventBusDep,
+) -> WebhookResponse:
+    """Receive Tautulli webhook notifications and publish as events.
+
+    Tautulli POSTs form-encoded data here on play, stop, watched, and
+    newly-added events.  We normalize the payload into an
+    :class:`~core.events.envelope.EventEnvelope` and publish it on the
+    event bus so downstream consumers (dashboard, notifications, etc.)
+    can react.
+    """
+    form = await request.form()
+    event_type = str(form.get("event_type", "unknown"))
+    payload = {k: str(v) for k, v in form.items()}
+
+    event = EventEnvelope(
+        domain="media",
+        category="tautulli",
+        source="tautulli",
+        correlation_id=f"tautulli-{event_type}-{payload.get('rating_key', 'unknown')}",
+        priority=EventPriority.LOW,
+        payload=payload,
+    )
+    try:
+        await event_bus.publish(event)
+    except EventBusError as exc:
+        logger.error("Event bus publish failed for Tautulli webhook: {}", exc)
+        raise HTTPException(
+            status_code=500,
+            detail={"error": "event_bus_error", "detail": str(exc)},
+        )
+
+    return WebhookResponse(event=event_type)
 
 
 # ---------------------------------------------------------------------------

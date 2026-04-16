@@ -243,3 +243,12 @@ class ChromaStore:
         if self._async_client is not None and not self._async_client.is_closed:
             await self._async_client.aclose()
         self._client.close()
+
+# ---------------------------------------------------------------------------
+# DEPRECATION NOTICE (P14.28)
+# ---------------------------------------------------------------------------
+# This module wraps ChromaDB REST API and is considered LEGACY.
+# New consumers should use MemoryHub (core/memory/hub.py) which uses
+# PostgreSQL + pgvector for vector storage.
+# ChromaDB remains available for backward compatibility during migration.
+# ---------------------------------------------------------------------------

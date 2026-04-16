@@ -23,12 +23,13 @@
 ## Shared State
 
 - **Branch**: `install/fresh-setup-20260407`
+- **HEAD**: `c31a44e` — fix(gateway): podman-only runtime + vision MCP handler wiring
 - **Repo state**: run `git status --short` before acting
-- **Live services**: OpenClaw `:18789`, Lemonade `:13305`, Ollama `:11434`
+- **Tests**: 671 passed, 0 failed (2026-04-16)
+- **Services**: 27 running, 1 failed (osmen-memory-maintenance.service)
+- **Live services**: OpenClaw `:18789`, Gateway `:18788` (42 MCP tools), Lemonade `:13305`, Ollama `:11434`
+- **Latest handoff**: [2026-04-16_handoff.md](2026-04-16/2026-04-16_handoff.md)
 - **Latest reconciliation ledger**: [RECONCILIATION_LEDGER.md](../../temp_1st_install/RECONCILIATION_LEDGER.md)
-- **Latest orchestration direction**: [2026-04-14_235950_handoff.md](2026-04-14/2026-04-14_235950_handoff.md)
-- **Latest orchestration build handoff**: [2026-04-14_234500_handoff.md](2026-04-14/2026-04-14_234500_handoff.md)
-- **Latest media recon handoff**: [handoff_2026-04-14_144435/handoff.md](2026-04-14/handoff_2026-04-14_144435/handoff.md)
 - **Audit dispatch surface**: [install-audit-dispatch.md](/home/dwill/dev/OsMEN-OC/openclaw/state/install-audit-dispatch.md)
 
 ## Resume Rule
@@ -41,7 +42,8 @@
 
 ## Current Priority
 
-- **Primary lane remains P19**, but the next executable tranche is the verified Tier 1 stabilization work in the reconciliation ledger.
-- **Clear or explicitly defer the five quick wins first**: timer service definitions, quadlet hardening, Plex handler tests, and the backup env-path mismatch.
-- **Resume package/model work in P19 immediately after that tranche**, starting with `core/orchestration/` and typed models.
+- **Primary lane remains P19** — 24 tasks, `core/orchestration/` doesn't exist yet, no stabilization gate remaining.
+- **Start with P19.1** (package skeleton) → **P19.7** (typed models) → **P19.2-3-5** (registry, ledger, session).
+- **Fix `osmen-memory-maintenance.service`** — the only failed service. Quick win.
 - **P17 stays supporting work** and should not outrun the runtime that P19 creates.
+- **User-blocked tasks**: P10.6/P10.8 (creds), P13.8 (Plex), P16.4 (Nextcloud), P17.5 (calendar), P20.1 (Steam) — do not attempt.

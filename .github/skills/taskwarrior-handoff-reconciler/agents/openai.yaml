@@ -1,0 +1,4 @@
+interface:
+  display_name: "Taskwarrior Handoff Reconciler"
+  short_description: "Turn drifting handoffs into a verified TW-first backlog"
+  default_prompt: "Use $taskwarrior-handoff-reconciler to reconcile handoffs, verify completed work, and rewrite Taskwarrior as the source of truth."

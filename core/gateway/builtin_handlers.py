@@ -2244,3 +2244,114 @@ async def handle_generate_image(
         "revised_prompt": result.revised_prompt,
         "output_path": str(result.output_path) if result.output_path else None,
     }
+
+
+# ---------------------------------------------------------------------------
+# Taskwarrior sync tools
+# ---------------------------------------------------------------------------
+
+@register_handler("get_pending_tasks")
+async def _get_pending_tasks(params: dict) -> dict:
+    """List pending Taskwarrior tasks, optionally filtered."""
+    import subprocess
+    import json as _json
+
+    project = params.get("project")
+    tag = params.get("tag")
+    limit = params.get("limit", 50)
+
+    cmd = ["task", "rc:/root/.taskrc", "rc.json.array=on", "status:pending"]
+    if project:
+        cmd.append(f"project:{project}")
+    if tag:
+        cmd.append(f"+{tag}")
+    cmd.append("export")
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        tasks = _json.loads(result.stdout) if result.stdout.strip() else []
+    except FileNotFoundError:
+        return {"status": "error", "detail": "taskwarrior not available in container"}
+    except Exception as exc:
+        return {"status": "error", "detail": str(exc)}
+
+    return {"status": "ok", "count": len(tasks[:limit]), "tasks": tasks[:limit]}
+
+
+@register_handler("create_task")
+async def _create_task(params: dict) -> dict:
+    """Create a new Taskwarrior task."""
+    import subprocess
+
+    description = params.get("description", "")
+    if not description:
+        return {"status": "error", "detail": "description is required"}
+
+    cmd = ["task", "rc:/root/.taskrc", "add", description]
+    project = params.get("project")
+    if project:
+        cmd.insert(3, f"project:{project}")
+    due = params.get("due")
+    if due:
+        cmd.insert(3, f"due:{due}")
+    tag = params.get("tag")
+    if tag:
+        cmd.insert(3, f"+{tag}")
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        if result.returncode != 0:
+            return {"status": "error", "detail": result.stderr.strip()}
+    except FileNotFoundError:
+        return {"status": "error", "detail": "taskwarrior not available"}
+    except Exception as exc:
+        return {"status": "error", "detail": str(exc)}
+
+    return {"status": "ok", "output": result.stdout.strip()}
+
+
+@register_handler("complete_task")
+async def _complete_task(params: dict) -> dict:
+    """Mark a Taskwarrior task as done."""
+    import subprocess
+
+    task_id = params.get("task_id", "")
+    if not task_id:
+        return {"status": "error", "detail": "task_id is required"}
+
+    try:
+        result = subprocess.run(
+            ["task", "rc:/root/.taskrc", str(task_id), "done"],
+            capture_output=True, text=True, timeout=10,
+        )
+        if result.returncode != 0:
+            return {"status": "error", "detail": result.stderr.strip()}
+    except FileNotFoundError:
+        return {"status": "error", "detail": "taskwarrior not available"}
+    except Exception as exc:
+        return {"status": "error", "detail": str(exc)}
+
+    return {"status": "ok", "output": result.stdout.strip()}
+
+
+@register_handler("sync_tasks")
+async def _sync_tasks(params: dict) -> dict:
+    """Placeholder for bidirectional Taskwarrior <-> Google Calendar sync.
+
+    Calendar integration is deferred until Google Calendar OAuth is configured.
+    """
+    direction = params.get("direction", "bidirectional")
+    dry_run = params.get("dry_run", False)
+
+    if dry_run:
+        return {
+            "status": "ok",
+            "message": f"Dry-run {direction} sync: calendar integration not yet configured.",
+            "direction": direction,
+        }
+
+    return {
+        "status": "ok",
+        "message": "Calendar sync deferred until OAuth is configured.",
+        "direction": direction,
+    }

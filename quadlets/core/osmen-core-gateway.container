@@ -45,6 +45,10 @@ SecurityLabelDisable=true
 NoNewPrivileges=true
 ReadOnly=true
 
+# Taskwarrior data for /tasks/* endpoints (binary installed in image).
+Volume=%h/.taskrc:/root/.taskrc:ro
+Volume=%h/.task:/root/.task
+
 [Service]
 Restart=always
 RestartSec=5s
@@ -54,3 +58,4 @@ CPUQuota=200%
 
 [Install]
 WantedBy=default.target
+# placeholder
