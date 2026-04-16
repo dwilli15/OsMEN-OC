@@ -28,8 +28,11 @@ DEPLOY_SCRIPT = REPO_ROOT / "scripts" / "deploy_timers.sh"
 def _parse_unit(path: Path) -> configparser.RawConfigParser:
     """Parse a systemd unit file with configparser (ignoring duplicate keys)."""
     parser = configparser.RawConfigParser(strict=False)
-    # systemd unit files use '=' as delimiter without spaces around it.
-    parser.read_string(path.read_text(encoding="utf-8"))
+    content = path.read_text(encoding="utf-8")
+    # Collapse systemd-style backslash line continuations before parsing;
+    # configparser only understands indented continuation lines.
+    content = re.sub(r"\\\n", "", content)
+    parser.read_string(content)
     return parser
 
 

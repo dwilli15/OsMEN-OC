@@ -1,0 +1,67 @@
+agent_id: resource_audit
+name: Resource Audit
+model_tier: local-small
+capabilities:
+  - audit
+  - resource-discovery
+  - deprecation
+  - consolidation
+  - symlink-management
+description: |
+  Systematic resource discovery agent. Scans the repo and external tool
+  directories for stale resources, orphan files, duplicate configs, and
+  broken symlinks. Produces inventory reports and cleanup recommendations.
+
+  Scheduled via cron or on-demand. Output goes to vault/logs/ and
+  MemoryHub for long-term recall.
+tools:
+  - name: scan_resources
+    description: Scan repo + external directories for resource inventory.
+    parameters:
+      paths:
+        type: array
+        items:
+          type: string
+        required: false
+        description: "Specific paths to scan (default: repo root + ~/.config/opencode/ + ~/.claude/)"
+      check_symlinks:
+        type: boolean
+        required: false
+        description: Also verify all symlinks point to valid targets (default true).
+      check_duplicates:
+        type: boolean
+        required: false
+        description: Check for duplicate files by content hash (default true).
+    risk_level: low
+
+  - name: cleanup_stale
+    description: Remove identified stale/orphan resources based on audit report.
+    parameters:
+      report_path:
+        type: string
+        required: true
+        description: Path to the audit report JSON file.
+      dry_run:
+        type: boolean
+        required: false
+        description: Preview changes without executing (default true).
+    risk_level: medium
+
+  - name: consolidate_duplicates
+    description: Replace duplicate files with symlinks to the canonical copy.
+    parameters:
+      canonical_path:
+        type: string
+        required: true
+        description: The file to keep as the authoritative copy.
+      duplicate_paths:
+        type: array
+        items:
+          type: string
+        required: true
+        description: Files to replace with symlinks.
+      dry_run:
+        type: boolean
+        required: false
+        description: Preview changes without executing (default true).
+    risk_level: medium

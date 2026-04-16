@@ -12,12 +12,6 @@ applyTo: "config/**/*.yaml"
 
 ### Secret Config
 
-Files in `config/secrets/` use `.enc.yaml` extension (SOPS + age encrypted).
-
-- `api-keys.enc.yaml` — LLM provider keys, service API keys
-- `service-creds.enc.yaml` — database passwords, VPN credentials
-
-Never put plaintext secrets in any config file. Use `${ENV_VAR}` or SOPS encryption.
 
 ### Config Loading Pattern
 

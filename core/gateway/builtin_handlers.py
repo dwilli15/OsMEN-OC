@@ -19,7 +19,6 @@ media_organization
 - ``audit_vpn`` — verify gluetun VPN container is connected.
 - ``list_downloads`` — aggregate qBittorrent + SABnzbd download lists.
 - ``purge_completed`` — delete old staged downloads from DOWNLOAD_STAGING_DIR.
-- ``assess_plex_readiness`` — check library root, disk space, subdirs, and container health.
 
 system_monitor
 - ``get_hardware_metrics`` — CPU/GPU/fan metrics via lm-sensors, nvidia-smi, rocm-smi.
@@ -850,7 +849,6 @@ async def handle_assess_plex_readiness(
     - ``disk_space`` — at least 10 GiB free at the library root.
       This check includes a ``free_gib`` field with the measured free space in GiB.
     - ``library_dir_<media_type>`` — per-media-type subdirectory exists.
-    - ``plex_container_running`` — ``osmen-media-plex`` Podman container is running.
 
     Returns:
         A dict with ``status``, ``ready`` (overall bool), and ``checks`` list.
@@ -940,44 +938,6 @@ async def handle_assess_plex_readiness(
                     ),
                 }
             )
-
-    # --- Check 5: osmen-media-plex container is running ---
-    try:
-        with _anyio.fail_after(10):
-            inspect_result = await _anyio.run_process(
-                [
-                    "podman",
-                    "inspect",
-                    "--format",
-                    "{{.State.Running}}",
-                    "osmen-media-plex",
-                ],
-                check=False,
-            )
-        container_running = inspect_result.stdout.decode().strip().lower() == "true"
-        checks.append(
-            {
-                "name": "plex_container_running",
-                "passed": container_running,
-                "detail": (
-                    "osmen-media-plex is running"
-                    if container_running
-                    else "osmen-media-plex is not running"
-                ),
-            }
-        )
-    except FileNotFoundError:
-        checks.append(
-            {"name": "plex_container_running", "passed": False, "detail": "podman not installed"}
-        )
-    except TimeoutError:
-        checks.append(
-            {
-                "name": "plex_container_running",
-                "passed": False,
-                "detail": "podman inspect timed out",
-            }
-        )
 
     ready = all(c["passed"] for c in checks)
     logger.info(

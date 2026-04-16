@@ -5,7 +5,11 @@
 
 [Unit]
 Description=OsMEN-OC Core — ChromaDB
+<<<<<<< HEAD
+Documentation=https://github.com/dwilli15/OsMEN-OC
+=======
 Documentation=https://github.com/OsMEN-OC/OsMEN-OC
+>>>>>>> origin/main
 After=osmen-core-network.service
 Requires=osmen-core-network.service
 
@@ -28,15 +32,30 @@ Environment=CHROMA_SERVER_AUTH_PROVIDER=chromadb.auth.token_authn.TokenAuthentic
 Environment=IS_PERSISTENT=TRUE
 Environment=ANONYMIZED_TELEMETRY=FALSE
 
+<<<<<<< HEAD
+# Use a direct command here so Quadlet does not fold the health flags into shell quoting.
+HealthCmd=curl -sf http://127.0.0.1:8000/api/v1/heartbeat
+=======
 HealthCmd=/bin/sh -c "curl -sf http://127.0.0.1:8000/api/v1/heartbeat"
+>>>>>>> origin/main
 HealthInterval=30s
 HealthTimeout=10s
 HealthRetries=5
 HealthStartPeriod=20s
 
+<<<<<<< HEAD
+# Chroma writes a log file at /chroma/chroma.log during startup.
+# Keep the dedicated data volume for persistence, but allow container-local writes.
+# ReadOnly removed: ChromaDB's uvicorn logging handler needs to write /chroma/chroma.log
+# and /tmp for temp files. The data volume handles persistence.
+SecurityLabelDisable=true
+NoNewPrivileges=true
+Tmpfs=/tmp
+=======
 ReadOnly=true
 SecurityLabelDisable=true
 NoNewPrivileges=true
+>>>>>>> origin/main
 
 [Service]
 Restart=always

@@ -1,0 +1,39 @@
+# osmen-monitoring-portall.container
+# Rootless Podman Quadlet — Portall (port/service dashboard).
+# Exposure: 127.0.0.1:3080 only.
+# Shows all active services and their ports in a GUI.
+
+[Unit]
+Description=OsMEN-OC Monitoring — Portall
+Documentation=https://github.com/dwilli15/OsMEN-OC
+
+[Container]
+Image=docker.io/need4swede/portall:2.0.4
+ContainerName=osmen-monitoring-portall
+User=1000:1000
+
+PublishPort=127.0.0.1:3080:8080
+
+# Needs access to Podman socket for container discovery.
+Volume=/run/user/1000/podman/podman.sock:/var/run/docker.sock:ro
+Environment=DOCKER_HOST=unix:///var/run/docker.sock
+
+HealthCmd=nc -z 127.0.0.1 8080
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=15s
+
+SecurityLabelDisable=true
+NoNewPrivileges=true
+ReadOnly=true
+
+[Service]
+Restart=always
+RestartSec=5s
+Slice=user-osmen-background.slice
+MemoryMax=256M
+CPUQuota=50%
+
+[Install]
+WantedBy=default.target

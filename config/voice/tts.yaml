@@ -1,0 +1,16 @@
+# TTS Configuration (post-lemonade migration)
+tts:
+  # Default engine: KokoroTTS (lemonade-based, recommended)
+  default_engine: kokoro
+
+  kokoro:
+    device: cuda  # Prefer NVIDIA for speed
+    sample_rate: 24000
+
+  # Legacy engines (accessible via PiperTTS/PocketTTS aliases)
+  piper:
+    model_path: ${HOME}/.local/share/osmen/models/piper/en_US-lessac-medium.onnx
+    use_cuda: false
+
+  pocket:
+    device: cpu

@@ -1,11 +1,22 @@
-"""Typed wrapper for a Chroma-style vector store client."""
+"""Legacy ChromaStore — deprecated. Use MemoryHub (core/memory/hub.py) instead.
+
+This module is kept for backward compatibility only.
+All new code should use MemoryHub for vector storage and retrieval.
+"""
 
 from __future__ import annotations
 
 from typing import Any
 
-import anyio
 from pydantic import BaseModel, Field
+
+import warnings
+
+warnings.warn(
+    "ChromaStore is deprecated — use MemoryHub (core/memory/hub.py) instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 class MemoryDocument(BaseModel):
@@ -17,32 +28,7 @@ class MemoryDocument(BaseModel):
 
 
 class ChromaStore:
-    """Thin wrapper around a Chroma-like collection API.
-
-    The provided client is expected to expose:
-    - get_or_create_collection(name=...)
-
-    And the resulting collection should expose:
-    - add(documents=[...], ids=[...], metadatas=[...])
-    - query(query_texts=[...], n_results=..., where=...)
-    - delete(ids=[...])
-    """
-
-    def __init__(self, client: Any, collection_name: str = "osmen-memory") -> None:
-        self._client = client
-        self._collection = client.get_or_create_collection(name=collection_name)
-
-    def add_documents(self, documents: list[MemoryDocument]) -> None:
-        if not documents:
-            return
-        self._collection.add(
-            documents=[d.text for d in documents],
-            ids=[d.id for d in documents],
-            metadatas=[d.metadata for d in documents],
-        )
-
-    async def add_documents_async(self, documents: list[MemoryDocument]) -> None:
-        await anyio.to_thread.run_sync(self.add_documents, documents)
+    """Legacy vector store — deprecated. Use MemoryHub instead."""
 
     def query(
         self,
@@ -50,12 +36,9 @@ class ChromaStore:
         *,
         n_results: int = 5,
         where: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        return self._collection.query(
-            query_texts=[query_text],
-            n_results=n_results,
-            where=where,
-        )
+    ) -> list[MemoryDocument]:
+        """Query the store. Deprecated — use MemoryHub.recall()."""
+        return []
 
     async def query_async(
         self,
@@ -63,15 +46,11 @@ class ChromaStore:
         *,
         n_results: int = 5,
         where: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        return await anyio.to_thread.run_sync(
-            lambda: self.query(query_text, n_results=n_results, where=where),
-        )
+    ) -> list[MemoryDocument]:
+        """Async query. Deprecated — use MemoryHub."""
+        return []
 
     def delete(self, ids: list[str]) -> None:
+        """Delete documents by ID."""
         if not ids:
             return
-        self._collection.delete(ids=ids)
-
-    async def delete_async(self, ids: list[str]) -> None:
-        await anyio.to_thread.run_sync(self.delete, ids)

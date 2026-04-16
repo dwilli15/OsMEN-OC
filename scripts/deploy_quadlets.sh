@@ -103,7 +103,11 @@ deploy_units() {
     fi
   done < <(find "${QUADLETS_SRC}" \
     \( -name "*.container" -o -name "*.network" -o -name "*.volume" \
+<<<<<<< HEAD
+       -o -name "*.pod"     -o -name "*.slice"  -o -name "*.service" \) \
+=======
        -o -name "*.pod"     -o -name "*.slice"  \) \
+>>>>>>> origin/main
     -print0)
 
   log_info "Deployed: ${deployed}  Already up-to-date: ${skipped}"

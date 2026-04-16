@@ -1,0 +1,45 @@
+# osmen-media-readarr.container
+# Rootless Podman Quadlet — Readarr (book management).
+# Exposure: 127.0.0.1:8787 only.
+
+[Unit]
+Description=OsMEN-OC Media — Readarr
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-media-network.service
+Requires=osmen-media-network.service
+
+[Container]
+Image=docker.io/linuxserver/readarr:0.4.12-nightly
+ContainerName=osmen-media-readarr
+
+PublishPort=127.0.0.1:8787:8787
+
+Network=osmen-media.network
+
+Environment=PUID=1000
+Environment=PGID=1000
+Environment=TZ=America/Chicago
+
+Volume=osmen-readarr-config.volume:/config
+Volume=%h/Downloads:/downloads
+Volume=%h/media/books:/media/books
+
+HealthCmd=wget -q --spider http://127.0.0.1:8787/ping
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=30s
+
+SecurityLabelDisable=true
+NoNewPrivileges=true
+ReadOnly=true
+
+[Service]
+Restart=always
+RestartSec=5s
+Slice=user-osmen-media.slice
+MemoryMax=512M
+CPUQuota=100%
+
+[Install]
+WantedBy=default.target

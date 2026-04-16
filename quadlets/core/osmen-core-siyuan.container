@@ -1,0 +1,47 @@
+# osmen-core-siyuan.container
+# Rootless Podman Quadlet — SiYuan PKM (headless with web UI).
+# Exposure: 127.0.0.1:6806 only (Caddy reverse proxy for siyuan.osmen.local).
+# Data: bind-mounted from ~/dev/pkm/ for direct filesystem access.
+
+[Unit]
+Description=OsMEN-OC Core — SiYuan PKM
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-core-network.service
+Requires=osmen-core-network.service
+
+[Container]
+Image=docker.io/b3log/siyuan:v3.6.4
+ContainerName=osmen-core-siyuan
+
+PublishPort=127.0.0.1:6806:6806
+
+Network=osmen-core.network
+
+# Bind-mount PKM workspace so notes are accessible on the host filesystem.
+Volume=%h/dev/pkm:/siyuan/workspace
+
+# Auth code via Podman secret.
+Secret=osmen-siyuan-auth,type=env,target=SIYUAN_ACCESS_AUTH_CODE
+
+# SiYuan's entrypoint does chown on /opt/siyuan — needs root inside container.
+# Rootless Podman maps container root → host user (dwill), so this is safe.
+
+HealthCmd=wget -q -O /dev/null http://127.0.0.1:6806/api/system/version
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=20s
+
+SecurityLabelDisable=true
+NoNewPrivileges=true
+Tmpfs=/tmp
+
+[Service]
+Restart=always
+RestartSec=5s
+Slice=user-osmen-services.slice
+MemoryMax=1G
+CPUQuota=200%
+
+[Install]
+WantedBy=default.target

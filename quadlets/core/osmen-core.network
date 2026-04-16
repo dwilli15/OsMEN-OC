@@ -8,7 +8,12 @@
 NetworkName=osmen-core
 Driver=bridge
 # RFC-1918 subnet dedicated to core services; avoids collisions with LAN ranges.
+<<<<<<< HEAD
+Subnet=10.89.0.0/24
+Gateway=10.89.0.1
+=======
 Subnet=10.88.0.0/24
 Gateway=10.88.0.1
+>>>>>>> origin/main
 # Disable IPv6 for initial phase; re-enable when address plan is finalised.
 IPv6=false

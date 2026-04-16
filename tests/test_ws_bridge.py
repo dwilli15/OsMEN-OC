@@ -71,8 +71,14 @@ class TestWebSocketBridge:
                 ws.send_text(msg.model_dump_json())
                 ws.receive_json()  # consume ack
 
-            bus.publish.assert_called_once()
-            envelope = bus.publish.call_args[0][0]
+            # Bridge publishes the task_request envelope and may also emit a
+            # heartbeat nonce event — check that the expected payload arrived.
+            task_calls = [
+                c for c in bus.publish.call_args_list
+                if c[0][0].category == "task_request"
+            ]
+            assert len(task_calls) == 1
+            envelope = task_calls[0][0][0]
             assert envelope.domain == "bridge"
             assert envelope.category == "task_request"
             assert envelope.correlation_id == "cid-ws-2"

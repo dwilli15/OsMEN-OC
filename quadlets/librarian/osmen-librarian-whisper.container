@@ -1,0 +1,45 @@
+# osmen-librarian-whisper.container
+# Rootless Podman Quadlet — faster-whisper (GPU-backed containerized transcription).
+# Exposure: 127.0.0.1:9000 only.
+# NOTE: Local venv transcription (Phase 15) is the primary path.
+# This container provides an alternative GPU-accelerated transcription service
+# for batch jobs or when the venv whisper is unavailable.
+# Integrates with knowledge pipeline: audio → transcript → chunk → embed → store.
+
+[Unit]
+Description=OsMEN-OC Librarian — faster-whisper (GPU transcription)
+Documentation=https://github.com/dwilli15/OsMEN-OC
+
+[Container]
+Image=docker.io/fedirz/faster-whisper-server:0.6.0-rc.3-cuda
+ContainerName=osmen-librarian-whisper
+
+PublishPort=127.0.0.1:9001:8000
+
+# NVIDIA GPU passthrough for CUDA-accelerated transcription.
+AddDevice=nvidia.com/gpu=all
+
+Environment=WHISPER__MODEL=large-v3
+Environment=WHISPER__DEVICE=cuda
+
+Volume=osmen-whisper-models.volume:/root/.cache/huggingface
+
+HealthCmd=python3 -c 'import socket; s=socket.socket(); s.connect(("127.0.0.1",8000)); s.close()'
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=60s
+
+SecurityLabelDisable=true
+NoNewPrivileges=true
+# ReadOnly disabled: NVIDIA CDI hook needs to write device files into container fs.
+
+[Service]
+Restart=always
+RestartSec=10s
+Slice=user-osmen-background.slice
+MemoryMax=4G
+CPUQuota=200%
+
+[Install]
+WantedBy=default.target

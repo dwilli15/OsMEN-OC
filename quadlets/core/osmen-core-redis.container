@@ -5,7 +5,11 @@
 
 [Unit]
 Description=OsMEN-OC Core — Redis 7
+<<<<<<< HEAD
+Documentation=https://github.com/dwilli15/OsMEN-OC
+=======
 Documentation=https://github.com/OsMEN-OC/OsMEN-OC
+>>>>>>> origin/main
 After=osmen-core-network.service
 Requires=osmen-core-network.service
 
@@ -23,12 +27,23 @@ Volume=osmen-redis-data.volume:/data
 
 # Enable both AOF (durability) and RDB snapshots (backup-friendliness).
 # REDIS_PASSWORD is injected as a container env var via the Secret directive
+<<<<<<< HEAD
+# below. Run through a shell so the expansion happens inside the container,
+# not at Quadlet generation time.
+Exec=sh -ceu 'exec redis-server --appendonly yes --save 60 1 --save 300 10 --save 900 100 --requirepass "$${REDIS_PASSWORD}"'
+
+Secret=osmen-redis-password,type=env,target=REDIS_PASSWORD
+
+# Expand the password inside the container shell for the same reason as Exec.
+HealthCmd=sh -ceu 'redis-cli -a "$${REDIS_PASSWORD}" ping | grep -q PONG'
+=======
 # below; passing --requirepass ensures authentication is enforced at startup.
 Exec=redis-server --appendonly yes --save 60 1 --save 300 10 --save 900 100 --requirepass "${REDIS_PASSWORD}"
 
 Secret=osmen-redis-password,type=env,target=REDIS_PASSWORD
 
 HealthCmd=/bin/sh -c "redis-cli -a \"${REDIS_PASSWORD}\" ping | grep -q PONG"
+>>>>>>> origin/main
 HealthInterval=30s
 HealthTimeout=10s
 HealthRetries=5

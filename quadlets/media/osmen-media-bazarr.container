@@ -1,0 +1,44 @@
+# osmen-media-bazarr.container
+# Rootless Podman Quadlet — Bazarr (subtitle management).
+# Exposure: 127.0.0.1:6767 only.
+
+[Unit]
+Description=OsMEN-OC Media — Bazarr
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-media-network.service
+Requires=osmen-media-network.service
+
+[Container]
+Image=docker.io/linuxserver/bazarr:1.5.2
+ContainerName=osmen-media-bazarr
+
+PublishPort=127.0.0.1:6767:6767
+
+Network=osmen-media.network
+
+Environment=PUID=1000
+Environment=PGID=1000
+Environment=TZ=America/Chicago
+
+Volume=osmen-bazarr-config.volume:/config
+Volume=%h/media/plex:/media/plex
+
+HealthCmd=wget -q --spider http://127.0.0.1:6767/api
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=30s
+
+SecurityLabelDisable=true
+NoNewPrivileges=true
+ReadOnly=true
+
+[Service]
+Restart=always
+RestartSec=5s
+Slice=user-osmen-media.slice
+MemoryMax=512M
+CPUQuota=100%
+
+[Install]
+WantedBy=default.target

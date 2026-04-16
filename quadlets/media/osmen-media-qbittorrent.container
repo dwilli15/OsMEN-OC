@@ -1,0 +1,43 @@
+# osmen-media-qbittorrent.container
+# Rootless Podman Quadlet — qBittorrent (torrent client).
+# Runs inside download-stack pod — shares gluetun's VPN namespace.
+# Web UI: 127.0.0.1:9090 (via pod port mapping).
+
+[Unit]
+Description=OsMEN-OC Media — qBittorrent
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-media-gluetun.service
+Requires=osmen-media-gluetun.service
+
+[Container]
+Image=docker.io/linuxserver/qbittorrent:5.1.0
+ContainerName=osmen-media-qbittorrent
+Pod=download-stack.pod
+
+Environment=PUID=1000
+Environment=PGID=1000
+Environment=TZ=America/Chicago
+Environment=WEBUI_PORT=9090
+
+Volume=osmen-qbit-config.volume:/config
+Volume=%h/Downloads:/downloads
+
+HealthCmd=wget -q --spider http://127.0.0.1:9090
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=30s
+
+SecurityLabelDisable=true
+NoNewPrivileges=true
+ReadOnly=true
+
+[Service]
+Restart=always
+RestartSec=5s
+Slice=user-osmen-media.slice
+MemoryMax=1G
+CPUQuota=100%
+
+[Install]
+WantedBy=default.target

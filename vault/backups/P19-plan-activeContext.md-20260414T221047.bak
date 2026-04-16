@@ -1,0 +1,20 @@
+# Active Context
+
+**Taskwarrior is the source of truth.** This file answers "what's going on?"
+Run `task list project:osmen` to answer "what happens next?"
+
+## Current State
+
+- **Branch**: install/fresh-setup-20260407
+- **TW**: 269 pending / 244 completed
+- **Critical path**: P19 orchestration — 23 tasks, `core/orchestration/` doesn't exist yet
+- **Blocked**: P22 verification (39 tasks) waiting on P19
+- **Partially ready**: P14m voice (Lemonade + kokoro loaded, code not migrated)
+- **Standing**: Media 91, Audit 25, Roadmap 13, P10 bridge 7, Maint 8
+
+## Verified This Session
+
+Manifesto + PDF on disk. Codex spec reviewed. Memory bank updated.
+25 audit tasks in TW. 39 P22 tasks annotated as blocked. Tailscale closed.
+Resource catalog at `docs/POST_INSTALL_RESOURCE_ORGANIZATION.md`.
+Claims ledger at `docs/session-logs/2026-04-14/2026-04-14_234500_handoff.md`.

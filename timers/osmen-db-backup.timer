@@ -5,7 +5,7 @@
 
 [Unit]
 Description=OsMEN-OC — Nightly database backup timer
-Documentation=https://github.com/OsMEN-OC/OsMEN-OC
+Documentation=https://github.com/dwilli15/OsMEN-OC
 
 [Timer]
 # Fire at 02:30 every night.

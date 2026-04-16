@@ -65,8 +65,26 @@ def test_container_quadlets_enforce_no_new_privileges() -> None:
         assert value == "true", f"{path} must set NoNewPrivileges=true"
 
 
+# Containers with documented reasons for not using ReadOnly=true.
+# Each entry corresponds to a comment in the quadlet file explaining why.
+_READ_ONLY_EXEMPT = {
+    "osmen-core-chromadb.container",  # uvicorn writes /chroma/chroma.log outside data volume
+    "osmen-core-langflow.container",  # app writes runtime state outside volumes
+    "osmen-core-nextcloud.container",  # PHP runtime needs writable rootfs
+    "osmen-core-siyuan.container",  # chown on /opt/siyuan at startup
+    "osmen-media-gluetun.container",  # writes /etc/passwd and /tmp at startup
+    "osmen-librarian-audiobookshelf.container",  # app writes runtime config outside volumes
+    "osmen-librarian-convertx.container",  # file conversion writes to app directory
+    "osmen-librarian-kavita.container",  # app writes runtime config outside volumes
+    "osmen-librarian-whisper.container",  # NVIDIA CDI hook needs writable rootfs for GPU device files
+}
+
+
 def test_container_quadlets_enforce_read_only_rootfs() -> None:
     for path in _container_files():
+        if path.name in _READ_ONLY_EXEMPT:
+            continue
+
         parser = _parse_ini(path)
         assert parser.has_section("Container"), f"{path} missing [Container] section"
         value = parser.get("Container", "ReadOnly", fallback="").strip().lower()

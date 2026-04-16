@@ -11,8 +11,6 @@
 
 bridge:
   # WebSocket address that OpenClaw listens on (control-plane side).
-  ws_url: "ws://127.0.0.1:18789"
-  # Seconds between reconnect attempts when the bridge drops.
   reconnect_interval_seconds: 5
   # Maximum inbound message size (bytes) — messages over this limit are dropped.
   max_message_bytes: 65536

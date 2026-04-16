@@ -7,13 +7,6 @@
 # First matching rule wins. If no rule matches, the default_compute is used.
 #
 # target_compute values:
-#   nvidia     — NVIDIA dGPU via CUDA
-#   amd_rocm   — AMD GPU via ROCm
-#   amd_vulkan — AMD GPU via Vulkan (llama.cpp / compute shaders)
-#   npu        — AMD XDNA 2 NPU (experimental)
-#   cpu        — CPU-only (system RAM)
-
-version: 1
 
 # Fallback when no rule matches.
 default_compute: cpu
@@ -82,15 +75,6 @@ rules:
       fallback: amd_vulkan
     priority: 8
 
-  - id: transcription_nvidia
-    description: >
-      Audio transcription (Whisper) is routed to NVIDIA CUDA for speed.
-      Falls back to amd_vulkan when NVIDIA is unavailable.
-    trigger:
-      task_type: transcription
-    action:
-      target_compute: nvidia
-      fallback: amd_vulkan
     priority: 10
 
   - id: rendering_amd_vulkan
@@ -104,13 +88,8 @@ rules:
       target_compute: amd_vulkan
     priority: 18
 
-  - id: cpu_fallback
-    description: >
-      When all GPU/NPU resources are at capacity or unavailable, fall back
-      to CPU-only inference via llama.cpp CPU backend.
     trigger:
       task_type: inference
       condition: all_gpu_busy
     action:
       target_compute: cpu
-    priority: 1

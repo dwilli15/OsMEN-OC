@@ -1,0 +1,168 @@
+{
+  "version": 1,
+  "updatedAt": "2026-04-16T19:04:43.979Z",
+  "entries": {
+    "memory:memory/2026-04-11.md:1:7": {
+      "key": "memory:memory/2026-04-11.md:1:7",
+      "path": "memory/2026-04-11.md",
+      "startLine": 1,
+      "endLine": 7,
+      "source": "memory",
+      "snippet": "# 2026-04-11 - First boot. Daniel set me up as **Jarvis**, the main UI for OsMEN-OC. - Identity: sharp, efficient, dry humor. 🤖 - Primary channels: Telegram + Discord. Heavy browser automation on Linux. - SOUL.md revisit planned.",
+      "recallCount": 4,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 1.652249640226364,
+      "maxScore": 0.428760689496994,
+      "firstRecalledAt": "2026-04-14T09:11:18.908Z",
+      "lastRecalledAt": "2026-04-16T19:04:43.979Z",
+      "queryHashes": [
+        "5ca3b2aae40a",
+        "30771ca5fa5d",
+        "28118beca984",
+        "867431bde273"
+      ],
+      "recallDays": [
+        "2026-04-14",
+        "2026-04-15",
+        "2026-04-16"
+      ],
+      "conceptTags": [
+        "osmen-oc",
+        "soul.md",
+        "first",
+        "boot",
+        "daniel",
+        "set",
+        "jarvis",
+        "the"
+      ]
+    },
+    "memory:memory/2026-04-16.md:14:32": {
+      "key": "memory:memory/2026-04-16.md:14:32",
+      "path": "memory/2026-04-16.md",
+      "startLine": 14,
+      "endLine": 32,
+      "source": "memory",
+      "snippet": "- Decay: formula accuracy verified mathematically, floor+grace removal, batched DELETE via ANY(), dry-run, error counting - Expiration: timed-out entries, orphaned chunk batched loop, zero-result paths, dry-run counts, errors - Env loading: file fallback, env var precedence, missing file - Constants: sanity bounds ## Key Mock Pattern - `asyncpg.Pool.acquire()` returns a *synchronous* context manager → use `MagicMock` for pool (not `AsyncMock`), attach real `@asynccontextmanager` as return value. `AsyncMock` makes `acquire()` return a coroutine, which breaks `async with pool.acquire()`. - Factory function for reusable acquire context managers (single-use `@asynccontextmanager` can't be calle",
+      "recallCount": 2,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.8461026221513748,
+      "maxScore": 0.43067459762096405,
+      "firstRecalledAt": "2026-04-16T12:47:13.742Z",
+      "lastRecalledAt": "2026-04-16T13:57:05.743Z",
+      "queryHashes": [
+        "ce3f7fe11cd3",
+        "28118beca984"
+      ],
+      "recallDays": [
+        "2026-04-16"
+      ],
+      "conceptTags": [
+        "dry-run",
+        "timed-out",
+        "zero-result",
+        "asyncpg.pool.acquire",
+        "pool.acquire",
+        "single-use",
+        "decay",
+        "formula"
+      ]
+    },
+    "memory:memory/2026-04-14.md:1:27": {
+      "key": "memory:memory/2026-04-14.md:1:27",
+      "path": "memory/2026-04-14.md",
+      "startLine": 1,
+      "endLine": 27,
+      "source": "memory",
+      "snippet": "# 2026-04-14 — Daily Notes ## Plex: Container → Native Install - Plex container (`osmen-media-plex`) had broken claim token (`target=PLEX_CLAIM` quadlet syntax wasn't being respected by Podman 5.7.0 — env var showed as `osmen-plex-claim` instead) - Plex first-ran with bad claim, leaving it in half-claimed \"not authorized\" state - D decided to ditch containerized Plex entirely — native `.deb` install instead - **Actions taken:** - Stopped and removed container, image (`pms-docker`), volume (`systemd-osmen-plex-config`), secret (`osmen-plex-claim`) - Removed deployed quadlet from `~/.config/containers/systemd/` - Installed `plexmediaserver` via Plex apt repo - Claimed server via API w",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.4043571352958679,
+      "maxScore": 0.4043571352958679,
+      "firstRecalledAt": "2026-04-16T12:47:13.742Z",
+      "lastRecalledAt": "2026-04-16T12:47:13.742Z",
+      "queryHashes": [
+        "ce3f7fe11cd3"
+      ],
+      "recallDays": [
+        "2026-04-16"
+      ],
+      "conceptTags": [
+        "osmen-media-plex",
+        "plex-claim",
+        "5.7.0",
+        "osmen-plex-claim",
+        "first-ran",
+        "half-claimed",
+        "pms-docker",
+        "systemd-osmen-plex-config"
+      ]
+    },
+    "memory:memory/2026-04-16.md:1:19": {
+      "key": "memory:memory/2026-04-16.md:1:19",
+      "path": "memory/2026-04-16.md",
+      "startLine": 1,
+      "endLine": 19,
+      "source": "memory",
+      "snippet": "# 2026-04-16 — Memory Maintenance Module ## core/memory/maintenance.py — Full Implementation - Replaced the no-op stub with a real 19.6KB module implementing three maintenance passes: 1. **Promotion** — scans Redis `wm:{agent_id}` hashes, promotes high-signal entries to `memory_entries` with pgvector embeddings via Ollama 2. **Decay** — applies `importance *= 0.5^(days/half_life)` to stale entries; removes those below floor past grace period 3. **Expiration** — deletes expired entries + orphaned chunks in batches of 500 - Configurable thresholds: PROMOTION_ACCESS_THRESHOLD=3, PROMOTION_IMPORTANCE_FLOOR=0.4, DECAY_HALF_LIFE_DAYS=30, DECAY_FLOOR=0.05, DECAY_GRACE_DAYS=7 - CLI: `python -",
+      "recallCount": 2,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.8097190082073211,
+      "maxScore": 0.4114119946956634,
+      "firstRecalledAt": "2026-04-16T13:57:05.743Z",
+      "lastRecalledAt": "2026-04-16T19:04:43.979Z",
+      "queryHashes": [
+        "28118beca984",
+        "867431bde273"
+      ],
+      "recallDays": [
+        "2026-04-16"
+      ],
+      "conceptTags": [
+        "embedding",
+        "embeddings",
+        "core/memory/maintenance.py",
+        "no-op",
+        "19.6kb",
+        "agent-id",
+        "high-signal",
+        "memory-entries"
+      ]
+    },
+    "memory:memory/2026-04-16.md:14:34": {
+      "key": "memory:memory/2026-04-16.md:14:34",
+      "path": "memory/2026-04-16.md",
+      "startLine": 14,
+      "endLine": 34,
+      "source": "memory",
+      "snippet": "- Decay: formula accuracy verified mathematically, floor+grace removal, batched DELETE via ANY(), dry-run, error counting - Expiration: timed-out entries, orphaned chunk batched loop, zero-result paths, dry-run counts, errors - Env loading: file fallback, env var precedence, missing file - Constants: sanity bounds ## Key Mock Pattern - `asyncpg.Pool.acquire()` returns a *synchronous* context manager → use `MagicMock` for pool (not `AsyncMock`), attach real `@asynccontextmanager` as return value. `AsyncMock` makes `acquire()` return a coroutine, which breaks `async with pool.acquire()`. - Factory function for reusable acquire context managers (single-use `@asynccontextmanager` can't be calle",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.49694643318653103,
+      "maxScore": 0.49694643318653103,
+      "firstRecalledAt": "2026-04-16T19:04:43.979Z",
+      "lastRecalledAt": "2026-04-16T19:04:43.979Z",
+      "queryHashes": [
+        "867431bde273"
+      ],
+      "recallDays": [
+        "2026-04-16"
+      ],
+      "conceptTags": [
+        "dry-run",
+        "timed-out",
+        "zero-result",
+        "asyncpg.pool.acquire",
+        "pool.acquire",
+        "single-use",
+        "decay",
+        "formula"
+      ]
+    }
+  }
+}

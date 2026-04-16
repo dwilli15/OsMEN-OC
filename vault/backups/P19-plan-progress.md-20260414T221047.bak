@@ -1,0 +1,29 @@
+# Progress
+
+**Taskwarrior is the execution ledger. This file is a summary table only.**
+
+## Completed Phases
+
+P0, P3, P4, P5, P6, P7, P9, P11, P12, P15 — all zero pending.
+
+## Phase 9 (April 14): Architecture Design
+
+Complete. Manifesto, codex review, security critique, resource audit, TW reconciliation.
+
+## Active Fronts
+
+| Front             | Pending | Blocker | Next            |
+| ----------------- | ------- | ------- | --------------- |
+| P19 orchestration | 23      | None    | Start building  |
+| P22 verification  | 39      | P19     | Wait            |
+| Media             | 91      | None    | Write scripts   |
+| P14m voice/model  | 17      | Partial | Migrate code    |
+| Audit             | 25      | None    | Run audit       |
+| Roadmap           | 13      | P19     | Wait            |
+| P10 bridge        | 7       | Partial | Extend protocol |
+| P16 infra         | 4       | None    | Configure       |
+| P17 taskwarrior   | 7       | None    | Wire hooks      |
+| P20 gaming        | 6       | None    | Install Steam   |
+| P21 monitoring    | 6       | None    | Write quadlets  |
+| P18 backup        | 1       | None    | Mount NTFS      |
+| Maint             | 8       | None    | Run SMART       |

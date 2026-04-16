@@ -1,0 +1,15 @@
+# osmen-db-vacuum.timer
+# Weekly VACUUM ANALYZE — Saturday 03:30 (after SMART, before daily backup).
+
+[Unit]
+Description=OsMEN-OC — Weekly PostgreSQL VACUUM timer
+Documentation=https://github.com/dwilli15/OsMEN-OC
+
+[Timer]
+OnCalendar=Sat *-*-* 03:30:00
+RandomizedDelaySec=300
+Persistent=true
+Unit=osmen-db-vacuum.service
+
+[Install]
+WantedBy=timers.target

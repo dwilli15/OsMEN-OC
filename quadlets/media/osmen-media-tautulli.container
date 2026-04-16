@@ -1,0 +1,44 @@
+# osmen-media-tautulli.container
+# Rootless Podman Quadlet — Tautulli (Plex analytics + webhooks).
+# Exposure: 127.0.0.1:8181 only.
+# Webhooks feed Redis Streams event bus for media transfer pipeline.
+
+[Unit]
+Description=OsMEN-OC Media — Tautulli
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-media-network.service
+Requires=osmen-media-network.service
+
+[Container]
+Image=docker.io/tautulli/tautulli:v2.17.0
+ContainerName=osmen-media-tautulli
+
+PublishPort=127.0.0.1:8181:8181
+
+Network=osmen-media.network
+
+Environment=PUID=1000
+Environment=PGID=1000
+Environment=TZ=America/Chicago
+
+Volume=osmen-tautulli-config.volume:/config
+
+HealthCmd=curl -sf http://127.0.0.1:8181/status
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=30s
+
+SecurityLabelDisable=true
+NoNewPrivileges=true
+ReadOnly=true
+
+[Service]
+Restart=always
+RestartSec=5s
+Slice=user-osmen-background.slice
+MemoryMax=512M
+CPUQuota=100%
+
+[Install]
+WantedBy=default.target

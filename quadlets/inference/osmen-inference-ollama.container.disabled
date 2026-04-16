@@ -1,0 +1,45 @@
+# osmen-inference-ollama.container
+# Rootless Podman Quadlet — Ollama (CUDA inference on RTX 5070).
+# Exposure: 127.0.0.1:11434 only.
+# GPU: NVIDIA passthrough for CUDA-accelerated inference.
+# PF12: MemoryMax=16G prevents Ollama from consuming all RAM.
+
+[Unit]
+Description=OsMEN-OC Inference — Ollama (CUDA)
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-core-network.service
+Requires=osmen-core-network.service
+
+[Container]
+Image=docker.io/ollama/ollama:0.9.2
+ContainerName=osmen-inference-ollama
+
+PublishPort=127.0.0.1:11434:11434
+
+# Ollama needs access to core services (ChromaDB, etc.)
+Network=osmen-core.network
+
+# Persistent model storage.
+Volume=osmen-ollama-models.volume:/root/.ollama
+
+# NVIDIA GPU passthrough for CUDA inference.
+AddDevice=nvidia.com/gpu=all
+
+HealthCmd=/bin/sh -c "wget -q --spider http://127.0.0.1:11434/api/tags || exit 1"
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=30s
+
+SecurityLabelDisable=true
+
+[Service]
+Restart=always
+RestartSec=5s
+Slice=user-osmen-inference.slice
+# PF12: Cap memory to prevent Ollama eating all system RAM.
+MemoryMax=16G
+CPUQuota=800%
+
+[Install]
+WantedBy=default.target

@@ -20,7 +20,6 @@ Two-plane design:
 ## Quick Start
 
 ```bash
-git clone https://github.com/OsMEN-OC/OsMEN-OC.git
 cd OsMEN-OC
 scripts/bootstrap.sh
 ```

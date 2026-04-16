@@ -1,0 +1,40 @@
+# osmen-librarian-convertx.container
+# Rootless Podman Quadlet — ConvertX (file format converter).
+# Exposure: 127.0.0.1:3000 only.
+# Integrates with knowledge pipeline for document conversion before ingestion.
+
+[Unit]
+Description=OsMEN-OC Librarian — ConvertX
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-core-network.service
+Requires=osmen-core-network.service
+
+[Container]
+Image=docker.io/c4illin/convertx:v0.17.0
+ContainerName=osmen-librarian-convertx
+
+PublishPort=127.0.0.1:3000:3000
+
+Network=osmen-core.network
+
+Volume=osmen-convertx-data.volume:/app/data
+
+HealthCmd=curl -sf http://127.0.0.1:3000
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=15s
+
+SecurityLabelDisable=true
+NoNewPrivileges=true
+Tmpfs=/tmp
+
+[Service]
+Restart=always
+RestartSec=5s
+Slice=user-osmen-background.slice
+MemoryMax=1G
+CPUQuota=100%
+
+[Install]
+WantedBy=default.target

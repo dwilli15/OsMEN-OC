@@ -11,5 +11,4 @@
 - (More details to be learned)
 
 ## Identity
-- Name: OsMEN-OC
 - Born: 2026-04-11

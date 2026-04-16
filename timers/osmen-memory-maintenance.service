@@ -1,0 +1,19 @@
+# osmen-memory-maintenance.service
+# One-shot service: runs memory tier promotion/decay between Redis → PostgreSQL → ChromaDB.
+# Invoked by osmen-memory-maintenance.timer.
+
+[Unit]
+Description=OsMEN-OC — Memory tier maintenance (promotion/decay)
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-core-postgres.service osmen-core-redis.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/dwill/dev/OsMEN-OC
+Environment=PATH=/home/dwill/dev/OsMEN-OC/.venv/bin:/usr/local/bin:/usr/bin
+ExecStart=/home/dwill/dev/OsMEN-OC/.venv/bin/python3.13 -m core.memory.maintenance
+TimeoutStartSec=600
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=default.target

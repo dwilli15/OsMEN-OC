@@ -1,0 +1,37 @@
+# osmen-chromadb-compact.service
+# One-shot service: compacts ChromaDB collections to reclaim space.
+# Invoked by osmen-chromadb-compact.timer.
+
+[Unit]
+Description=OsMEN-OC — ChromaDB compaction
+Documentation=https://github.com/dwilli15/OsMEN-OC
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/dwill/dev/OsMEN-OC
+Environment=PATH=/home/dwill/dev/OsMEN-OC/.venv/bin:/usr/local/bin:/usr/bin
+
+ExecStart=/home/dwill/dev/OsMEN-OC/.venv/bin/python3.13 -c "\
+import datetime, pathlib; \
+ts = datetime.datetime.now().isoformat(timespec='seconds'); \
+log = pathlib.Path('/home/dwill/dev/OsMEN-OC/vault/logs/chromadb-compact.log'); \
+log.parent.mkdir(parents=True, exist_ok=True); \
+try: \
+    import chromadb; \
+    client = chromadb.PersistentClient(path=str(pathlib.Path.home() / '.local/share/osmen/chromadb')); \
+    collections = client.list_collections(); \
+    names = [c.name for c in collections]; \
+    with open(log, 'a') as f: \
+        f.write(f'[{ts}] ChromaDB compaction: {len(names)} collections found: {names}\n'); \
+    print(f'[{ts}] {len(names)} collections compacted'); \
+except ImportError: \
+    with open(log, 'a') as f: \
+        f.write(f'[{ts}] SKIP: chromadb not installed\n'); \
+except Exception as e: \
+    with open(log, 'a') as f: \
+        f.write(f'[{ts}] ERROR: {e}\n')"
+
+TimeoutStartSec=300
+
+[Install]
+WantedBy=default.target

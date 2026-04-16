@@ -1,0 +1,44 @@
+# osmen-core-langflow.container
+# Rootless Podman Quadlet — Langflow visual agent builder.
+# Exposure: 127.0.0.1:7860 only.
+# Backend: PostgreSQL (database URL via secret).
+
+[Unit]
+Description=OsMEN-OC Core — Langflow
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-core-postgres.service osmen-core-network.service
+Requires=osmen-core-network.service
+
+[Container]
+Image=docker.io/langflowai/langflow:1.3.1
+ContainerName=osmen-core-langflow
+
+PublishPort=127.0.0.1:7860:7860
+
+Network=osmen-core.network
+
+# PostgreSQL backend for persistent flow storage.
+Secret=osmen-langflow-db-url,type=env,target=LANGFLOW_DATABASE_URL
+
+# Disable telemetry.
+Environment=LANGFLOW_DO_NOT_TRACK=true
+
+HealthCmd=bash -c 'echo > /dev/tcp/127.0.0.1/7860'
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=60s
+
+SecurityLabelDisable=true
+NoNewPrivileges=true
+Tmpfs=/tmp
+
+[Service]
+Restart=always
+RestartSec=10s
+Slice=user-osmen-services.slice
+MemoryMax=2G
+CPUQuota=200%
+
+[Install]
+WantedBy=default.target

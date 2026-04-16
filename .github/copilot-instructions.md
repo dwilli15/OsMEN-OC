@@ -45,7 +45,6 @@ Data flow: User → OpenClaw (Telegram/Discord) → WebSocket `ws://127.0.0.1:18
 
 ## Naming Conventions
 
-- Podman containers: `osmen-{profile}-{service}` (e.g. `osmen-core-postgres`, `osmen-media-plex`)
 - Podman networks: `osmen-{profile}.network` (e.g. `osmen-core.network`, `osmen-media.network`)
 - Podman slices: `user-osmen-{slice}.slice` (e.g. `user-osmen-inference.slice`)
 - Redis stream keys: `events:{domain}:{category}` (e.g. `events:media:download_complete`)
@@ -76,7 +75,6 @@ gpus:
     }
 npu: { model: "XDNA 2", driver: amdxdna, status: experimental, fallback: cpu }
 storage:
-  nvme0n1: { size: 954GB, label: Windows, policy: DO_NOT_TOUCH }
   nvme1n1:
     {
       size: 932GB,
@@ -89,7 +87,6 @@ gpu_conflict_rule: "if ffxiv_dx11 on nvidia → route inference to amd_vulkan or
 
 ## What to NEVER Create
 
-- `.env` files (use SOPS-encrypted YAML in `config/secrets/`)
 - `data/` or `logs/` directories (created at runtime)
 - Actual secrets or age private keys
 - Docker Compose files

@@ -1,0 +1,16 @@
+# osmen-memory-maintenance.timer
+# Runs memory promotion/decay twice daily — 04:00 and 16:00.
+# Staggered from backup (02:30) to avoid I/O contention.
+
+[Unit]
+Description=OsMEN-OC — Memory tier maintenance timer
+Documentation=https://github.com/dwilli15/OsMEN-OC
+
+[Timer]
+OnCalendar=*-*-* 04,16:00:00
+RandomizedDelaySec=120
+Persistent=true
+Unit=osmen-memory-maintenance.service
+
+[Install]
+WantedBy=timers.target

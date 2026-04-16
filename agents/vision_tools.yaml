@@ -1,0 +1,85 @@
+agent_id: vision_tools
+name: Vision Tools
+model_tier: local-small
+capabilities:
+  - image-analysis
+  - ocr
+  - image-generation
+  - visual-qa
+description: >-
+  On-demand multimodal vision and image generation tools. Uses qwen3.5-4b-FLM
+  on NPU for analysis/OCR with GLM-4.5V cloud fallback. Image generation via
+  sd-cpp (SD-Turbo) on CPU. All models spin up on demand, not always-on.
+tools:
+  - name: analyze_image
+    description: >-
+      Analyze an image with a natural-language prompt. Supports visual Q&A,
+      description, classification, and content extraction. Tries local NPU
+      model first, falls back to GLM-4.5V cloud.
+    parameters:
+      prompt:
+        type: string
+        required: true
+        description: Question or instruction about the image.
+      image_path:
+        type: string
+        required: false
+        description: Absolute path to a local image file.
+      image_url:
+        type: string
+        required: false
+        description: URL of a remote image.
+      force_backend:
+        type: string
+        required: false
+        description: Force a specific backend instead of auto-fallback.
+        enum: [local_npu, cloud_glm]
+    risk_level: low
+
+  - name: ocr_extract
+    description: >-
+      Extract text from an image using the vision model. Handles screenshots,
+      documents, handwriting, and mixed layouts. Returns raw extracted text.
+    parameters:
+      image_path:
+        type: string
+        required: false
+        description: Absolute path to a local image file.
+      image_url:
+        type: string
+        required: false
+        description: URL of a remote image.
+      language_hint:
+        type: string
+        required: false
+        description: Expected language of text in the image (default English).
+      force_backend:
+        type: string
+        required: false
+        description: Force a specific backend instead of auto-fallback.
+        enum: [local_npu, cloud_glm]
+    risk_level: low
+
+  - name: generate_image
+    description: >-
+      Generate an image from a text prompt using SD-Turbo via sd-cpp. The
+      server starts on demand and generates images on CPU. Not always-on.
+    parameters:
+      prompt:
+        type: string
+        required: true
+        description: Text description of the image to generate.
+      negative_prompt:
+        type: string
+        required: false
+        description: Things to avoid in the generated image.
+      size:
+        type: string
+        required: false
+        description: "Output size as WxH (default: 512x512)."
+      model:
+        type: string
+        required: false
+        description: "sd-cpp model to use (default: SD-Turbo). Options: SD-Turbo, SDXL-Turbo, Flux-2-Klein-4B."
+        enum: [SD-Turbo, SDXL-Turbo, Flux-2-Klein-4B]
+    risk_level: low

@@ -1,0 +1,16 @@
+# osmen-smart-check.timer
+# Weekly NVMe SMART health check — Sunday 03:00.
+# Logs results to vault/logs/smart-health.log.
+
+[Unit]
+Description=OsMEN-OC — Weekly NVMe SMART health check
+Documentation=https://github.com/dwilli15/OsMEN-OC
+
+[Timer]
+OnCalendar=Sun *-*-* 03:00:00
+RandomizedDelaySec=300
+Persistent=true
+Unit=osmen-smart-check.service
+
+[Install]
+WantedBy=timers.target

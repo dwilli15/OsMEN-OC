@@ -1,0 +1,15 @@
+# osmen-chromadb-compact.timer
+# Weekly ChromaDB compaction — Sunday 04:00.
+
+[Unit]
+Description=OsMEN-OC — Weekly ChromaDB compaction timer
+Documentation=https://github.com/dwilli15/OsMEN-OC
+
+[Timer]
+OnCalendar=Sun *-*-* 04:00:00
+RandomizedDelaySec=300
+Persistent=true
+Unit=osmen-chromadb-compact.service
+
+[Install]
+WantedBy=timers.target

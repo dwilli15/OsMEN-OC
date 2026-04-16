@@ -1,0 +1,209 @@
+Multi-Agent Discord Roundtable — Deep Dive Plan
+The Vision
+A Discord channel where 3-4 AI agents have natural conversations, each with distinct identity, role, and accountability. They see each other's messages, build on shared context, disagree when appropriate, and converge on decisions. The human participates too — sometimes directing, sometimes just observing.
+What You Already Have (The Platform)
+OpenClaw is the natural host. It already has:
+Feature	Status	Details
+Multi-agent support	✅ openclaw agents add	Each agent gets isolated workspace, sessions, identity
+Discord channel binding	✅ openclaw agents bind	Route specific channels to specific agents
+Agent identity system	✅ IDENTITY.md + set-identity	Name, emoji, avatar, personality per agent
+Multi-model routing	✅ 19 models configured	ZAI (13), Ollama (4), GitHub Copilot (2)
+Agent-to-agent comms	✅ agentToAgent: enabled	Subagent announce/dispatch system
+Memory system	✅ Daily logs + MEMORY.md	Embedding search with nomic-embed-text
+Session management	✅ Per-channel-peer scoping	Isolated sessions per context
+ACP protocol	✅ openclaw acp client	Agent Control Protocol bridge
+SOUL.md system	✅ Per-workspace personality	Defines who each agent is, boundaries, vibe
+29 skills	✅ coding, web, discord, etc.	Full tool suite for each agent
+This is the key insight: OpenClaw already has the multi-agent architecture. We don't need to build a new platform — we need to configure and extend what's there.
+Architecture: 4 Agents, 1 Channel
+Discord Channel: #roundtable
+┌─────────────────────────────────────────────────────┐
+│                                                     │
+│  🤖 Jarvis (OpenClaw/main)                          │
+│  Model: zai/glm-5-turbo                             │
+│  Role: Coordinator, memory, persistence             │
+│  Priority: "What's the big picture? What did we     │
+│  decide last time? What's the context?"             │
+│  Accountable for: Decisions log, memory continuity  │
+│                                                     │
+│  🧠 Claude (Claude Code bridge bot)                 │
+│  Model: anthropic/claude-opus-4.6                    │
+│  Role: Execution authority, deep analysis           │
+│  Priority: "Does this actually work? Show me        │
+│  the code. What breaks?"                            │
+│  Accountable for: Working code, correctness         │
+│                                                     │
+│  💻 GLM (OpenCode bridge bot)                       │
+│  Model: zai/glm-5.1                                 │
+│  Role: Architecture, planning, cost-efficient       │
+│  Priority: "Is this the right approach? What are    │
+│  the trade-offs? Is there a simpler way?"           │
+│  Accountable for: Architecture decisions, docs      │
+│                                                     │
+│  🔬 Copilot (VS Code bridge bot)                   │
+│  Model: github-copilot/gpt-5.4                      │
+│  Role: IDE context, refactoring, alternatives       │
+│  Priority: "How does this affect the codebase?      │
+│  What are the edge cases?"                          │
+│  Accountable for: Code quality, edge cases          │
+│                                                     │
+│  👤 You (Human)                                     │
+│  Role: Product owner, tiebreaker, reality check     │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+How It Works — Turn Taking
+Not round-robin. Natural conversation rules, similar to what's already in AGENTS.md:
+Each agent responds when:
+- Directly @mentioned (@Claude what do you think?)
+- Their domain is invoked (code execution → Claude, architecture → GLM)
+- Another agent makes a claim they should verify/challenge
+- The human asks a question in their domain
+- They have a genuine objection or addition
+Each agent stays silent when:
+- It's a domain they're not accountable for
+- Another agent already answered well
+- The conversation is flowing without them
+- They'd just be saying "I agree" (use a reaction instead)
+How to implement in OpenClaw:
+1. Jarvis (OpenClaw native) — already works. Discord → OpenClaw gateway → GLM-5-turbo → Discord response. The existing replyToMode: "all" and allowBots: true means it already sees other bots' messages.
+2. Claude (bridge bot) — a separate Discord bot application. A small Node.js service:
+   - Listens to the #roundtable channel
+   - When triggered, spawns claude -p --output-format json --dangerously-skip-permissions with the message + channel history as context
+   - Posts the response back to Discord as the Claude bot
+   - System prompt includes role definition + roundtable rules
+3. GLM (bridge bot) — another Discord bot. Connects to opencode serve on port 4321:
+   - Listens to #roundtable channel
+   - When triggered, calls POST /session/{id}/message with context
+   - Posts response back as the GLM bot
+   - Uses a dedicated session (not the TUI's session — that was the April 8 conflict)
+4. Copilot (bridge bot) — a Discord bot that calls the GitHub Copilot API:
+   - Uses the existing github-copilot auth profile in OpenClaw config
+   - Routes through the Copilot proxy with the same models VS Code uses
+The Bridge Bot Template
+Each bridge bot follows the same pattern:
+Discord.js client → 
+  Read channel history (N messages for context) →
+  Build prompt with:
+    - System prompt (role, accountability, personality)
+    - Recent channel messages (shared context)
+    - Any files/attachments mentioned
+  Call agent backend (claude -p / opencode API / copilot API) →
+  Post response to Discord
+OpenClaw Agent Configuration
+The cleanest approach: create each bridge agent as an OpenClaw agent, bound to the same Discord channel. This gives them all the memory, session, and identity infrastructure for free.
+# Agent 1: Jarvis (already exists as "main")
+# Already bound to Discord, already has identity
+# Agent 2: Claude - would need a custom OpenClaw agent
+openclaw agents add claude \
+  --workspace ~/dev/OsMEN-OC/openclaw-claude \
+  --model anthropic/claude-opus-4.6 \
+  --bind discord
+# Agent 3: GLM 
+openclaw agents add glm \
+  --workspace ~/dev/OsMEN-OC/openclaw-glm \
+  --model zai/glm-5.1 \
+  --bind discord
+# Agent 4: Copilot
+openclaw agents add copilot \
+  --workspace ~/dev/OsMEN-OC/openclaw-copilot \
+  --model github-copilot/gpt-5.4 \
+  --bind discord
+Problem: OpenClaw's agent system currently uses a single Discord bot token shared across all agents. Each agent routes messages internally, but they all post as the same bot. For distinct identities (different name, avatar), we'd need either:
+- Discord webhooks (OpenClaw posts on behalf of different identities)
+- Multiple bot tokens (one per agent, each a separate Discord application)
+The Critical Decision: Single Bot vs Multi-Bot
+Option A: Single OpenClaw instance, webhook personalities
+- One Discord bot token (Jarvis)
+- Uses Discord webhooks to post as different "users" in the channel
+- Each webhook has its own name and avatar
+- OpenClaw routes to the correct model internally
+- ✅ Simplest to build
+- ✅ OpenClaw handles all memory, sessions, routing
+- ❌ All agents share OpenClaw's model routing (no true Claude Code subprocess)
+Option B: Multiple Discord bots, one per agent
+- 4 Discord bot applications, 4 tokens
+- Each bot runs its own process
+- Claude bot spawns claude -p, GLM bot calls OpenCode API, Copilot bot calls Copilot API
+- OpenClaw/Jarvis is just one of the bots
+- ✅ Each agent is truly independent
+- ✅ Different backends (Claude Code subprocess vs OpenCode HTTP vs Copilot API)
+- ❌ More complex deployment (4 processes)
+- ❌ No shared memory unless we build it
+- ❌ Each bot needs its own history/context management
+Option C: OpenClaw as hub, bridge bots as spokes (recommended)
+- OpenClaw runs Jarvis natively AND manages shared context
+- Bridge bots for Claude/GLM/Copilot are separate Discord bots
+- Each bridge bot reads #roundtable history, calls its backend, posts response
+- OpenClaw's memory system serves as the shared long-term memory
+- Bridge bots can query OpenClaw's gateway for context/memory
+- ✅ Best of both worlds — true agent independence + shared infrastructure
+- ✅ Each agent uses its native backend (Claude Code gets shell access, OpenCode gets its tools)
+- ✅ OpenClaw's memory/persistence as the shared backbone
+- ✅ Natural Discord conversation flow
+Phased Build Plan
+Phase 1: Two agents talking (1-2 days)
+- Jarvis (OpenClaw, already works)
+- Claude bridge bot (new Discord app + Node.js service)
+- Create #roundtable Discord channel
+- Both bots in the channel, responding to @mentions
+- Claude bot reads last 20 messages for context
+- Test: can they have a back-and-forth about a code problem?
+Phase 2: Add GLM + turn-taking logic (1-2 days)
+- GLM bridge bot via OpenCode serve API
+- Shared context protocol: each bot writes a summary to a shared file after responding
+- Turn-taking: @agent mentions, domain keywords, human direction
+- Test: three-way discussion about architecture
+Phase 3: Shared memory + accountability (2-3 days)
+- OpenClaw gateway serves as memory API
+- Bridge bots read/write to shared memory via gateway
+- Accountability: each agent logs its decisions with reasoning
+- SOUL.md and IDENTITY.md per agent with defined roles
+- Test: agents remember and reference prior discussions
+Phase 4: Copilot + VS Code integration (2-3 days)
+- Copilot bridge bot via GitHub Copilot API
+- VS Code extension or task that posts to #roundtable
+- IDE context (open files, diagnostics) fed into discussions
+- Test: code review roundtable with all four agents
+Phase 5: Orchestration + cost control (ongoing)
+- Round-robin timers for proactive check-ins
+- Cost tracking per agent (token usage, API spend)
+- Conflict resolution (when agents disagree)
+- Human notification for decisions needing approval
+- Meeting summaries auto-generated after discussions
+Key Technical Challenges
+1. Context window management — 4 agents × 20 messages = expensive. Need smart summarization (OpenClaw's embedding search helps here)
+2. Race conditions — Two agents responding simultaneously. Need a "thinking" indicator (Discord typing) and debouncing
+3. Session isolation — Each agent needs its own session history but shared channel context. The April 8 SQLite conflict showed this matters
+4. Model-specific formatting — Claude Code returns JSON, OpenCode returns Markdown, Copilot returns code suggestions. Each bridge bot normalizes to Discord-friendly format
+5. Cost — Opus 4.6 is expensive. GLM-5-turbo is cheap. Need smart routing so expensive models only engage when their expertise is needed
+Where This Lives
+~/dev/OsMEN-OC/roundtable/
+├── README.md                    # This plan
+├── agents/
+│   ├── jarvis/                  # OpenClaw native (existing)
+│   │   └── workspace/ → ~/dev/OsMEN-OC/openclaw/
+│   ├── claude/                  # Claude Code bridge bot
+│   │   ├── IDENTITY.md          # Role, personality, accountability
+│   │   ├── SOUL.md              # Deep personality
+│   │   ├── bot.mjs              # Discord bot + Claude Code bridge
+│   │   └── package.json
+│   ├── glm/                     # OpenCode bridge bot
+│   │   ├── IDENTITY.md
+│   │   ├── SOUL.md
+│   │   ├── bot.mjs              # Discord bot + OpenCode API bridge
+│   │   └── package.json
+│   └── copilot/                 # VS Code Copilot bridge bot
+│       ├── IDENTITY.md
+│       ├── SOUL.md
+│       ├── bot.mjs              # Discord bot + Copilot API bridge
+│       └── package.json
+├── shared/
+│   ├── context/                 # Shared context files
+│   │   ├── recent-summary.md    # Rolling summary of discussion
+│   │   └── decisions.md         # Decision log with accountability
+│   └── memory/                  # Symlink to OpenClaw's memory
+└── deploy/
+    ├── systemd/                 # Service files for each bridge bot
+    └── discord/                 # Discord app configs, webhook URLs
+---
+Want me to start building Phase 1? That would be creating the Discord application for Claude, writing the bridge bot, and getting two agents talking in a channel.

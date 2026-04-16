@@ -22,7 +22,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Query
 from loguru import logger
 from pydantic import BaseModel
 
@@ -169,7 +169,7 @@ async def lifespan(app: FastAPI):
 
     bridge_section = openclaw_cfg.get("bridge", {})
     if not bridge_url:
-        bridge_url = bridge_section.get("endpoint")
+        bridge_url = bridge_section.get("endpoint", "")
 
     if bridge_url:
         from core.bridge.ws_client import OpenClawBridgeClient
@@ -178,7 +178,6 @@ async def lifespan(app: FastAPI):
         bridge_client = OpenClawBridgeClient(
             endpoint=bridge_url,
             on_message=lambda msg: _bridge_message_handler(app, msg),
-            max_backoff_seconds=float(reconnect.get("max_backoff_seconds", 60.0)),
         )
         app.state.bridge_client = bridge_client
         bridge_task = asyncio.create_task(bridge_client.run_forever())
@@ -203,7 +202,25 @@ async def lifespan(app: FastAPI):
         except Exception as exc:
             logger.warning("Pipeline runner failed to start: {}", exc)
 
-    yield
+    # --- Orchestration init (optional) ---
+    try:
+        from core.orchestration import init_orchestration
+        await init_orchestration(app.state, pg_pool)
+        logger.info("Orchestration engine initialized")
+    except Exception as exc:
+        logger.debug("Orchestration init skipped: {}", exc)
+
+    # --- Taskwarrior sync worker (optional) ---
+    try:
+        from core.tasks.sync import TaskSyncWorker
+        tw_worker = TaskSyncWorker()
+        app.state.task_sync_worker = tw_worker
+        asyncio.create_task(tw_worker.run_forever())
+        logger.info("Taskwarrior sync worker started")
+    except Exception as exc:
+        logger.debug("Taskwarrior sync skipped: {}", exc)
+
+    yield  # ← FastAPI serves requests here
 
     # --- Shutdown ---
     if pipeline_runner is not None:

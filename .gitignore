@@ -32,13 +32,35 @@ htmlcov/
 *.swo
 *.code-workspace
 
+<<<<<<< HEAD
+# Runtime data (never committed)
+data/
+logs/
+
+# Repo stores templates only. Live secret backups stay local under ~/.config/osmen/secrets/
+config/secrets/*
+!config/secrets/*.template.yaml
+=======
 # Runtime data and secrets (never committed)
 data/
 logs/
 config/secrets/*.enc.yaml
+>>>>>>> origin/main
 
 # First-install ephemeral directory (deleted after install)
 temp_1st_install/
 
 # SOPS age key
 *.age
+<<<<<<< HEAD
+scripts/appdrawer/*.bak.*
+
+# Agent worktrees (symlinked from external tools)
+openclaw/auditor/
+openclaw/reviewer/
+roundtable/
+
+# Vault backups (auto-cleaned, not versioned)
+vault/backups/
+=======
+>>>>>>> origin/main

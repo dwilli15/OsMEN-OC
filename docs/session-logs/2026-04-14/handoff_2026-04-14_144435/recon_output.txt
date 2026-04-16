@@ -1,0 +1,563 @@
+﻿=== TV SHOW STRUCTURE AUDIT ===
+SHOW: 3 Body Problem (2024) | seasons=1 | loose_files=0 | total_eps=8 | subdirs=1
+Season 01
+---
+SHOW: Agatha Christies Seven Dials (2025) | seasons=1 | loose_files=0 | total_eps=3 | subdirs=1
+Season 01
+---
+SHOW: Agents of SHIELD (2013) | seasons=7 | loose_files=0 | total_eps=136 | subdirs=7
+Season 01
+Season 02
+Season 03
+Season 04
+Season 05
+Season 06
+Season 07
+---
+SHOW: Ahsoka (2023) | seasons=1 | loose_files=0 | total_eps=8 | subdirs=1
+Season 01
+---
+SHOW: A Knight of the Seven Kingdoms (2025) | seasons=1 | loose_files=0 | total_eps=6 | subdirs=1
+Season 01
+---
+SHOW: Big Bang Theory (2007) | seasons=12 | loose_files=0 | total_eps=279 | subdirs=12
+Season 01
+Season 02
+Season 03
+Season 04
+Season 05
+Season 06
+Season 07
+Season 08
+Season 09
+Season 10
+---
+SHOW: CIA 2026 | seasons=1 | loose_files=0 | total_eps=5 | subdirs=1
+Season 01
+---
+SHOW: CIA. (2026) | seasons=1 | loose_files=0 | total_eps=14 | subdirs=1
+Season 01
+---
+SHOW: Daredevil Born Again (2025) | seasons=1 | loose_files=0 | total_eps=1 | subdirs=1
+Season 02
+---
+SHOW: Doctor Who (2005) | seasons=14 | loose_files=0 | total_eps=234 | subdirs=14
+Season 00
+Season 01
+Season 02
+Season 03
+Season 04
+Season 05
+Season 06
+Season 07
+Season 08
+Season 09
+---
+SHOW: DTF.St.Louis | seasons=1 | loose_files=0 | total_eps=4 | subdirs=1
+Season 01
+---
+SHOW: DTF.St.Louis..1080p | seasons=1 | loose_files=0 | total_eps=4 | subdirs=1
+Season 01
+---
+SHOW: Fallout (2024) | seasons=1 | loose_files=0 | total_eps=8 | subdirs=1
+Season 01
+---
+SHOW: Friends (1994) | seasons=10 | loose_files=0 | total_eps=234 | subdirs=10
+Season 01
+Season 02
+Season 03
+Season 04
+Season 05
+Season 06
+Season 07
+Season 08
+Season 09
+Season 10
+---
+SHOW: Fringe (2008) | seasons=5 | loose_files=0 | total_eps=100 | subdirs=5
+Season 01
+Season 02
+Season 03
+Season 04
+Season 05
+---
+SHOW: Good Eats (1999) | seasons=15 | loose_files=0 | total_eps=298 | subdirs=15
+Season 00
+Season 01
+Season 02
+Season 03
+Season 04
+Season 05
+Season 06
+Season 07
+Season 08
+Season 09
+---
+SHOW: Grimm (2011) | seasons=6 | loose_files=0 | total_eps=122 | subdirs=6
+Season 01
+Season 02
+Season 03
+Season 04
+Season 05
+Season 06
+---
+SHOW: House MD (2004) | seasons=8 | loose_files=0 | total_eps=219 | subdirs=9
+Extras
+Season 1
+Season 2
+Season 3
+Season 4
+Season 5
+Season 6
+Season 7
+Season 8
+---
+SHOW: Marvel's Agent Carter (2015) | seasons=2 | loose_files=0 | total_eps=18 | subdirs=2
+Season 01
+Season 02
+---
+SHOW: Modern Family (2009) | seasons=11 | loose_files=0 | total_eps=249 | subdirs=11
+Season 01
+Season 02
+Season 03
+Season 04
+Season 05
+Season 06
+Season 07
+Season 08
+Season 09
+Season 10
+---
+SHOW: Monarch.Legacy.of.Monsters | seasons=1 | loose_files=0 | total_eps=1 | subdirs=1
+Season 02
+---
+SHOW: Monarch.Legacy.of.Monsters..1080p | seasons=1 | loose_files=0 | total_eps=2 | subdirs=1
+Season 02
+---
+SHOW: Monarch Legacy of Monsters (2023) | seasons=1 | loose_files=0 | total_eps=3 | subdirs=1
+Season 02
+---
+SHOW: Percy Jackson and the Olympians (2023) | seasons=1 | loose_files=0 | total_eps=8 | subdirs=1
+Season 01
+---
+SHOW: Spartacus - House of Ashur (2025) | seasons=1 | loose_files=0 | total_eps=9 | subdirs=1
+Season 01
+---
+SHOW: Star Trek - Deep Space Nine (1993) | seasons=7 | loose_files=0 | total_eps=172 | subdirs=7
+Season 01
+Season 02
+Season 03
+Season 04
+Season 05
+Season 06
+Season 07
+---
+SHOW: Star Trek Discovery (2017) | seasons=5 | loose_files=0 | total_eps=65 | subdirs=5
+Season 01
+Season 02
+Season 03
+Season 04
+Season 05
+---
+SHOW: Star Trek - Enterprise (2001) | seasons=4 | loose_files=0 | total_eps=122 | subdirs=4
+Season 01
+Season 02
+Season 03
+Season 04
+---
+SHOW: Star Trek - Lower Decks (2020) | seasons=2 | loose_files=0 | total_eps=20 | subdirs=2
+Season 01
+Season 02
+---
+SHOW: Star Trek - Picard (2020) | seasons=3 | loose_files=0 | total_eps=30 | subdirs=3
+Season 01
+Season 02
+Season 03
+---
+SHOW: Star Trek - Short Treks (2018) | seasons=2 | loose_files=0 | total_eps=13 | subdirs=2
+Season 01
+Season 02
+---
+SHOW: Star Trek Starfleet Academy | seasons=1 | loose_files=0 | total_eps=1 | subdirs=1
+Season 01
+---
+SHOW: Star Trek - Starfleet Academy (2025) | seasons=1 | loose_files=0 | total_eps=6 | subdirs=1
+Season 01
+---
+SHOW: Star Trek Starfleet Academy (2025) | seasons=1 | loose_files=0 | total_eps=3 | subdirs=1
+Season 01
+---
+SHOW: Star Trek Starfleet Academy (2026) | seasons=1 | loose_files=0 | total_eps=1 | subdirs=1
+Season 01
+---
+SHOW: Star Trek - Strange New Worlds (2022) | seasons=3 | loose_files=0 | total_eps=30 | subdirs=3
+Season 01
+Season 02
+Season 03
+---
+SHOW: Star Trek - The Animated Series (1973) | seasons=2 | loose_files=0 | total_eps=22 | subdirs=2
+Season 01
+Season 02
+---
+SHOW: Star Trek - The Next Generation (1987) | seasons=7 | loose_files=0 | total_eps=176 | subdirs=7
+Season 01
+Season 02
+Season 03
+Season 04
+Season 05
+Season 06
+Season 07
+---
+SHOW: Star Trek - The Original Series (1966) | seasons=3 | loose_files=0 | total_eps=79 | subdirs=3
+Season 01
+Season 02
+Season 03
+---
+SHOW: Star Trek - Voyager (1995) | seasons=7 | loose_files=0 | total_eps=168 | subdirs=7
+Season 01
+Season 02
+Season 03
+Season 04
+Season 05
+Season 06
+Season 07
+---
+SHOW: Star Wars Tales of the Underworld (2025) | seasons=1 | loose_files=0 | total_eps=6 | subdirs=1
+Season 01
+---
+SHOW: Superman and Lois (2021) | seasons=4 | loose_files=0 | total_eps=53 | subdirs=4
+Season 01
+Season 02
+Season 03
+Season 04
+---
+SHOW: Supernatural (2005) | seasons=0 | loose_files=0 | total_eps=264 | subdirs=12
+Supernatural.S01.COMPLETE.BluRay.x264.AAC.2.0-LeRalouf
+Supernatural.S02.COMPLETE.BluRay.x264.AAC.2.0-LeRalouf
+Supernatural.S03.COMPLETE.BluRay.x264.AAC.2.0-LeRalouf
+Supernatural.S04.COMPLETE.BluRay.x264.AAC.2.0-LeRalouf
+Supernatural.S05.COMPLETE.BluRay.x264.AAC.2.0-LeRalouf
+Supernatural.S06.COMPLETE.BluRay.x264.AAC.2.0-LeRalouf
+Supernatural.S07.COMPLETE.BluRay.x264.AAC.2.0-LeRalouf
+Supernatural.S08.COMPLETE.BluRay.x264.AAC.2.0-LeRalouf
+Supernatural.S09.COMPLETE.720p.BluRay.x264-F1reFly
+Supernatural.S10.COMPLETE.720p.BRRip.H.264-PaHe
+---
+SHOW: The Acolyte (2024) | seasons=1 | loose_files=0 | total_eps=8 | subdirs=1
+Season 01
+---
+SHOW: The Continental | seasons=0 | loose_files=3 | total_eps=3 | subdirs=0
+The.Continental.S01E01.Brothers.in.Arms.mkv
+The.Continental.S01E02.Loyalty.to.the.Master.mkv
+The.Continental.S01E03.Theatre.of.Pain.mkv
+---
+SHOW: The Count of Monte Cristo (2025) | seasons=1 | loose_files=0 | total_eps=8 | subdirs=1
+Season 01
+---
+SHOW: The Diplomat (2023) | seasons=2 | loose_files=0 | total_eps=14 | subdirs=2
+Season 01
+Season 02
+---
+SHOW: The Last of Us | seasons=2 | loose_files=0 | total_eps=16 | subdirs=2
+Season 01
+Season 2
+---
+SHOW: The Lord of the Rings The Rings of Power | seasons=1 | loose_files=0 | total_eps=1 | subdirs=1
+Season 02
+---
+SHOW: The Night Manager (2016) | seasons=2 | loose_files=0 | total_eps=10 | subdirs=2
+Season 01
+Season 02
+---
+SHOW: The Orville (2017) | seasons=3 | loose_files=0 | total_eps=62 | subdirs=3
+Season 01
+Season 02
+Season 03
+---
+SHOW: The Pendragon Cycle (2026) | seasons=1 | loose_files=0 | total_eps=6 | subdirs=1
+Season 01
+---
+SHOW: The Pitt (2025) | seasons=2 | loose_files=0 | total_eps=20 | subdirs=2
+Season 01
+Season 02
+---
+SHOW: The Residence (2025) | seasons=1 | loose_files=0 | total_eps=8 | subdirs=1
+Season 01
+---
+SHOW: True Lies (2023) | seasons=1 | loose_files=0 | total_eps=13 | subdirs=1
+Season 01
+---
+SHOW: Young Sherlock (2026) | seasons=1 | loose_files=0 | total_eps=8 | subdirs=1
+Season 01
+---
+
+=== ANIME SHOW STRUCTURE AUDIT (plex) ===
+SHOW: Avatar The Last Airbender (2005) | seasons=0 | loose_files=0 | total_eps=88 | subdirs=4
+Avatar The Last Airbender (2005 - 2008) Featurettes & Extras - RCVR
+Avatar The Last Airbender Season 1 - Book One Water 1080p [HEVC AAC] - SEPH1
+Avatar The Last Airbender Season 2 - Book Two Earth 1080p [HEVC AAC] - SEPH1
+Avatar The Last Airbender Season 3 - Book Three Fire 1080p [HEVC AAC] - SEPH1
+---
+SHOW: Hunter x Hunter (2011) | seasons=1 | loose_files=0 | total_eps=4 | subdirs=1
+Season 01
+---
+SHOW: Monogatari Series (2009) | seasons=1 | loose_files=0 | total_eps=22 | subdirs=1
+Season 01
+---
+SHOW: My Hero Academia (2016) | seasons=7 | loose_files=0 | total_eps=280 | subdirs=9
+Movies
+OVAs
+Season 01
+Season 02
+Season 03
+Season 04
+Season 05
+Season 06
+Season 07
+---
+SHOW: Neon Genesis Evangelion (1995) | seasons=1 | loose_files=0 | total_eps=42 | subdirs=2
+Movies
+Season 01
+---
+SHOW: Secrets of the Silent Witch (2023) | seasons=1 | loose_files=0 | total_eps=13 | subdirs=1
+Season 01
+---
+SHOW: The Apothecary Diaries (2023) | seasons=2 | loose_files=0 | total_eps=53 | subdirs=2
+Season 01
+Season 02
+---
+
+=== ANIME SHOW STRUCTURE AUDIT (overflow) ===
+SHOW: Justice League (2001) | seasons=0 | loose_files=0 | total_eps=91 | subdirs=5
+S01
+S02
+S03
+S04
+S05
+---
+
+=== TV SHOW STRUCTURE AUDIT (overflow) ===
+SHOW: Alias (2001) | seasons=0 | loose_files=0 | total_eps=105 | subdirs=5
+S01
+S02
+S03
+S04
+S05
+---
+SHOW: Chuck (2007) | seasons=0 | loose_files=0 | total_eps=86 | subdirs=5
+Chuck Extras
+S01
+S02
+S03
+S04
+---
+SHOW: The Newsroom (2012) | seasons=3 | loose_files=0 | total_eps=25 | subdirs=3
+Season 1
+Season 2
+Season 3
+---
+SHOW: The West Wing (1999) | seasons=8 | loose_files=0 | total_eps=156 | subdirs=8
+Season 0
+Season 1
+Season 2
+Season 3
+Season 4
+Season 5
+Season 6
+Season 7
+---
+
+=== MOVIES STRUCTURE ===
+Total movie dirs: 2
+Loose movie files: 346
+
+=== EXISTING SCRIPTS ON PLEX DRIVE ===
+/run/media/dwill/plex/agent-in/check-creds.ps1
+/run/media/dwill/plex/agent-in/comic_cbr_to_cbz.ps1
+/run/media/dwill/plex/agent-in/comic_preview_organization.ps1
+/run/media/dwill/plex/agent-in/configure_komga_comicvine.ps1
+/run/media/dwill/plex/agent-in/configure_mylar.ps1
+/run/media/dwill/plex/agent-in/create_hardlinks.ps1
+/run/media/dwill/plex/agent-in/create_plex_collections.py
+/run/media/dwill/plex/agent-in/create_plex_structure_v3.ps1
+/run/media/dwill/plex/agent-in/debug_qb_api.py
+/run/media/dwill/plex/agent-in/download_comics.ps1
+/run/media/dwill/plex/agent-in/download_monitor.ps1
+/run/media/dwill/plex/agent-in/ElevatedHelper.ps1
+/run/media/dwill/plex/agent-in/full_gap_report.ps1
+/run/media/dwill/plex/agent-in/generate_media_topology.ps1
+/run/media/dwill/plex/agent-in/generate_missing_titles.ps1
+/run/media/dwill/plex/agent-in/Get-CredentialModules.ps1
+/run/media/dwill/plex/agent-in/get_plex_creds.ps1
+/run/media/dwill/plex/agent-in/get_prowlarr_creds.ps1
+/run/media/dwill/plex/agent-in/get_qbittorrent_creds.ps1
+/run/media/dwill/plex/agent-in/get_torrent_indexers.py
+/run/media/dwill/plex/agent-in/get_vpn_paths.ps1
+/run/media/dwill/plex/agent-in/get_yts_links.py
+/run/media/dwill/plex/agent-in/grab_movies_v2.py
+/run/media/dwill/plex/agent-in/grab_movies_v3.py
+/run/media/dwill/plex/agent-in/grab_transformers_movies.py
+/run/media/dwill/plex/agent-in/install-komga.ps1
+/run/media/dwill/plex/agent-in/install-mylar3.ps1
+/run/media/dwill/plex/agent-in/library_cleanup.ps1
+/run/media/dwill/plex/agent-in/list_all_media_creds.ps1
+/run/media/dwill/plex/agent-in/load-creds.ps1
+/run/media/dwill/plex/agent-in/media-dashboard.ps1
+/run/media/dwill/plex/agent-in/media_tagger.ps1
+/run/media/dwill/plex/agent-in/media_transfer_complete.ps1
+/run/media/dwill/plex/agent-in/net_audit.ps1
+/run/media/dwill/plex/agent-in/organize_media.ps1
+/run/media/dwill/plex/agent-in/plex_collection_creator.ps1
+/run/media/dwill/plex/agent-in/plex_collection_manager.ps1
+/run/media/dwill/plex/agent-in/plex_collections_manager.py
+/run/media/dwill/plex/agent-in/plex_fetch_ratings.ps1
+/run/media/dwill/plex/agent-in/plex_fetch_tmdb_ratings.ps1
+/run/media/dwill/plex/agent-in/plex_media_health_checker.ps1
+/run/media/dwill/plex/agent-in/plex_quality_analyzer.ps1
+/run/media/dwill/plex/agent-in/plex_scan_helper.ps1
+/run/media/dwill/plex/agent-in/qbit_completion_monitor.ps1
+/run/media/dwill/plex/agent-in/qbit_network_audit.ps1
+/run/media/dwill/plex/agent-in/qbittorrent_firewall_rules.ps1
+/run/media/dwill/plex/agent-in/safe_torrent_search.py
+/run/media/dwill/plex/agent-in/scan_complete.ps1
+/run/media/dwill/plex/agent-in/search_comics.ps1
+/run/media/dwill/plex/agent-in/set_plex_creds.ps1
+/run/media/dwill/plex/agent-in/start_agent_team.ps1
+/run/media/dwill/plex/agent-in/store_comicvine_creds.ps1
+/run/media/dwill/plex/agent-in/store_creds.ps1
+/run/media/dwill/plex/agent-in/test_magnet_resolve.py
+/run/media/dwill/plex/agent-in/test_qb_add.py
+/run/media/dwill/plex/agent-in/trigger_komga_scan.ps1
+/run/media/dwill/plex/agent-in/validate_media_structure.ps1
+/run/media/dwill/plex/agent-in/verify-creds.ps1
+/run/media/dwill/plex/agent-in/vpn_helper.ps1
+/run/media/dwill/plex/agent-in/vpn_startup.ps1
+/run/media/dwill/plex/agent-in/vpn_status_check.ps1
+/run/media/dwill/plex/agent-in/vpn_watchdog.ps1
+/run/media/dwill/plex/check_komga.ps1
+/run/media/dwill/plex/check_qb.ps1
+/run/media/dwill/plex/download_recommended_movies.sh
+/run/media/dwill/plex/firewall_update.ps1
+/run/media/dwill/plex/firewall_update_v2.ps1
+/run/media/dwill/plex/firewall_update_v3.ps1
+/run/media/dwill/plex/fix_firewall_admin.ps1
+/run/media/dwill/plex/fix_firewall.ps1
+/run/media/dwill/plex/fix_firewall_v2.ps1
+/run/media/dwill/plex/fix_firewall_v3.ps1
+/run/media/dwill/plex/fix_meta.ps1
+/run/media/dwill/plex/fix-routes.ps1
+/run/media/dwill/plex/fix_rules.ps1
+/run/media/dwill/plex/FIX_VPN_FIREWALL_RULES.ps1
+/run/media/dwill/plex/fix-vpn-routing.ps1
+/run/media/dwill/plex/grab_torrents.py
+/run/media/dwill/plex/Media/download_subtitles_hash_only.py
+/run/media/dwill/plex/Media/download_subtitles_subliminal.py
+/run/media/dwill/plex/Media/final_subtitle_report.py
+/run/media/dwill/plex/media-research/analyze_results.py
+/run/media/dwill/plex/media-research/check_missing_tv.sh
+/run/media/dwill/plex/media-research/check_prowlarr.ps1
+/run/media/dwill/plex/media-research/check_prowlarr_v2.ps1
+/run/media/dwill/plex/media-research/check_prowlarr_v3.ps1
+/run/media/dwill/plex/media-research/get_missing_magnets.sh
+/run/media/dwill/plex/media-research/parse_prowlarr.ps1
+/run/media/dwill/plex/media-research/search_indexers.sh
+/run/media/dwill/plex/media-research/search_movies.sh
+/run/media/dwill/plex/Media/subtitle_downloader_final.py
+/run/media/dwill/plex/Media/subtitle_downloader.py
+/run/media/dwill/plex/Media/subtitle_downloader_v2.py
+/run/media/dwill/plex/Media/subtitle_downloader_v3.py
+/run/media/dwill/plex/Media/subtitle_download_report.py
+/run/media/dwill/plex/.openclaw/sync-openclaw-state.ps1
+/run/media/dwill/plex/plex-agent-core/examples.py
+/run/media/dwill/plex/restore-routes.ps1
+/run/media/dwill/plex/scan_media.py
+/run/media/dwill/plex/start-claude-media.ps1
+/run/media/dwill/plex/temp/add_shield_torrents.sh
+/run/media/dwill/plex/temp/clear_queue.ps1
+/run/media/dwill/plex/temp/download_and_upload_nzbs.ps1
+/run/media/dwill/plex/temp/download_missing_episodes.ps1
+/run/media/dwill/plex/temp/enumerate_videos.ps1
+/run/media/dwill/plex/temp/find_season_packs.ps1
+/run/media/dwill/plex/temp/get_guids.ps1
+/run/media/dwill/plex/temp/list_titles.ps1
+/run/media/dwill/plex/temp/marvel_acquisition.ps1
+/run/media/dwill/plex/temp/phase0_qbit_cleanup.ps1
+/run/media/dwill/plex/temp/phase0_sabnzbd_check.ps1
+/run/media/dwill/plex/temp/phase1_discovery.ps1
+/run/media/dwill/plex/temp/phase1_discovery.py
+/run/media/dwill/plex/temp/phase2_classification.py
+/run/media/dwill/plex/temp/phase3_subtitles.py
+/run/media/dwill/plex/temp/phase4_copy.py
+/run/media/dwill/plex/temp/phase5_verification.py
+/run/media/dwill/plex/temp/phase6_results.py
+/run/media/dwill/plex/temp/phase7_deletion.py
+/run/media/dwill/plex/temp/upload_nzbs.ps1
+/run/media/dwill/plex/tmp/enumerate_videos.ps1
+/run/media/dwill/plex/tmp/extract_g2014.py
+/run/media/dwill/plex/tmp/parse_monsterverse.py
+/run/media/dwill/plex/tmp/prowlarr_radarr_test.sh
+/run/media/dwill/plex/tmp/transfer_videos.ps1
+/run/media/dwill/plex/tools/delete_phase7.ps1
+/run/media/dwill/plex/tools/delete_sources.ps1
+/run/media/dwill/plex/tools/delete_sources_v2.ps1
+/run/media/dwill/plex/tools/find_plex.ps1
+/run/media/dwill/plex/tools/fix_daredevil.ps1
+/run/media/dwill/plex/tools/get_plex_info.ps1
+/run/media/dwill/plex/tools/get_plex_token.ps1
+/run/media/dwill/plex/tools/phase5_verify.ps1
+/run/media/dwill/plex/tools/plex_cmdline.ps1
+/run/media/dwill/plex/tools/plex_find_prefs.ps1
+/run/media/dwill/plex/tools/plex_token.ps1
+/run/media/dwill/plex/tools/sab_local_proxy.py
+/run/media/dwill/plex/tools/sab_local_proxy_service.py
+/run/media/dwill/plex/tools/show_results.ps1
+/run/media/dwill/plex/tools/transfer_phase1.ps1
+/run/media/dwill/plex/tools/transfer_phase2.ps1
+/run/media/dwill/plex/tools/transfer_phase3_4.ps1
+/run/media/dwill/plex/tools/transfer_phase5_local.ps1
+/run/media/dwill/plex/tools/transfer_phase5.ps1
+/run/media/dwill/plex/tools/transfer_phase5_simple.ps1
+/run/media/dwill/plex/tools/transfer_phase5_v2.ps1
+/run/media/dwill/plex/tools/transfer_phase5_v3.ps1
+/run/media/dwill/plex/tools/transfer_phase6.ps1
+/run/media/dwill/plex/tools/transfer_phase7_fixed.ps1
+/run/media/dwill/plex/tools/transfer_phase7.ps1
+/run/media/dwill/plex/transfer_now.py
+/run/media/dwill/plex/update_firewall_elevated.ps1
+/run/media/dwill/plex/update_sizes.py
+
+=== OSMEN DEV SCRIPTS ===
+/home/dwill/dev/OsMEN-OC/temp_1st_install/load_tasks.sh
+/home/dwill/dev/OsMEN-OC/tests/test_smoke.py
+/home/dwill/dev/OsMEN-OC/tests/conftest.py
+/home/dwill/dev/OsMEN-OC/tests/test_system_monitor.py
+/home/dwill/dev/OsMEN-OC/tests/test_tasks.py
+/home/dwill/dev/OsMEN-OC/tests/test_voice.py
+/home/dwill/dev/OsMEN-OC/tests/test_quadlets.py
+/home/dwill/dev/OsMEN-OC/tests/test_core.py
+/home/dwill/dev/OsMEN-OC/tests/test_bridge.py
+/home/dwill/dev/OsMEN-OC/tests/test_audit.py
+/home/dwill/dev/OsMEN-OC/tests/test_contracts.py
+/home/dwill/dev/OsMEN-OC/tests/test_pipelines.py
+/home/dwill/dev/OsMEN-OC/tests/test_handlers.py
+/home/dwill/dev/OsMEN-OC/tests/test_memory.py
+/home/dwill/dev/OsMEN-OC/tests/test_timers.py
+/home/dwill/dev/OsMEN-OC/tests/test_setup.py
+/home/dwill/dev/OsMEN-OC/tests/test_events.py
+/home/dwill/dev/OsMEN-OC/tests/test_agent_manifests.py
+/home/dwill/dev/OsMEN-OC/tests/test_approval.py
+/home/dwill/dev/OsMEN-OC/tests/test_hub.py
+/home/dwill/dev/OsMEN-OC/tests/test_ws_bridge.py
+/home/dwill/dev/OsMEN-OC/tests/test_gateway.py
+/home/dwill/dev/OsMEN-OC/tests/test_secrets_custodian.py
+/home/dwill/dev/OsMEN-OC/tests/test_ingest.py
+/home/dwill/dev/OsMEN-OC/core/__init__.py
+/home/dwill/dev/OsMEN-OC/scripts/bootstrap.sh
+/home/dwill/dev/OsMEN-OC/scripts/lemonade-autoload.sh
+/home/dwill/dev/OsMEN-OC/scripts/deploy_quadlets.sh
+/home/dwill/dev/OsMEN-OC/scripts/deploy_timers.sh
+/home/dwill/dev/.venv/bin/activate_this.py
+/home/dwill/dev/OsMEN-OC-local-backup-20260403_105411/tests/__init__.py
+/home/dwill/dev/OsMEN-OC-local-backup-20260403_105411/tests/conftest.py
+/home/dwill/dev/OsMEN-OC-local-backup-20260403_105411/tests/test_core.py
+/home/dwill/dev/OsMEN-OC-local-backup-20260403_105411/core/__init__.py

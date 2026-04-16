@@ -1,0 +1,30 @@
+FROM docker.io/library/python:3.13-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends taskwarrior && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir \
+    "fastapi>=0.115,<1" \
+    "uvicorn[standard]>=0.29,<1" \
+    "pydantic>=2.7,<3" \
+    "pyyaml>=6.0,<7" \
+    "loguru>=0.7,<1" \
+    "httpx>=0.27,<1" \
+    "anyio>=4.4,<5" \
+    "cronsim>=2.6,<3" \
+    "websockets>=12.0,<15" \
+    "python-multipart>=0.0.6" \
+    "redis[hiredis]>=5.0,<6" \
+    "asyncpg>=0.29,<1"
+
+# Build: podman build -t osmen-gateway:dev -f core/Containerfile .
+# The .dockerignore excludes .git, .venv, node_modules etc.
+COPY . /app/
+
+EXPOSE 8080
+
+CMD ["python", "-m", "uvicorn", "core.gateway.app:app", "--host", "0.0.0.0", "--port", "8080"]
