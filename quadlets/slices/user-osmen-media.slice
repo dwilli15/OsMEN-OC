@@ -7,6 +7,8 @@ Description=OsMEN-OC Media Services Slice
 Documentation=https://github.com/dwilli15/OsMEN-OC
 
 [Slice]
+MemoryAccounting=yes
+CPUAccounting=yes
 # 4 GiB — sufficient for Plex/Jellyfin transcoding plus buffer.
 MemoryMax=4G
 MemoryHigh=3G

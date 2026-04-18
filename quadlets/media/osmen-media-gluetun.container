@@ -27,6 +27,10 @@ Environment=DNS_ADDRESS=198.18.0.1
 # Disable IPv6 (PF05).
 Environment=DOT_IPV6=off
 
+# HTTP proxy for host browser VPN routing.
+Environment=HTTPPROXY=on
+Environment=FIREWALL_OUTBOUND_SUBNETS=10.89.0.0/24,192.168.0.0/16
+
 # VPN credentials via Podman secrets.
 Secret=osmen-vpn-wireguard-private-key,type=env,target=WIREGUARD_PRIVATE_KEY
 Secret=osmen-vpn-wireguard-addresses,type=env,target=WIREGUARD_ADDRESSES

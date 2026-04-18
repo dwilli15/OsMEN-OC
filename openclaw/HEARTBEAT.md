@@ -1,7 +1,4 @@
-# HEARTBEAT.md Template
+# HEARTBEAT.md
 
-```markdown
-# Keep this file empty (or with only comments) to skip heartbeat API calls.
-
-# Add tasks below when you want the agent to check something periodically.
-```
+- Check manga download progress (SABnzbd queue + aria2c torrents + MangaDex v5)
+- Send D a brief status update on manga acquisition if anything changed since last check

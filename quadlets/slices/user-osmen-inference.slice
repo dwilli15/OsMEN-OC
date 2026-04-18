@@ -8,6 +8,8 @@ Description=OsMEN-OC Inference Slice
 Documentation=https://github.com/dwilli15/OsMEN-OC
 
 [Slice]
+MemoryAccounting=yes
+CPUAccounting=yes
 # 16 GiB hard ceiling — NVIDIA RTX 5070 (8 GiB VRAM) + CPU inference headroom.
 MemoryMax=16G
 MemoryHigh=14G

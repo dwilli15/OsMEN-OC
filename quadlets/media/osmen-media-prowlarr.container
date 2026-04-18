@@ -5,16 +5,14 @@
 [Unit]
 Description=OsMEN-OC Media — Prowlarr
 Documentation=https://github.com/dwilli15/OsMEN-OC
-After=osmen-media-network.service
-Requires=osmen-media-network.service
+After=osmen-media-gluetun.service
+Requires=osmen-media-gluetun.service
 
 [Container]
 Image=docker.io/linuxserver/prowlarr:1.35.1
 ContainerName=osmen-media-prowlarr
 
-PublishPort=127.0.0.1:9696:9696
-
-Network=osmen-media.network
+Pod=download-stack.pod
 
 Environment=PUID=1000
 Environment=PGID=1000
@@ -31,6 +29,7 @@ HealthStartPeriod=30s
 SecurityLabelDisable=true
 NoNewPrivileges=true
 ReadOnly=true
+Tmpfs=/tmp
 
 [Service]
 Restart=always

@@ -9,7 +9,7 @@ After=osmen-media-network.service
 Requires=osmen-media-network.service
 
 [Container]
-Image=docker.io/linuxserver/readarr:0.4.12-nightly
+Image=docker.io/linuxserver/readarr:release
 ContainerName=osmen-media-readarr
 
 PublishPort=127.0.0.1:8787:8787
@@ -33,6 +33,7 @@ HealthStartPeriod=30s
 SecurityLabelDisable=true
 NoNewPrivileges=true
 ReadOnly=true
+Tmpfs=/tmp
 
 [Service]
 Restart=always

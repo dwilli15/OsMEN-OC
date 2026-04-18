@@ -1,0 +1,308 @@
+MANGA DOWNLOAD REPORT
+Date: 2026-04-17 00:33
+Total: 299 | Queued: 0 | Not found: 131 | Errors: 168
+
+QUEUED (0):
+
+NOT FOUND (131):
+  ❌ Spy x Family
+  ❌ The Ancient Magus' Bride
+  ❌ My Dress-Up Darling
+  ❌ Ouran High School Host Club
+  ❌ Blue Spring Ride
+  ❌ New Game
+  ❌ Is the Order a Rabbit
+  ❌ To Your Eternity
+  ❌ Given
+  ❌ Boys Over Flowers
+  ❌ Revolutionary Girl Utena
+  ❌ Princess Tutu
+  ❌ Shirokuma Cafe
+  ❌ Handa-kun
+  ❌ Yuru Camp
+  ❌ Laid-Back Camp
+  ❌ Hidamari Sketch
+  ❌ Chihayafuru
+  ❌ Yona of the Dawn
+  ❌ Snow White with the Red Hair
+  ❌ My Teen Romantic Comedy SNAFU
+  ❌ Oregairu
+  ❌ Weathering with You
+  ❌ Suzume
+  ❌ The Girl Who Leapt Through Time
+  ❌ Wolf Children
+  ❌ Fullmetal Alchemist Brotherhood
+  ❌ Blue Exorcist
+  ❌ TenSura
+  ❌ Grimgar of Fantasy and Ash
+  ❌ Delicious in Dungeon
+  ❌ Honzuki no Gekokujou
+  ❌ Dandadan
+  ❌ Undead Unluck
+  ❌ Zom 100
+  ❌ Outlaw Star
+  ❌ Vision of Escaflowne
+  ❌ Howl's Moving Castle
+  ❌ Erased
+  ❌ Boku Dake ga Inai Machi
+  ❌ From the New World
+  ❌ Shinsekai Yori
+  ❌ Professor Layton
+  ❌ Kindaichi Case Files
+  ❌ Moriarty the Patriot
+  ❌ Idolish7
+  ❌ Run with the Wind
+  ❌ Blue Lock
+  ❌ The Disastrous Life of Saiki K
+  ❌ Danshi Koukousei no Nichijou
+  ❌ Cromartie High School
+  ❌ A Place Further Than the Universe
+  ❌ Sora yori mo Tooi Basho
+  ❌ Natsume's Book of Friends
+  ❌ Toilet-Bound Hanako-kun
+  ❌ Jibaku Shounen Hanako-kun
+  ❌ Kamichama Karin
+  ❌ Pop Team Epic
+  ❌ Are You Lost
+  ❌ Sounan desu ka
+  ❌ Survival Story of a Sword King in a Fantasy World
+  ❌ Kage no Jitsuryokusha ni Naritakute
+  ❌ Bakarina
+  ❌ The Most Heretical Last Boss Queen
+  ❌ I'll Become a Villainess Who Goes Down in History
+  ❌ She Professed Herself Pupil of the Wise Man
+  ❌ Kusuriya no Hitorigoto
+  ❌ The Strange Adventure of a Broke Mercenary
+  ❌ Skeleton Knight in Another World
+  ❌ Handyman Saitou in Another World
+  ❌ The Great Cleric
+  ❌ So I'm a Spider So What
+  ❌ Kumo desu ga Nani ka
+  ❌ Nothins Fantastical
+  ❌ The Executioner and Her Way of Life
+  ❌ The Magical Revolution of the Reincarnated Princess
+  ❌ I'm the Villainess So I'm Taming the Final Boss
+  ❌ Villainess Level 99
+  ❌ The Villainess Turns the Hourglass
+  ❌ Who Says Evil Can't Be Good
+  ❌ I Was Reincarnated as the 7th Prince
+  ❌ The Most Evasive Boyfriend in the World
+  ❌ Science Fell in Love So I Tried to Prove It
+  ❌ Rikekoi
+  ❌ Dr. Elise
+  ❌ Who Made Me a Princess
+  ❌ Beware of the Villainess
+  ❌ Death Is the Only Ending for the Villainess
+  ❌ Under the Oak Tree
+  ❌ A Stepmother's Märchen
+  ❌ Father I Don't Want This Marriage
+  ❌ Omniscient Reader's Viewpoint
+  ❌ God of High School
+  ❌ The Boxer
+  ❌ Hellbound
+  ❌ Cheese in the Trap
+  ❌ True Beauty
+  ❌ UnOrdinary
+  ❌ Weak Hero
+  ❌ Eleceed
+  ❌ Nano Machine
+  ❌ Mercenary Enrollment
+  ❌ Reincarnation of the Suicidal Battle God
+  ❌ Lookism
+  ❌ Viral Hit
+  ❌ Manager Kim
+  ❌ Jungle Juice
+  ❌ Doom Breaker
+  ❌ Hero Has Returned
+  ❌ The Max Level Hero Has Returned
+  ❌ The Beginning After the End
+  ❌ Crimson Karma
+  ❌ Return of the Blossoming Blade
+  ❌ The Reincarnation of the Suicidal Battle God
+  ❌ A Certain Magical Index
+  ❌ A Certain Scientific Railgun
+  ❌ To Aru Majutsu no Index
+  ❌ Bloom Into You
+  ❌ Yagate Kimi ni Naru
+  ❌ Bocchi the Rock
+  ❌ Bocchi wa Rock ga Shitai
+  ❌ Cyberpunk Edgerunners
+  ❌ InuYashiki
+  ❌ Sing Yesterday for Me
+  ❌ Yesterday wo Utatte
+  ❌ March Comes in Like a Lion
+  ❌ Honey and Clover
+  ❌ Nodame Cantabile
+  ❌ Princess Jellyfish
+  ❌ Kuragehime
+  ❌ Majo no Tabitabi
+
+ERRORS (168):
+  ⚠️  The Apothecary Diaries
+  ⚠️  Sword Art Online
+  ⚠️  Horimiya
+  ⚠️  Kaguya-sama Love is War
+  ⚠️  Fruits Basket
+  ⚠️  Kimi ni Todoke
+  ⚠️  Ao Haru Ride
+  ⚠️  Nana
+  ⚠️  Paradise Kiss
+  ⚠️  Peach Girl
+  ⚠️  Maid Sama
+  ⚠️  Lovely Complex
+  ⚠️  Skip Beat
+  ⚠️  Say I Love You
+  ⚠️  Strobe Edge
+  ⚠️  Orange
+  ⚠️  Komi Can't Communicate
+  ⚠️  Komi San
+  ⚠️  My Love Story
+  ⚠️  Wotakoi
+  ⚠️  Yotsuba
+  ⚠️  A Silent Voice
+  ⚠️  I Want to Eat Your Pancreas
+  ⚠️  Banana Fish
+  ⚠️  Hana Yori Dango
+  ⚠️  Marmalade Boy
+  ⚠️  Cardcaptor Sakura
+  ⚠️  Sailor Moon
+  ⚠️  Magic Knight Rayearth
+  ⚠️  Shugo Chara
+  ⚠️  Silver Spoon
+  ⚠️  Barakamon
+  ⚠️  Flying Witch
+  ⚠️  Non Non Biyori
+  ⚠️  K-On
+  ⚠️  Azumanga Daioh
+  ⚠️  Lucky Star
+  ⚠️  Nichijou
+  ⚠️  Daily Lives of High School Boys
+  ⚠️  Akatsuki no Yona
+  ⚠️  Kamisama Kiss
+  ⚠️  Inuyasha
+  ⚠️  Ranma
+  ⚠️  Ranma 1/2
+  ⚠️  Maison Ikkoku
+  ⚠️  Clannad
+  ⚠️  Toradora
+  ⚠️  ReLIFE
+  ⚠️  Rascal Does Not Dream of Bunny Girl Senpai
+  ⚠️  Your Name
+  ⚠️  Summer Wars
+  ⚠️  Fullmetal Alchemist
+  ⚠️  Attack on Titan
+  ⚠️  Demon Slayer
+  ⚠️  Kimetsu no Yaiba
+  ⚠️  Jujutsu Kaisen
+  ⚠️  My Hero Academia
+  ⚠️  Boku no Hero Academia
+  ⚠️  One Punch Man
+  ⚠️  Mob Psycho 100
+  ⚠️  Dr. Stone
+  ⚠️  Promised Neverland
+  ⚠️  Made in Abyss
+  ⚠️  Hunter x Hunter
+  ⚠️  One Piece
+  ⚠️  Naruto
+  ⚠️  Bleach
+  ⚠️  Dragon Ball
+  ⚠️  Dragon Ball Z
+  ⚠️  Fairy Tail
+  ⚠️  Magi
+  ⚠️  Magi Labyrinth of Magic
+  ⚠️  Black Clover
+  ⚠️  The Seven Deadly Sins
+  ⚠️  Nanatsu no Taizai
+  ⚠️  Soul Eater
+  ⚠️  D.Gray-man
+  ⚠️  Ao no Exorcist
+  ⚠️  Fire Force
+  ⚠️  Enen no Shouboutai
+  ⚠️  Vinland Saga
+  ⚠️  Mushoku Tensei
+  ⚠️  ReZero
+  ⚠️  Re ZERO
+  ⚠️  Sword Art Online Progressive
+  ⚠️  Log Horizon
+  ⚠️  Overlord
+  ⚠️  That Time I Got Reincarnated as a Slime
+  ⚠️  KonoSuba
+  ⚠️  Spice and Wolf
+  ⚠️  Ookami to Koushinryou
+  ⚠️  Dungeon Meshi
+  ⚠️  Ascendance of a Bookworm
+  ⚠️  Frieren
+  ⚠️  Sousou no Frieren
+  ⚠️  Mashle
+  ⚠️  Kaiju No 8
+  ⚠️  Sakamoto Days
+  ⚠️  Darker than Black
+  ⚠️  Ghost in the Shell
+  ⚠️  Psycho-Pass
+  ⚠️  Cowboy Bebop
+  ⚠️  Trigun
+  ⚠️  Escaflowne
+  ⚠️  Studio Ghibli
+  ⚠️  Death Note
+  ⚠️  Monster
+  ⚠️  Pluto
+  ⚠️  Higurashi
+  ⚠️  Umineko
+  ⚠️  Danganronpa
+  ⚠️  Ace Attorney
+  ⚠️  Detective Conan
+  ⚠️  Case Closed
+  ⚠️  Oshi no Ko
+  ⚠️  Kaguya-sama
+  ⚠️  Kakegurui
+  ⚠️  Liar Game
+  ⚠️  No Game No Life
+  ⚠️  Baccano
+  ⚠️  Durarara
+  ⚠️  Durarara!!
+  ⚠️  Haikyuu
+  ⚠️  Kuroko's Basketball
+  ⚠️  Slam Dunk
+  ⚠️  Prince of Tennis
+  ⚠️  Yowamushi Pedal
+  ⚠️  Free
+  ⚠️  Ping Pong
+  ⚠️  Hajime no Ippo
+  ⚠️  Fighting Spirit
+  ⚠️  Saiki K
+  ⚠️  Gintama
+  ⚠️  Gochuumon wa Usagi desu ka
+  ⚠️  Natsume Yuujinchou
+  ⚠️  Miss Kobayashi's Dragon Maid
+  ⚠️  Kobayashi-san Chi no Maid Dragon
+  ⚠️  Cells at Work
+  ⚠️  Hataraku Saibou
+  ⚠️  The Eminence in Shadow
+  ⚠️  The World of Otome Games is Tough for Mobs
+  ⚠️  Trapped in a Dating Sim
+  ⚠️  My Next Life as a Villainess
+  ⚠️  I'm in Love with the Villainess
+  ⚠️  Campfire Cooking in Another World
+  ⚠️  Tsukimichi
+  ⚠️  Tsukimichi Moonlit Fantasy
+  ⚠️  Arifureta
+  ⚠️  Arifureta Shokugyou de Sekai Saikyou
+  ⚠️  Saving 80,000 Gold Coins
+  ⚠️  I Shall Survive Using Potions
+  ⚠️  Solo Leveling
+  ⚠️  Tower of God
+  ⚠️  Noblesse
+  ⚠️  Sweet Home
+  ⚠️  Lycoris Recoil
+  ⚠️  Jojo's Bizarre Adventure
+  ⚠️  JJBA
+  ⚠️  Land of the Lustrous
+  ⚠️  Houseki no Kuni
+  ⚠️  Dorohedoro
+  ⚠️  Parasyte
+  ⚠️  Kiseijuu
+  ⚠️  Gyo
+  ⚠️  Uzumaki
+  ⚠️  Tokyo Ghoul
+  ⚠️  3 Gatsu no Lion
+  ⚠️  Wandering Witch

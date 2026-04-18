@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-04-16T19:04:43.979Z",
+  "updatedAt": "2026-04-18T04:49:00.410Z",
   "entries": {
     "memory:memory/2026-04-11.md:1:7": {
       "key": "memory:memory/2026-04-11.md:1:7",
@@ -9,23 +9,26 @@
       "endLine": 7,
       "source": "memory",
       "snippet": "# 2026-04-11 - First boot. Daniel set me up as **Jarvis**, the main UI for OsMEN-OC. - Identity: sharp, efficient, dry humor. 🤖 - Primary channels: Telegram + Discord. Heavy browser automation on Linux. - SOUL.md revisit planned.",
-      "recallCount": 4,
+      "recallCount": 6,
       "dailyCount": 0,
       "groundedCount": 0,
-      "totalScore": 1.652249640226364,
+      "totalScore": 2.457252377271652,
       "maxScore": 0.428760689496994,
       "firstRecalledAt": "2026-04-14T09:11:18.908Z",
-      "lastRecalledAt": "2026-04-16T19:04:43.979Z",
+      "lastRecalledAt": "2026-04-18T02:59:17.896Z",
       "queryHashes": [
         "5ca3b2aae40a",
         "30771ca5fa5d",
         "28118beca984",
-        "867431bde273"
+        "867431bde273",
+        "c5f5a668c198",
+        "7bb2377cbf88"
       ],
       "recallDays": [
         "2026-04-14",
         "2026-04-15",
-        "2026-04-16"
+        "2026-04-16",
+        "2026-04-17"
       ],
       "conceptTags": [
         "osmen-oc",
@@ -162,6 +165,99 @@
         "single-use",
         "decay",
         "formula"
+      ]
+    },
+    "memory:memory/2026-04-16.md:72:109": {
+      "key": "memory:memory/2026-04-16.md:72:109",
+      "path": "memory/2026-04-16.md",
+      "startLine": 72,
+      "endLine": 109,
+      "source": "memory",
+      "snippet": "### Bulk Download - Spawned `manga-bulk-download` coder agent to search + queue all 299 titles - Model locked to glm-5-turbo per D's request - D is AFK until tomorrow — working autonomously ## Agent Roster Setup - Created 5 agents: main, auditor, researcher, coder, reviewer - All in agents.list with full tool profiles - Auditor workspace: openclaw/auditor/ with AGENTS.md and SOUL.md - Sub-agent permissions: allowAgents=[\"*\"], maxConcurrent=8, maxSpawnDepth=3 ## Audit Run - Auditor completed P10, P13, P14, P14m, P16, P17 phases - Reports in vault/logs/audit-*.log ## Image Editing Request - D asked to add SMART-TD logo to BBQ flyer - Used Pillow compositing (no vision protocols exist in OsM",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.40399303734302516,
+      "maxScore": 0.40399303734302516,
+      "firstRecalledAt": "2026-04-18T02:59:17.896Z",
+      "lastRecalledAt": "2026-04-18T02:59:17.896Z",
+      "queryHashes": [
+        "7bb2377cbf88"
+      ],
+      "recallDays": [
+        "2026-04-17"
+      ],
+      "conceptTags": [
+        "manga-bulk-download",
+        "glm-5-turbo",
+        "agents.list",
+        "openclaw/auditor",
+        "agents.md",
+        "soul.md",
+        "sub-agent",
+        "vault/logs/audit"
+      ]
+    },
+    "memory:memory/2026-04-16.md:22:57": {
+      "key": "memory:memory/2026-04-16.md:22:57",
+      "path": "memory/2026-04-16.md",
+      "startLine": 22,
+      "endLine": 57,
+      "source": "memory",
+      "snippet": "- Spy Family: volumes 1-16 via LimeTorrents ✅ ### Bulk Download - Spawned `manga-bulk-download` coder agent to search + queue all 299 titles - Model locked to glm-5-turbo per D's request - D is AFK until tomorrow — working autonomously ## Agent Roster Setup - Created 5 agents: main, auditor, researcher, coder, reviewer - All in agents.list with full tool profiles - Auditor workspace: openclaw/auditor/ with AGENTS.md and SOUL.md - Sub-agent permissions: allowAgents=[\"*\"], maxConcurrent=8, maxSpawnDepth=3 ## Audit Run - Auditor completed P10, P13, P14, P14m, P16, P17 phases - Reports in vault/logs/audit-*.log ## Image Editing Request - D asked to add SMART-TD logo to BBQ flyer - Used Pillo",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.40159088373184204,
+      "maxScore": 0.40159088373184204,
+      "firstRecalledAt": "2026-04-18T02:59:17.896Z",
+      "lastRecalledAt": "2026-04-18T02:59:17.896Z",
+      "queryHashes": [
+        "7bb2377cbf88"
+      ],
+      "recallDays": [
+        "2026-04-17"
+      ],
+      "conceptTags": [
+        "1-16",
+        "manga-bulk-download",
+        "glm-5-turbo",
+        "agents.list",
+        "openclaw/auditor",
+        "agents.md",
+        "soul.md",
+        "sub-agent"
+      ]
+    },
+    "memory:memory/2026-04-18.md:55:70": {
+      "key": "memory:memory/2026-04-18.md:55:70",
+      "path": "memory/2026-04-18.md",
+      "startLine": 55,
+      "endLine": 70,
+      "source": "memory",
+      "snippet": "- D explicitly requested a consolidated last-48h handoff, a clean expert-agent brief, and Taskwarrior reconciliation focused on the OsMEN install. - Created: - `openclaw/memory/osmen-handoff-2026-04-18.md` - `openclaw/memory/osmen-expert-agent-brief-2026-04-18.md` - Main recommendation to next expert agent: reconcile the download stack back to a single source of truth before touching qBittorrent auth or Prowlarr debugging. ## MANGA_KEEPALIVE check — 22:08 CDT - Download stack containers were up: gluetun, sabnzbd, qbittorrent, prowlarr (all ~13m uptime at check time). - `python3 /tmp/bulk_manga_restart.py` was still running as PID 193847 (~40m elapsed). - Child downloader process active:",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.4690497249364853,
+      "maxScore": 0.4690497249364853,
+      "firstRecalledAt": "2026-04-18T04:49:00.410Z",
+      "lastRecalledAt": "2026-04-18T04:49:00.410Z",
+      "queryHashes": [
+        "e423462b1503"
+      ],
+      "recallDays": [
+        "2026-04-17"
+      ],
+      "conceptTags": [
+        "last-48h",
+        "expert-agent",
+        "manga-keepalive",
+        "tmp/bulk-manga-restart.py",
+        "explicitly",
+        "requested",
+        "consolidated",
+        "last"
       ]
     }
   }

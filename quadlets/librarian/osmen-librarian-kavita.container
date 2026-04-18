@@ -14,7 +14,7 @@ Requires=osmen-core-network.service
 Image=docker.io/jvmilazz0/kavita:0.8.6
 ContainerName=osmen-librarian-kavita
 
-PublishPort=127.0.0.1:5000:5000
+PublishPort=192.168.4.21:5000:5000
 
 Network=osmen-core.network
 
@@ -25,6 +25,7 @@ Volume=osmen-kavita-config.volume:/kavita/config
 Volume=%h/media/books:/books:ro
 Volume=%h/media/comics:/comics:ro
 Volume=%h/media/manga:/manga:ro
+Volume=%h/media/manga-downloads:/manga-downloads:ro
 
 HealthCmd=curl -sf http://127.0.0.1:5000
 HealthInterval=30s

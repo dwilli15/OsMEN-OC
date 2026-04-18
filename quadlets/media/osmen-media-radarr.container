@@ -33,6 +33,7 @@ HealthStartPeriod=30s
 SecurityLabelDisable=true
 NoNewPrivileges=true
 ReadOnly=true
+Tmpfs=/tmp
 
 [Service]
 Restart=always
