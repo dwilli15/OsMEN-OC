@@ -1,0 +1,43 @@
+# osmen-dashboard-homepage.container
+# Rootless Podman Quadlet — Homepage dashboard.
+# Aggregates status/links for all OsMEN-OC services.
+
+[Unit]
+Description=OsMEN-OC Dashboard — Homepage
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-core-network.service
+Requires=osmen-core-network.service
+
+[Container]
+Image=ghcr.io/gethomepage/homepage:latest
+ContainerName=osmen-dashboard-homepage
+
+PublishPort=127.0.0.1:3010:3000
+
+Network=osmen-core.network
+Network=osmen-media
+
+# Config volume for settings/services/bookmarks
+Volume=osmen-homepage-config.volume:/app/config
+
+# Access to Podman socket for Docker widget integration
+Volume=%t/podman/podman.sock:/var/run/docker.sock:ro
+
+HealthCmd=wget -q --spider http://localhost:3000 || exit 1
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=3
+HealthStartPeriod=15s
+
+SecurityLabelDisable=true
+NoNewPrivileges=true
+
+[Service]
+Restart=always
+RestartSec=5s
+Slice=user-osmen-dashboard.slice
+MemoryMax=256M
+CPUQuota=50%
+
+[Install]
+WantedBy=default.target

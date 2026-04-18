@@ -1,0 +1,52 @@
+# osmen-core-paperless.container
+# Rootless Podman Quadlet — Paperless-ngx document management.
+
+[Unit]
+Description=OsMEN-OC Core — Paperless-ngx
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-core-postgres.service osmen-core-redis.service
+Requires=osmen-core-postgres.service osmen-core-redis.service
+
+[Container]
+Image=ghcr.io/paperless-ngx/paperless-ngx:latest
+ContainerName=osmen-core-paperless
+
+PublishPort=127.0.0.1:8010:8000
+
+Network=osmen-core.network
+
+Environment=PAPERLESS_DBENGINE=postgresql
+Environment=PAPERLESS_DBHOST=osmen-core-postgres
+Environment=PAPERLESS_DBPORT=5432
+Environment=PAPERLESS_DBNAME=paperless
+Environment=PAPERLESS_DBUSER=osmen
+
+Secret=osmen-postgres-password,type=env,target=PAPERLESS_DBPASS
+Secret=osmen-paperless-redis-url,type=env,target=PAPERLESS_REDIS
+
+Environment=PAPERLESS_URL=http://127.0.0.1:8010
+Environment=PAPERLESS_ADMIN_USER=osmen
+Environment=PAPERLESS_ADMIN_PASSWORD=Oc!833!Oc!
+Environment=PAPERLESS_OCR_LANGUAGE=eng
+Environment=PAPERLESS_TIME_ZONE=America/Chicago
+
+Volume=osmen-paperless-data.volume:/usr/src/paperless/data
+Volume=osmen-paperless-media.volume:/usr/src/paperless/media
+
+HealthCmd=curl -fs http://localhost:8000/api/ || exit 1
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=60s
+
+SecurityLabelDisable=true
+
+[Service]
+Restart=always
+RestartSec=10s
+Slice=user-osmen-core.slice
+MemoryMax=1G
+CPUQuota=200%
+
+[Install]
+WantedBy=default.target

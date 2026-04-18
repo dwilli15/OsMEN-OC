@@ -1,0 +1,41 @@
+# osmen-core-miniflux.container
+# Rootless Podman Quadlet — Miniflux RSS reader.
+
+[Unit]
+Description=OsMEN-OC Core — Miniflux RSS
+Documentation=https://github.com/dwilli15/OsMEN-OC
+After=osmen-core-postgres.service
+Requires=osmen-core-postgres.service
+
+[Container]
+Image=docker.io/miniflux/miniflux:latest
+ContainerName=osmen-core-miniflux
+
+PublishPort=127.0.0.1:8180:8080
+
+Network=osmen-core.network
+
+Secret=osmen-miniflux-database-url,type=env,target=DATABASE_URL
+Environment=RUN_MIGRATIONS=1
+Environment=CREATE_ADMIN=1
+Environment=ADMIN_USERNAME=osmen
+Environment=ADMIN_PASSWORD=Oc!833!Oc!
+
+HealthCmd=wget -q --spider http://localhost:8080/healthcheck || exit 1
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=3
+HealthStartPeriod=15s
+
+SecurityLabelDisable=true
+NoNewPrivileges=true
+
+[Service]
+Restart=always
+RestartSec=5s
+Slice=user-osmen-core.slice
+MemoryMax=256M
+CPUQuota=50%
+
+[Install]
+WantedBy=default.target

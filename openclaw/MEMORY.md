@@ -27,5 +27,17 @@
 - Agent team vision: multiple LLM agents in Discord (Claude, OpenCode, local LM, OpenClaw)
 - Inference ecosystem: Ollama, LM Studio, Lemonade, VS Code Insiders/Copilot, Claude, OpenCode, Wave Terminal
 
+## Stabilization Progress (2026-04-18)
+- Tiers 0-5 complete. 27 containers healthy. 32 tasks done this session.
+- 74 pending tasks remain. ~70% of total vision.
+- Key handoff: memory/osmen-handoff-2026-04-18-session2.md
+- Git commit: a46acd0
+- PostgreSQL user is `osmen` (not `postgres`)
+- Redis is auth-protected
+- Readarr only has 0.4.12-nightly tag available (no :release/:stable for linuxserver)
+- Komga needs its quadlet symlinked — legacy podman-generate unit was overriding it
+- Exec security/ask are PROTECTED config paths — cannot be patched, must edit JSON directly
+- Subagent-nudge cron active (a947bdab, every 200s)
+
 ## Identity
 - Born: 2026-04-11

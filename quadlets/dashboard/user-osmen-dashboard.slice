@@ -1,0 +1,7 @@
+[Unit]
+Description=OsMEN-OC Dashboard Services
+Before=slices.target
+
+[Slice]
+MemoryMax=512M
+CPUQuota=100%
