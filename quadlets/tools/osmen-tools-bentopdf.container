@@ -1,17 +1,18 @@
 # osmen-tools-bentopdf.container
-# Rootless Podman Quadlet — BentoPDF self-hosted PDF tools.
+# Rootless Podman Quadlet — BentoPDF self-hosted PDF toolkit.
+# Privacy-first, client-side processing.
 
 [Unit]
 Description=OsMEN-OC Tools — BentoPDF
-Documentation=https://github.com/dwilli15/OsMEN-OC
+Documentation=https://github.com/alam00000/bentopdf
 
 [Container]
-Image=ghcr.io/bentopdf/bentopdf:latest
+Image=ghcr.io/alam00000/bentopdf:latest
 ContainerName=osmen-tools-bentopdf
 
-PublishPort=127.0.0.1:3020:3000
+PublishPort=127.0.0.1:3020:8080
 
-HealthCmd=wget -q --spider http://localhost:3000 || exit 1
+HealthCmd=wget -q --spider http://localhost:8080 || exit 1
 HealthInterval=30s
 HealthTimeout=10s
 HealthRetries=3
@@ -23,8 +24,8 @@ NoNewPrivileges=true
 [Service]
 Restart=always
 RestartSec=5s
-MemoryMax=512M
-CPUQuota=100%
+MemoryMax=256M
+CPUQuota=50%
 
 [Install]
 WantedBy=default.target
