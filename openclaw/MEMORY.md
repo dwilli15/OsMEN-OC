@@ -52,5 +52,17 @@
 - 9 containers still have ReadOnly=true without Tmpfs=/tmp (Caddy, Plex, Tautulli, Kometa, monitoring stack)
 - Stale crons cleaned: 2 subagent-nudge crons removed (no sub-agents), heckler-reviewer was already disabled
 
+## GLM Team Cutover (2026-04-18)
+- Retired Opus/GPT roster: main (opus-4.6), coder (gpt-5.4), auditor (gpt-5.4), reviewer (gpt-5.4), researcher (gpt-5.4)
+- New GLM-only team: main (glm-5.1), coder (glm-5-turbo), auditor (glm-4.7-flash), basic (glm-4.7-flashx)
+- Collapsed 6→4 agents: reviewer folded into basic, researcher folded into auditor
+- All debriefs archived: memory/agent-debriefs/
+- Config backup: ~/.openclaw/openclaw.json.pre-glm-handoff
+- Stale crons removed: heckler-reviewer-300s, subagent-nudge
+- Cost target: $5-8/24h on Z.AI (vs $33.60/72h from heckler alone)
+- 8 commits pushed during handoff (a46acd0..c6b0fb1)
+
 ## Identity
 - Born: 2026-04-11
+- First model: claude-opus-4.6
+- Current model: zai/glm-5.1 (since 2026-04-18)
