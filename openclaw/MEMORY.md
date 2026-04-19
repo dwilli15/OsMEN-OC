@@ -3,6 +3,7 @@
 ## D
 - Primary user, OsMEN-OC project lead
 - Timezone: America/Chicago
+- Email: d.osmen.oc@gmail.com (default for all services)
 - Telegram: @dwillnow
 - Discord: @deewill
 - Self-describes as newbie / inexperienced vibe-coder
@@ -28,10 +29,11 @@
 - Inference ecosystem: Ollama, LM Studio, Lemonade, VS Code Insiders/Copilot, Claude, OpenCode, Wave Terminal
 
 ## Stabilization Progress (2026-04-18)
-- Tiers 0-5 complete. 30 containers running, 29 healthy. 42+ tasks done across 3 sessions.
-- 64 pending tasks remain. ~40% of total vision.
-- Key handoff: memory/osmen-handoff-2026-04-18-session2.md
-- Git commits: a46acd0, 0cdb9d4, f1e8a43
+- Tiers 0-5 complete. 31 containers running, 29 healthy. 44+ tasks done across 3 sessions.
+- 57 pending tasks remain. ~40% of total vision.
+- **72h audit: memory/audit-2026-04-18-72h.md** — verified all completions are real
+- Key handoff: memory/osmen-handoff-2026-04-18-session3-audit.md
+- Git commits: a46acd0, 0cdb9d4, f1e8a43, d39fb93, 59668e2
 - PostgreSQL user is `osmen` (not `postgres`)
 - Redis auth-protected (clean hex password, no trailing newline)
 - Readarr only has 0.4.12-nightly tag available (no :release/:stable for linuxserver)
@@ -43,9 +45,12 @@
 - qBittorrent PBKDF2 hashes: generate with Python hashlib.pbkdf2_hmac('sha512', ...) and inject into config
 - Nextcloud admin: osmen / Oc!833!Oc! (10+ char policy)
 - qBittorrent: osmen / Oc!833!Oc
-- Prowlarr: SABnzbd (localhost:8080) + qBit (localhost:9090) wired, all 4 arr apps at fullSync
-- New services deployed: Homepage (:3010), Miniflux (:8180), Paperless-ngx (:8010)
+- Prowlarr: SABnzbd (localhost:8080) + qBit (localhost:9090) wired, all 4 arr apps at fullSync; **IP-fragile** (hardcoded IPs, breaks on container restart)
+- New services deployed: Homepage (:3010), Miniflux (:8180), Paperless-ngx (:8010), BentoPDF (:3020)
 - Volume audit: 125.3GB reclaimable (osmen-sab-config.volume=125GB), needs D approval
+- systemd failed units: chromadb-compact (Python indent error), secrets-audit (found AGE-SECRET-KEY in git history — investigate)
+- 9 containers still have ReadOnly=true without Tmpfs=/tmp (Caddy, Plex, Tautulli, Kometa, monitoring stack)
+- Stale crons cleaned: 2 subagent-nudge crons removed (no sub-agents), heckler-reviewer was already disabled
 
 ## Identity
 - Born: 2026-04-11

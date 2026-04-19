@@ -6,6 +6,7 @@ _Learn about the person you're helping. Update this as you go._
 - **What to call them:** D
 - **Pronouns:**
 - **Timezone:** America/Chicago
+- **Email:** d.osmen.oc@gmail.com (use for all services)
 - **Notes:** Primary user, OsMEN-OC project lead
 
 ## Context
