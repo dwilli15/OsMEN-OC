@@ -21,6 +21,8 @@ Environment=KOMETA_RUN=true
 Environment=KOMETA_TIME=03:00
 
 Volume=osmen-kometa-config.volume:/config
+# Kometa needs /config writable for logs/reports/asset dirs
+Tmpfs=/tmp
 
 # Kometa is a batch scheduler — health check verifies the process is alive.
 HealthCmd=/bin/sh -c "pgrep -f kometa || exit 1"
