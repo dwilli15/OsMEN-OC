@@ -158,10 +158,19 @@ def check_git_staged_secrets() -> list[Finding]:
         r"AGE-SECRET-KEY-",
         r"AKIA[A-Z0-9]{16}",
     ]
+    # Exclude files that legitimately contain the pattern strings
+    # (scanner code, hooks, documentation referencing findings)
+    exclude_paths = [
+        ":!core/secrets/audit_checks.py",
+        ":!core/secrets/",
+        ":!scripts/hooks/pre-commit-secrets",
+        ":!openclaw/",
+    ]
     try:
         for pattern in patterns:
             result = subprocess.run(
-                ["git", "log", "--all", "-p", "-G", pattern, "--oneline", "--max-count=1"],
+                ["git", "log", "--all", "-p", "-G", pattern, "--oneline", "--max-count=1",
+                 *exclude_paths],
                 capture_output=True,
                 text=True,
                 timeout=30,
