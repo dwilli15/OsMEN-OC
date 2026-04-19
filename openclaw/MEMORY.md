@@ -37,6 +37,16 @@
 - PostgreSQL user is `osmen` (not `postgres`)
 - Redis auth-protected (clean hex password, no trailing newline)
 - Readarr only has 0.4.12-nightly tag available (no :release/:stable for linuxserver)
+### Manga Library (2026-04-19)
+- Location: /mnt/other-media/Manga (213GB, 169 series)
+- Formats: 1,687 CBZ + 323 PDF + 3,432 images — all CBR converted
+- Trash: /mnt/other-media/Manga_Trash (43GB) — awaiting D's deletion approval
+- Quarantine: /mnt/other-media/Manga_Quarantine/adult (4KB)
+- All downloads drained (SABnzbd, qBittorrent, aria2c complete)
+- DC/Western comics removed (725+ items), French removed (12), adult quarantined (10)
+- Yen Press unsorted fully sorted into series
+- Library is Plex/Komga-ready
+- Cleanup details: memory/2026-04-18-manga-cleanup.md
 - Komga needs initial browser setup (admin creds)
 - Exec security/ask are PROTECTED config paths — cannot be patched, must edit JSON directly
 - Podman secrets: ALWAYS use `echo -n` (no trailing newline!) when creating
