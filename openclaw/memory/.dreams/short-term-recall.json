@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-04-18T04:49:00.410Z",
+  "updatedAt": "2026-04-19T05:06:39.445Z",
   "entries": {
     "memory:memory/2026-04-11.md:1:7": {
       "key": "memory:memory/2026-04-11.md:1:7",
@@ -9,26 +9,28 @@
       "endLine": 7,
       "source": "memory",
       "snippet": "# 2026-04-11 - First boot. Daniel set me up as **Jarvis**, the main UI for OsMEN-OC. - Identity: sharp, efficient, dry humor. 🤖 - Primary channels: Telegram + Discord. Heavy browser automation on Linux. - SOUL.md revisit planned.",
-      "recallCount": 6,
+      "recallCount": 7,
       "dailyCount": 0,
       "groundedCount": 0,
-      "totalScore": 2.457252377271652,
+      "totalScore": 2.8555825889110564,
       "maxScore": 0.428760689496994,
       "firstRecalledAt": "2026-04-14T09:11:18.908Z",
-      "lastRecalledAt": "2026-04-18T02:59:17.896Z",
+      "lastRecalledAt": "2026-04-19T05:06:39.445Z",
       "queryHashes": [
         "5ca3b2aae40a",
         "30771ca5fa5d",
         "28118beca984",
         "867431bde273",
         "c5f5a668c198",
-        "7bb2377cbf88"
+        "7bb2377cbf88",
+        "849a27462e24"
       ],
       "recallDays": [
         "2026-04-14",
         "2026-04-15",
         "2026-04-16",
-        "2026-04-17"
+        "2026-04-17",
+        "2026-04-19"
       ],
       "conceptTags": [
         "osmen-oc",
@@ -258,6 +260,161 @@
         "requested",
         "consolidated",
         "last"
+      ]
+    },
+    "memory:memory/2026-04-17.md:480:508": {
+      "key": "memory:memory/2026-04-17.md:480:508",
+      "path": "memory/2026-04-17.md",
+      "startLine": 480,
+      "endLine": 508,
+      "source": "memory",
+      "snippet": "- Found ~15 complete series torrents with good seeders - Downloading via aria2c sequentially: Demon Slayer ✅, FMA ✅, Berserk ✅, more in queue - ~8.4 GB downloaded from Nyaa.si as of ~10:00 CDT #### Source 2: NZBgeek/Usenet (SABnzbd) for Licensed Manga - D asked \"and usenet\" + \"back up my licensed items\" - Searched NZBgeek for \"manga vol\" — **1,078 results** (73.1 GB) - Filtered for English manga volumes: VIZ, Yen Press, Kodansha, Seven Seas - **215 NZBs queued** to SABnzbd, downloading at 82.7 MB/s (~5 GB/min) - VIZ: 23 volumes (Kaiju No 8, One Piece, Demon Slayer, MHA, Naruto, JJK) - Yen Press: 74 volumes (Goblin Slayer, Konosuba, Overlord, Re:Zero) - Kodansha: 10 volumes - Other: 108 volu",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.5050818622112274,
+      "maxScore": 0.5050818622112274,
+      "firstRecalledAt": "2026-04-19T05:01:38.243Z",
+      "lastRecalledAt": "2026-04-19T05:01:38.243Z",
+      "queryHashes": [
+        "3a9f92e432fd"
+      ],
+      "recallDays": [
+        "2026-04-19"
+      ],
+      "conceptTags": [
+        "8.4",
+        "nyaa.si",
+        "nzbgeek/usenet",
+        "73.1",
+        "82.7",
+        "mb/s",
+        "gb/min",
+        "found"
+      ]
+    },
+    "memory:memory/2026-04-17.md:320:349": {
+      "key": "memory:memory/2026-04-17.md:320:349",
+      "path": "memory/2026-04-17.md",
+      "startLine": 320,
+      "endLine": 349,
+      "source": "memory",
+      "snippet": "- Created `scripts/media/acquisition/mangadex_dl.py` — full downloader using MangaDex API - Searches by title, downloads chapters, packs into CBZ (ZIP) files - Key fix: `urllib.parse.urlencode(doseq=True)` for proper URL encoding - Confirmed working: downloaded 2 chapters of Silent Witch (7.7MB, 36 pages) ### Manga Availability Audit - Checked all 335 titles from `/tmp/manga-list.json` against MangaDex - **218 downloadable** (have chapters on MangaDex) - **89 external-only** (licensed, chapters link to MangaPlus/VIZ/etc.) - **4 of 5 must-haves downloadable**: Apothecary Diaries, Ancient Magus' Bride, SAO, Silent Witch - **Spy x Family is external-only** on MangaPlus — no direct download - R",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.48597083985805506,
+      "maxScore": 0.48597083985805506,
+      "firstRecalledAt": "2026-04-19T05:01:38.243Z",
+      "lastRecalledAt": "2026-04-19T05:01:38.243Z",
+      "queryHashes": [
+        "3a9f92e432fd"
+      ],
+      "recallDays": [
+        "2026-04-19"
+      ],
+      "conceptTags": [
+        "urllib.parse.urlencode",
+        "7.7mb",
+        "tmp/manga-list.json",
+        "external-only",
+        "mangaplus/viz/etc",
+        "must-haves",
+        "created",
+        "scripts"
+      ]
+    },
+    "memory:memory/2026-04-17.md:503:521": {
+      "key": "memory:memory/2026-04-17.md:503:521",
+      "path": "memory/2026-04-17.md",
+      "startLine": 503,
+      "endLine": 521,
+      "source": "memory",
+      "snippet": "- PBKDF2 hash in config unchanged despite multiple reset attempts - WebUI bypass_local_auth=true didn't help - **BLOCKED**: Can't use qBittorrent API for torrent management ### Key Decisions This Session - **Triple-source manga strategy**: Nyaa.si torrents for complete packs, Usenet for licensed volumes, MangaDex for fan-scanlated - **Licensed manga found on Usenet** — NZBgeek has VIZ/Yen Press/Kodansha digital releases - **MangaDex only useful for unlicensed/fan-scanlated titles** — ~30% of popular titles downloadable ### Containers That Needed Restart - Komga, Kavita, Gluetun all exited during session — manually restarted - Container restart order matters for VPN-dependent services ###",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.48578281402587886,
+      "maxScore": 0.48578281402587886,
+      "firstRecalledAt": "2026-04-19T05:01:38.243Z",
+      "lastRecalledAt": "2026-04-19T05:01:38.243Z",
+      "queryHashes": [
+        "3a9f92e432fd"
+      ],
+      "recallDays": [
+        "2026-04-19"
+      ],
+      "conceptTags": [
+        "bypass-local-auth",
+        "triple-source",
+        "nyaa.si",
+        "fan-scanlated",
+        "viz/yen",
+        "press/kodansha",
+        "unlicensed/fan-scanlated",
+        "vpn-dependent"
+      ]
+    },
+    "memory:memory/2026-04-17.md:452:486": {
+      "key": "memory:memory/2026-04-17.md:452:486",
+      "path": "memory/2026-04-17.md",
+      "startLine": 452,
+      "endLine": 486,
+      "source": "memory",
+      "snippet": "6. Add manga library to Kavita (`/run/media/dwill/Other_Media/Manga`) --- ## Session 3: ~08:30 CDT — Triple-Source Manga Acquisition ### DC Comics Final Status - **765 NZBs downloaded**, 751 files (39GB) completed, 14 stuck (missing articles), 3 failed (duplicate Deathstroke) - Comics copied to Komga library via `cp -rn` from SABnzbd volume - **885 loose comic folders organized** into 601 proper series folders - **CBR→CBZ conversion**: 614 converted, 16 errors, 21 remaining CBRs - **Final DC comic count**: 3,800 CBZ files, 1,253 series folders, 145GB - **23/28 missing DC series covered** by Eweka downloads ### Komga Library Fix - Library root was `/books` but mount is `/comics` — fixed v",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.473418253660202,
+      "maxScore": 0.473418253660202,
+      "firstRecalledAt": "2026-04-19T05:01:38.243Z",
+      "lastRecalledAt": "2026-04-19T05:01:38.243Z",
+      "queryHashes": [
+        "3a9f92e432fd"
+      ],
+      "recallDays": [
+        "2026-04-19"
+      ],
+      "conceptTags": [
+        "triple-source",
+        "23/28",
+        "add",
+        "manga",
+        "library",
+        "kavita",
+        "run",
+        "media"
+      ]
+    },
+    "memory:memory/2026-04-17.md:25:57": {
+      "key": "memory:memory/2026-04-17.md:25:57",
+      "path": "memory/2026-04-17.md",
+      "startLine": 25,
+      "endLine": 57,
+      "source": "memory",
+      "snippet": "- TPBs: `\"{series name} digital TPB\"` — limited but sometimes hits - Omnibus: `\"{series name} omnibus Empire\"` — very rare - Category 7030 for comics in NZBgeek API ## Manga Download Pipeline ### MangaDex Downloader - Created `scripts/media/acquisition/mangadex_dl.py` — full downloader using MangaDex API - Searches by title, downloads chapters, packs into CBZ (ZIP) files - Key fix: `urllib.parse.urlencode(doseq=True)` for proper URL encoding - Confirmed working: downloaded 2 chapters of Silent Witch (7.7MB, 36 pages) ### Manga Availability Audit - Checked all 335 titles from `/tmp/manga-list.json` against MangaDex - **218 downloadable** (have chapters on MangaDex) - **89 external-only** (",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.4723114192485809,
+      "maxScore": 0.4723114192485809,
+      "firstRecalledAt": "2026-04-19T05:01:38.243Z",
+      "lastRecalledAt": "2026-04-19T05:01:38.243Z",
+      "queryHashes": [
+        "3a9f92e432fd"
+      ],
+      "recallDays": [
+        "2026-04-19"
+      ],
+      "conceptTags": [
+        "urllib.parse.urlencode",
+        "7.7mb",
+        "tmp/manga-list.json",
+        "external-only",
+        "tpbs",
+        "series",
+        "name",
+        "digital"
       ]
     }
   }
